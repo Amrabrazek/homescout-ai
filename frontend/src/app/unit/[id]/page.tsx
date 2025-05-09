@@ -5,6 +5,7 @@ import { useQuery } from '@apollo/client';
 import { gql } from '@apollo/client';
 import Image from 'next/image';
 import Link from 'next/link';
+import { DogIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,7 +14,7 @@ import { ArrowLeft, Bed, Bath, Home, Info } from 'lucide-react';
 import { CardDescription } from '@/components/ui/card';
 
 const GET_UNIT = gql`
-  query GetUnit($id: ID!) {
+  query GetUnit($id: String!) {
     unit(id: $id) {
       id
       name
@@ -152,8 +153,13 @@ export default function UnitDetailPage() {
               {unit.amenities.map((amenity: any) => (
                 <div key={amenity.id} className='flex items-center gap-2'>
                   <Badge variant='outline' className='p-1.5'>
-                    {amenity.icon && (
-                      <span className='mr-1'>{amenity.icon}</span>
+                    {amenity.icon ? (
+                      <span
+                        className='mr-1'
+                        dangerouslySetInnerHTML={{ __html: amenity.icon }}
+                      />
+                    ) : (
+                      <DogIcon size={16} className='mr-1' />
                     )}
                   </Badge>
                   <span>{amenity.name}</span>
