@@ -41,7 +41,6 @@ export default function Home() {
               filters={filters}
               onChange={handleFilterChange}
               totalUnits={unitCounts.total}
-              displayedUnits={unitCounts.displayed}
             />
           </div>
           <div className='lg:col-span-3'>
