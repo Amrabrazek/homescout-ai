@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import UnitDetailClient, { UnitDetailSkeleton } from './UnitDetailClient';
+import UnitDetails, { UnitDetailSkeleton } from './UnitDetailClient';
 import { getClient } from '@/lib/apollo-client';
 import { gql } from '@apollo/client';
 import { Suspense } from 'react';
@@ -96,5 +96,5 @@ async function UnitContent({ id }: { id: string }) {
     notFound();
   }
 
-  return <UnitDetailClient unit={unit} />;
+  return <UnitDetails unit={unit} />;
 }
