@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDebounce } from '../hooks/useDebounce';
 import { MultiSelect, Option } from '@/components/ui/multi-select';
+import { Badge } from '@/components/ui/badge';
 
 const GET_FILTER_DATA = gql`
   query GetFilterData {
@@ -42,9 +43,16 @@ type FilterProps = {
     maxFloorArea?: number;
   };
   onChange: (filters: any) => void;
+  totalUnits?: number;
+  displayedUnits?: number;
 };
 
-export default function UnitFilters({ filters, onChange }: FilterProps) {
+export default function UnitFilters({
+  filters,
+  onChange,
+  totalUnits = 0,
+  displayedUnits = 0,
+}: FilterProps) {
   const { data, loading } = useQuery(GET_FILTER_DATA);
   const [localFilters, setLocalFilters] = useState(filters);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
@@ -160,7 +168,15 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Filters</CardTitle>
+        <CardTitle className='flex justify-between items-center'>
+          <span>Filters</span>
+          {totalUnits > 0 && (
+            <Badge variant='outline' className='ml-2'>
+              {totalUnits}{' '}
+              {totalUnits === 1 ? 'unit available' : 'units available'}
+            </Badge>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent className='space-y-4'>
         <div className='space-y-2'>

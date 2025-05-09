@@ -18,21 +18,37 @@ type FilterState = {
 
 export default function Home() {
   const [filters, setFilters] = useState<FilterState>({});
+  const [unitCounts, setUnitCounts] = useState({
+    total: 0,
+    displayed: 0,
+  });
+
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+  };
+
+  const handleUnitCountsUpdate = (total: number, displayed: number) => {
+    setUnitCounts({ total, displayed });
+  };
 
   return (
-    <main className='min-h-screen'>
+    <main className='min-h-screen bg-gray-50'>
       <div className='container mx-auto py-8'>
-        <h1 className='text-4xl font-bold mb-8 text-center'>
-          Nawy Apartment Listings
-        </h1>
-
-        <div className='grid grid-cols-1 md:grid-cols-4 gap-8'>
-          <div className='md:col-span-1'>
-            <UnitFilters filters={filters} onChange={setFilters} />
+        <h1 className='text-3xl font-bold mb-6'>Find Your Dream Property</h1>
+        <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
+          <div className='lg:col-span-1'>
+            <UnitFilters
+              filters={filters}
+              onChange={handleFilterChange}
+              totalUnits={unitCounts.total}
+              displayedUnits={unitCounts.displayed}
+            />
           </div>
-
-          <div className='md:col-span-3'>
-            <UnitListing filters={filters} />
+          <div className='lg:col-span-3'>
+            <UnitListing
+              filters={filters}
+              onCountsUpdate={handleUnitCountsUpdate}
+            />
           </div>
         </div>
       </div>

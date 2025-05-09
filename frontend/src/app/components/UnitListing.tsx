@@ -9,33 +9,36 @@ import { Skeleton } from '@/components/ui/skeleton';
 const GET_UNITS = gql`
   query GetUnits($filter: UnitFilterInput, $limit: Int, $offset: Int) {
     units(filter: $filter, limit: $limit, offset: $offset) {
-      id
-      name
-      number
-      floor
-      rooms
-      bathrooms
-      floorArea
-      price
-      description
-      project {
+      items {
         id
         name
-        developer {
+        number
+        floor
+        rooms
+        bathrooms
+        floorArea
+        price
+        description
+        project {
           id
           name
+          developer {
+            id
+            name
+          }
+        }
+        amenities {
+          id
+          name
+          icon
+        }
+        images {
+          id
+          url
+          altText
         }
       }
-      amenities {
-        id
-        name
-        icon
-      }
-      images {
-        id
-        url
-        altText
-      }
+      total
     }
   }
 `;
@@ -52,11 +55,15 @@ type UnitListingProps = {
     minFloorArea?: number;
     maxFloorArea?: number;
   };
+  onCountsUpdate?: (total: number, displayed: number) => void;
 };
 
 const UNITS_PER_PAGE = 20;
 
-export default function UnitListing({ filters }: UnitListingProps) {
+export default function UnitListing({
+  filters,
+  onCountsUpdate,
+}: UnitListingProps) {
   const [hasMore, setHasMore] = useState(true);
   const observer = useRef<IntersectionObserver | null>(null);
   const lastUnitElementRef = useRef<HTMLDivElement | null>(null);
@@ -87,21 +94,25 @@ export default function UnitListing({ filters }: UnitListingProps) {
 
     fetchMore({
       variables: {
-        offset: data?.units?.length || 0,
+        offset: data?.units?.items?.length || 0,
         limit: UNITS_PER_PAGE,
       },
       updateQuery: (prev, { fetchMoreResult }) => {
-        if (!fetchMoreResult || fetchMoreResult.units.length === 0) {
+        if (!fetchMoreResult || fetchMoreResult.units.items.length === 0) {
           setHasMore(false);
           return prev;
         }
 
         return {
-          units: [...prev.units, ...fetchMoreResult.units],
+          units: {
+            items: [...prev.units.items, ...fetchMoreResult.units.items],
+            total: fetchMoreResult.units.total,
+            __typename: prev.units.__typename,
+          },
         };
       },
     });
-  }, [data?.units?.length, fetchMore, hasMore, loading]);
+  }, [data?.units?.items?.length, fetchMore, hasMore, loading]);
 
   // Setup the intersection observer to detect when user scrolls to the bottom
   useEffect(() => {
@@ -128,6 +139,13 @@ export default function UnitListing({ filters }: UnitListingProps) {
     };
   }, [loading, hasMore, loadMoreUnits]);
 
+  // Notify parent component about the counts when data changes
+  useEffect(() => {
+    if (data?.units) {
+      onCountsUpdate?.(data.units.total, data.units.items.length);
+    }
+  }, [data?.units, onCountsUpdate]);
+
   if (error) {
     return (
       <div className='p-8 text-center'>
@@ -136,7 +154,8 @@ export default function UnitListing({ filters }: UnitListingProps) {
     );
   }
 
-  const units = data?.units || [];
+  const units = data?.units?.items || [];
+  const totalUnits = data?.units?.total || 0;
   const isInitialLoading = loading && units.length === 0;
 
   // Helper function to render skeleton cards
@@ -157,7 +176,7 @@ export default function UnitListing({ filters }: UnitListingProps) {
         <h2 className='text-xl font-semibold'>
           {isInitialLoading
             ? 'Loading units...'
-            : `${units.length} Units Available`}
+            : `${totalUnits} Units available`}
         </h2>
       </div>
 
@@ -195,7 +214,9 @@ export default function UnitListing({ filters }: UnitListingProps) {
       {/* No more units message */}
       {!hasMore && units.length > 0 && !loading && (
         <div className='text-center p-4 mt-4 text-gray-500'>
-          No more units to load
+          {units.length === totalUnits
+            ? 'All units loaded'
+            : `Showing ${units.length} of ${totalUnits} units`}
         </div>
       )}
     </div>

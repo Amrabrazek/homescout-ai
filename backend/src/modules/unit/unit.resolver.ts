@@ -6,6 +6,8 @@ import {
   ResolveField,
   Resolver,
   Int,
+  ObjectType,
+  Field,
 } from '@nestjs/graphql';
 import { Project } from '../../common/entities/project.entity';
 import { Unit } from '../../common/entities/unit.entity';
@@ -17,6 +19,15 @@ import { CreateUnitInput } from './dto/create-unit.input';
 import { UnitFilterInput } from './dto/unit-filter.input';
 import { UnitService } from './unit.service';
 
+@ObjectType()
+export class UnitResponse {
+  @Field(() => [Unit])
+  items: Unit[];
+
+  @Field(() => Int)
+  total: number;
+}
+
 @Resolver(() => Unit)
 export class UnitResolver {
   constructor(
@@ -24,13 +35,18 @@ export class UnitResolver {
     private projectService: ProjectService
   ) {}
 
-  @Query(() => [Unit])
+  @Query(() => UnitResponse)
   async units(
     @Args('filter', { nullable: true }) filter?: UnitFilterInput,
     @Args('limit', { type: () => Int, nullable: true }) limit?: number,
     @Args('offset', { type: () => Int, nullable: true }) offset?: number
-  ): Promise<Unit[]> {
-    return this.unitService.findAll(filter, limit, offset);
+  ): Promise<UnitResponse> {
+    const [items, total] = await this.unitService.findAllWithCount(
+      filter,
+      limit,
+      offset
+    );
+    return { items, total };
   }
 
   @Query(() => Unit, { nullable: true })

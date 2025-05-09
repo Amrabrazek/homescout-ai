@@ -94,6 +94,66 @@ export class UnitService {
     });
   }
 
+  async findAllWithCount(
+    filter?: UnitFilterInput,
+    limit?: number,
+    offset?: number
+  ): Promise<[Unit[], number]> {
+    const where: any = {};
+
+    if (filter) {
+      if (filter.searchTerm) {
+        // Search in both name and number fields with OR condition
+        where.name = Raw(
+          (alias) => `${alias} ILIKE :searchTerm OR number ILIKE :searchTerm`,
+          { searchTerm: `%${filter.searchTerm}%` }
+        );
+      }
+
+      // Handle multiple project IDs or single project ID
+      if (filter.projectIds && filter.projectIds.length > 0) {
+        where.projectId = In(filter.projectIds);
+      }
+
+      if (filter.minRooms !== undefined && filter.maxRooms !== undefined) {
+        where.rooms = Between(filter.minRooms, filter.maxRooms);
+      } else if (filter.minRooms !== undefined) {
+        where.rooms = MoreThanOrEqual(filter.minRooms);
+      } else if (filter.maxRooms !== undefined) {
+        where.rooms = LessThanOrEqual(filter.maxRooms);
+      }
+
+      if (filter.minPrice !== undefined && filter.maxPrice !== undefined) {
+        where.price = Between(filter.minPrice, filter.maxPrice);
+      } else if (filter.minPrice !== undefined) {
+        where.price = MoreThanOrEqual(filter.minPrice);
+      } else if (filter.maxPrice !== undefined) {
+        where.price = LessThanOrEqual(filter.maxPrice);
+      }
+
+      if (
+        filter.minFloorArea !== undefined &&
+        filter.maxFloorArea !== undefined
+      ) {
+        where.floorArea = Between(filter.minFloorArea, filter.maxFloorArea);
+      } else if (filter.minFloorArea !== undefined) {
+        where.floorArea = MoreThanOrEqual(filter.minFloorArea);
+      } else if (filter.maxFloorArea !== undefined) {
+        where.floorArea = LessThanOrEqual(filter.maxFloorArea);
+      }
+    }
+
+    return this.unitRepository.findAndCount({
+      where,
+      relations: ['project', 'project.developer', 'amenities', 'images'],
+      take: limit,
+      skip: offset,
+      order: {
+        id: 'DESC',
+      },
+    });
+  }
+
   async findOne(id: string): Promise<Unit> {
     const unit = await this.unitRepository.findOne({
       where: { id },
