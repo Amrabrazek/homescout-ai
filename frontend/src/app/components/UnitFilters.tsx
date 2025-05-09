@@ -168,12 +168,11 @@ export default function UnitFilters({
       <CardHeader>
         <CardTitle className='flex justify-between items-center'>
           <span>Filters</span>
-          {totalUnits > 0 && (
-            <Badge variant='outline' className='ml-2'>
-              {totalUnits}{' '}
-              {totalUnits === 1 ? 'unit available' : 'units available'}
-            </Badge>
-          )}
+
+          <Badge variant='outline' className='ml-2'>
+            {totalUnits}{' '}
+            {totalUnits === 1 ? 'unit available' : 'units available'}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className='space-y-4'>
