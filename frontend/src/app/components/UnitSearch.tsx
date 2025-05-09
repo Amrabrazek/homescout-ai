@@ -34,11 +34,13 @@ export default function UnitSearch() {
   return (
     <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
       <div className='lg:col-span-1'>
-        <UnitFilters
-          filters={filters}
-          onChange={handleFilterChange}
-          totalUnits={unitCounts.total}
-        />
+        <div className='sticky top-4'>
+          <UnitFilters
+            filters={filters}
+            onChange={handleFilterChange}
+            totalUnits={unitCounts.total}
+          />
+        </div>
       </div>
       <div className='lg:col-span-3'>
         <UnitListing
