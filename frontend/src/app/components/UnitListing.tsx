@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@apollo/client';
 import { gql } from '@apollo/client';
-import UnitCard from '@/app/components/UnitCard';
+import UnitCard, { UnitCardSkeleton } from '@/app/components/UnitCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -60,6 +60,8 @@ type UnitListingProps = {
 };
 
 const UNITS_PER_PAGE = 20;
+// Fixed number of skeleton cards to display in initial load
+const SKELETON_COUNT = 9;
 
 export default function UnitListing({
   filters,
@@ -149,7 +151,7 @@ export default function UnitListing({
 
   if (error) {
     return (
-      <div className='p-8 text-center'>
+      <div className='w-full p-8 text-center'>
         <p className='text-red-500'>Error loading units: {error.message}</p>
       </div>
     );
@@ -159,20 +161,13 @@ export default function UnitListing({
   const totalUnits = data?.units?.total || 0;
   const isInitialLoading = loading && units.length === 0;
 
-  // Helper function to render skeleton cards
+  // Helper function to render skeleton cards using the imported UnitCardSkeleton
   const renderSkeletons = (count: number) =>
-    Array.from({ length: count }).map((_, i) => (
-      <div key={i} className='border rounded-lg p-4 h-96'>
-        <Skeleton className='h-48 w-full rounded-md mb-4' />
-        <Skeleton className='h-4 w-3/4 mb-2' />
-        <Skeleton className='h-4 w-1/2 mb-2' />
-        <Skeleton className='h-4 w-5/6 mb-2' />
-        <Skeleton className='h-4 w-2/3' />
-      </div>
-    ));
+    Array.from({ length: count }).map((_, i) => <UnitCardSkeleton key={i} />);
 
   return (
-    <div>
+    // Outer container with fixed width to prevent layout shifts
+    <div className='w-full'>
       <div className='mb-4 flex justify-between items-center'>
         <h2 className='text-xl font-semibold'>
           {isInitialLoading
@@ -181,46 +176,67 @@ export default function UnitListing({
         </h2>
       </div>
 
-      {/* Added min-height to maintain consistent container size */}
-      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[800px]'>
-        {isInitialLoading ? (
-          // Initial loading skeletons
-          renderSkeletons(9)
-        ) : units.length === 0 ? (
-          // Empty state with full-width and height
-          <div className='col-span-full flex items-center justify-center h-full'>
+      {/* 
+        Two layout options based on state:
+        1. Grid layout for loading and populated states
+        2. Full width layout for empty state
+        Both with fixed dimensions to prevent layout shifts
+      */}
+      {units.length === 0 && !isInitialLoading ? (
+        // Empty state container with consistent dimensions
+        <div className='w-full min-h-[800px] flex items-center justify-center'>
+          <div className='w-full max-w-[550px]'>
             <EmptyState
               title='No units found'
               description='No properties match your current filters. Try different filters or clear all filters.'
             />
           </div>
-        ) : (
-          <>
-            {/* Render existing units */}
-            {units.map((unit: any, index: number) => {
-              if (units.length === index + 1) {
-                return (
-                  <div ref={lastUnitElementRef} key={unit.id}>
-                    <UnitCard unit={unit} />
-                  </div>
-                );
-              } else {
-                return <UnitCard key={unit.id} unit={unit} />;
-              }
-            })}
+        </div>
+      ) : (
+        // Grid for loading and populated states
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[800px] w-full'>
+          {isInitialLoading ? (
+            // Always render exactly SKELETON_COUNT skeletons for consistency
+            renderSkeletons(SKELETON_COUNT)
+          ) : (
+            <>
+              {/* Render existing units */}
+              {units.map((unit: any, index: number) => {
+                if (units.length === index + 1) {
+                  return (
+                    <div
+                      ref={lastUnitElementRef}
+                      key={unit.id}
+                      className='w-full'
+                    >
+                      <UnitCard unit={unit} />
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div key={unit.id} className='w-full'>
+                      <UnitCard unit={unit} />
+                    </div>
+                  );
+                }
+              })}
 
-            {/* Add placeholder elements to maintain grid structure when few units */}
-            {units.length > 0 &&
-              units.length < 3 &&
-              Array.from({ length: 3 - units.length }).map((_, i) => (
-                <div key={`placeholder-${i}`} className='hidden lg:block'></div>
-              ))}
+              {/* Add placeholder elements to maintain grid structure when few units */}
+              {units.length > 0 &&
+                units.length < 3 &&
+                Array.from({ length: 3 - units.length }).map((_, i) => (
+                  <div
+                    key={`placeholder-${i}`}
+                    className='hidden lg:block w-full'
+                  ></div>
+                ))}
 
-            {/* Render skeleton cards when loading more */}
-            {isFetchingMore && renderSkeletons(5)}
-          </>
-        )}
-      </div>
+              {/* Render skeleton cards when loading more - always in multiples of 3 */}
+              {isFetchingMore && renderSkeletons(3)}
+            </>
+          )}
+        </div>
+      )}
 
       {/* No more units message */}
       {!hasMore && units.length > 0 && !loading && (

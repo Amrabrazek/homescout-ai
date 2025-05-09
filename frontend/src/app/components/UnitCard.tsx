@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice } from '@/app/utils/formatter';
 
 type UnitCardProps = {
@@ -84,15 +85,11 @@ export default function UnitCard({ unit }: UnitCardProps) {
             <span>{unit.floorArea} sqm</span>
           </div>
 
-          {unit.description ? (
+          {unit.description && (
             <CardDescription
               html={unit.description}
               className='line-clamp-2 text-sm h-10'
             />
-          ) : (
-            <p className='text-muted-foreground line-clamp-2 text-sm h-10'>
-              No description available
-            </p>
           )}
 
           <div className='mt-2 flex flex-wrap gap-1'>
@@ -115,5 +112,47 @@ export default function UnitCard({ unit }: UnitCardProps) {
         </CardFooter>
       </Card>
     </Link>
+  );
+}
+
+// Create a skeleton version of the card that exactly matches the structure
+export function UnitCardSkeleton() {
+  return (
+    <Card className='h-full overflow-hidden'>
+      {/* Image placeholder */}
+      <div className='relative w-full h-48'>
+        <Skeleton className='h-full w-full' />
+      </div>
+
+      <CardHeader className='p-4 pb-2'>
+        <div className='flex justify-between items-start'>
+          <div>
+            <Skeleton className='h-6 w-32 mb-2' /> {/* Title */}
+            <Skeleton className='h-4 w-48' /> {/* Description */}
+          </div>
+          <Skeleton className='h-6 w-16 rounded-full' /> {/* Badge */}
+        </div>
+      </CardHeader>
+
+      <CardContent className='p-4 pt-0 pb-2'>
+        <div className='flex justify-between mb-2'>
+          <Skeleton className='h-4 w-16' /> {/* Rooms */}
+          <Skeleton className='h-4 w-20' /> {/* Bathrooms */}
+          <Skeleton className='h-4 w-16' /> {/* Area */}
+        </div>
+        <Skeleton className='h-10 w-full mb-3' /> {/* Description */}
+        <div className='flex gap-1'>
+          <Skeleton className='h-5 w-16 rounded-full' /> {/* Amenity */}
+          <Skeleton className='h-5 w-16 rounded-full' /> {/* Amenity */}
+          <Skeleton className='h-5 w-16 rounded-full' /> {/* Amenity */}
+        </div>
+      </CardContent>
+
+      <CardFooter className='p-4 pt-2 border-t'>
+        <div className='w-full flex justify-end'>
+          <Skeleton className='h-6 w-24' /> {/* Price */}
+        </div>
+      </CardFooter>
+    </Card>
   );
 }
