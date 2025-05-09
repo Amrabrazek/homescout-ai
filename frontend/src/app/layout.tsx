@@ -1,13 +1,23 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { ApolloWrapper } from './lib/apollo-provider';
+import { ApolloWrapper } from '@/app/lib/apollo-provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Nawy Apartment Listings',
+  title: {
+    template: '%s | Nawy',
+    default: 'Nawy - Premium Property Listings',
+  },
   description: 'Browse available apartment listings',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: { url: '/favicon.ico', type: 'image/x-icon' },
+  },
 };
 
 export default function RootLayout({
