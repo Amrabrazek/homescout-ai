@@ -32,6 +32,15 @@ coverage/
 # Docker volumes
 docker-volumes/
 
+# Supabase
+.supabase/
+**/supabase/.branches/
+**/supabase/.temp/
+**/supabase/volumes/
+**/supabase/config.local.toml
+**/*-service-account-keys.json
+**/supabase/.env
+
 # Cache
 .eslintcache
 .cache/
