@@ -1,0 +1,53 @@
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database data
+volumes/db/data/
+
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build directories
+dist/
+build/
+.next/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage directories
+coverage/
+.nyc_output/
+
+# Docker volumes
+docker-volumes/
+
+# Cache
+.eslintcache
+.cache/
+.parcel-cache/
+.serverless/
+
+# MacOS files
+.DS_Store
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Misc
+.tmp/
+temp/
+.turbo 
