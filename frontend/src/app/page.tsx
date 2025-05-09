@@ -1,55 +1,30 @@
-'use client';
+import UnitSearch from '@/app/components/UnitSearch';
+import HomeHero from '@/app/components/HomeHero';
 
-import UnitListing from '@/app/components/UnitListing';
-import UnitFilters from '@/app/components/UnitFilters';
-import { useState } from 'react';
-
-type FilterState = {
-  searchTerm?: string;
-  projectIds?: string[];
-  amenityIds?: string[];
-  minRooms?: number;
-  maxRooms?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  minFloorArea?: number;
-  maxFloorArea?: number;
+// Page metadata for SEO
+export const metadata = {
+  title: 'Find Your Dream Property | Nawy',
+  description:
+    'Browse our selection of premium properties, apartments, and villas across Egypt. Find your perfect home with advanced filtering options.',
+  keywords: ['property', 'real estate', 'apartments', 'homes', 'Egypt', 'Nawy'],
+  openGraph: {
+    title: 'Find Your Dream Property | Nawy',
+    description:
+      'Browse our selection of premium properties, apartments, and villas across Egypt.',
+  },
 };
 
 export default function Home() {
-  const [filters, setFilters] = useState<FilterState>({});
-  const [unitCounts, setUnitCounts] = useState({
-    total: 0,
-    displayed: 0,
-  });
-
-  const handleFilterChange = (newFilters: FilterState) => {
-    setFilters(newFilters);
-  };
-
-  const handleUnitCountsUpdate = (total: number, displayed: number) => {
-    setUnitCounts({ total, displayed });
-  };
-
   return (
     <main className='min-h-screen bg-gray-50'>
-      <div className='container mx-auto py-8'>
+      {/* Hero section with scroll functionality */}
+      <HomeHero />
+
+      <div className='container mx-auto py-8' id='property-search'>
         <h1 className='text-3xl font-bold mb-6'>Find Your Dream Property</h1>
-        <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
-          <div className='lg:col-span-1'>
-            <UnitFilters
-              filters={filters}
-              onChange={handleFilterChange}
-              totalUnits={unitCounts.total}
-            />
-          </div>
-          <div className='lg:col-span-3'>
-            <UnitListing
-              filters={filters}
-              onCountsUpdate={handleUnitCountsUpdate}
-            />
-          </div>
-        </div>
+
+        {/* UnitSearch is a client component, while the page itself is server-rendered */}
+        <UnitSearch />
       </div>
     </main>
   );

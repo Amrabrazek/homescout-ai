@@ -221,18 +221,7 @@ export default function UnitListing({
                 }
               })}
 
-              {/* Add placeholder elements to maintain grid structure when few units */}
-              {units.length > 0 &&
-                units.length < 3 &&
-                Array.from({ length: 3 - units.length }).map((_, i) => (
-                  <div
-                    key={`placeholder-${i}`}
-                    className='hidden lg:block w-full'
-                  ></div>
-                ))}
-
-              {/* Render skeleton cards when loading more - always in multiples of 3 */}
-              {isFetchingMore && renderSkeletons(3)}
+              {isFetchingMore && renderSkeletons(5)}
             </>
           )}
         </div>
