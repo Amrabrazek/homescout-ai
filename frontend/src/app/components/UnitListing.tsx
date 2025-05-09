@@ -178,7 +178,7 @@ export default function UnitListing({ filters }: UnitListingProps) {
         </div>
       ) : (
         // Grid for loading and populated states
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[800px] w-full'>
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6  w-full'>
           {isInitialLoading ? (
             // Always render exactly SKELETON_COUNT skeletons for consistency
             renderSkeletons(SKELETON_COUNT)

@@ -84,10 +84,18 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
     },
   });
 
+  useEffect(() => {
+    if (JSON.stringify(localFilters) !== JSON.stringify(filters)) {
+      setLocalFilters(filters);
+    }
+  }, [filters]);
+
   // Update parent component with debounced filters
   useEffect(() => {
-    onChange(debouncedFilters);
-  }, [debouncedFilters, onChange]);
+    if (JSON.stringify(debouncedFilters) !== JSON.stringify(filters)) {
+      onChange(debouncedFilters);
+    }
+  }, [debouncedFilters, onChange, filters]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -106,9 +114,7 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
   };
 
   const handleProjectsChange = (selectedIds: string[]) => {
-    // Project changes don't need debounce
     setLocalFilters({ ...localFilters, projectIds: selectedIds });
-    onChange({ ...filters, projectIds: selectedIds });
   };
 
   const handleProjectSearch = (searchTerm: string) => {
@@ -154,9 +160,9 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
       ? [...currentAmenities, amenityId]
       : currentAmenities.filter((id) => id !== amenityId);
 
-    // Checkbox changes don't need debounce
+    // Just update local state and let the debounced effect handle parent updates
+    // This prevents multiple rapid updates that cause the flickering
     setLocalFilters({ ...localFilters, amenityIds: newAmenities });
-    onChange({ ...filters, amenityIds: newAmenities });
   };
 
   return (
