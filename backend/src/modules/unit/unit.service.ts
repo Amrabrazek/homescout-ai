@@ -55,6 +55,24 @@ export class UnitService {
         where.projectId = In(filter.projectIds);
       }
 
+      // Handle amenity IDs filter
+      if (filter.amenityIds && filter.amenityIds.length > 0) {
+        where.id = Raw(
+          (alias) => {
+            return `${alias} IN (
+            SELECT unit_id FROM unit_amenities
+            WHERE amenity_id IN (:...amenityIds)
+            GROUP BY unit_id
+            HAVING COUNT(DISTINCT amenity_id) = :amenityCount
+          )`;
+          },
+          {
+            amenityIds: filter.amenityIds,
+            amenityCount: filter.amenityIds.length, // Require ALL selected amenities
+          }
+        );
+      }
+
       if (filter.minRooms !== undefined && filter.maxRooms !== undefined) {
         where.rooms = Between(filter.minRooms, filter.maxRooms);
       } else if (filter.minRooms !== undefined) {
@@ -113,6 +131,24 @@ export class UnitService {
       // Handle multiple project IDs or single project ID
       if (filter.projectIds && filter.projectIds.length > 0) {
         where.projectId = In(filter.projectIds);
+      }
+
+      // Handle amenity IDs filter
+      if (filter.amenityIds && filter.amenityIds.length > 0) {
+        where.id = Raw(
+          (alias) => {
+            return `${alias} IN (
+            SELECT unit_id FROM unit_amenities
+            WHERE amenity_id IN (:...amenityIds)
+            GROUP BY unit_id
+            HAVING COUNT(DISTINCT amenity_id) = :amenityCount
+          )`;
+          },
+          {
+            amenityIds: filter.amenityIds,
+            amenityCount: filter.amenityIds.length, // Require ALL selected amenities
+          }
+        );
       }
 
       if (filter.minRooms !== undefined && filter.maxRooms !== undefined) {
