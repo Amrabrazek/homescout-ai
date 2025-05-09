@@ -181,12 +181,14 @@ export default function UnitListing({
         </h2>
       </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+      {/* Added min-height to maintain consistent container size */}
+      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[800px]'>
         {isInitialLoading ? (
           // Initial loading skeletons
           renderSkeletons(9)
         ) : units.length === 0 ? (
-          <div className='col-span-full text-center p-8'>
+          // Empty state with full-width and height
+          <div className='col-span-full flex items-center justify-center h-full'>
             <EmptyState
               title='No units found'
               description='No properties match your current filters. Try different filters or clear all filters.'
@@ -206,6 +208,13 @@ export default function UnitListing({
                 return <UnitCard key={unit.id} unit={unit} />;
               }
             })}
+
+            {/* Add placeholder elements to maintain grid structure when few units */}
+            {units.length > 0 &&
+              units.length < 3 &&
+              Array.from({ length: 3 - units.length }).map((_, i) => (
+                <div key={`placeholder-${i}`} className='hidden lg:block'></div>
+              ))}
 
             {/* Render skeleton cards when loading more */}
             {isFetchingMore && renderSkeletons(5)}
