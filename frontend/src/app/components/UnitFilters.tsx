@@ -44,14 +44,12 @@ type FilterProps = {
   };
   onChange: (filters: any) => void;
   totalUnits?: number;
-  displayedUnits?: number;
 };
 
 export default function UnitFilters({
   filters,
   onChange,
   totalUnits = 0,
-  displayedUnits = 0,
 }: FilterProps) {
   const { data, loading } = useQuery(GET_FILTER_DATA);
   const [localFilters, setLocalFilters] = useState(filters);

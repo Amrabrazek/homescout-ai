@@ -5,6 +5,7 @@ import { useQuery } from '@apollo/client';
 import { gql } from '@apollo/client';
 import UnitCard from '@/app/components/UnitCard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const GET_UNITS = gql`
   query GetUnits($filter: UnitFilterInput, $limit: Int, $offset: Int) {
@@ -186,9 +187,10 @@ export default function UnitListing({
           renderSkeletons(9)
         ) : units.length === 0 ? (
           <div className='col-span-full text-center p-8'>
-            <p className='text-gray-500'>
-              No units found matching your criteria.
-            </p>
+            <EmptyState
+              title='No units found'
+              description='No properties match your current filters. Try different filters or clear all filters.'
+            />
           </div>
         ) : (
           <>
