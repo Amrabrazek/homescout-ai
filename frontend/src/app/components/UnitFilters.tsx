@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@apollo/client';
 import { gql } from '@apollo/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useDebounce } from '../hooks/useDebounce';
 import { MultiSelect, Option } from '@/components/ui/multi-select';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 
 const GET_FILTER_DATA = gql`
   query GetFilterData {
@@ -48,17 +48,51 @@ type FilterProps = {
 
 export default function UnitFilters({ filters, onChange }: FilterProps) {
   const { data, loading } = useQuery(GET_FILTER_DATA);
-  const [localFilters, setLocalFilters] = useState(filters);
+
+  // Local input state - only for controlled inputs
+  const [inputValues, setInputValues] = useState({
+    searchTerm: filters.searchTerm || '',
+    minPrice: filters.minPrice || '',
+    maxPrice: filters.maxPrice || '',
+    minRooms: filters.minRooms || '',
+    maxRooms: filters.maxRooms || '',
+    minFloorArea: filters.minFloorArea || '',
+    maxFloorArea: filters.maxFloorArea || '',
+  });
+
+  // Single debounce timer for all text/number inputs
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // For project search and pagination
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [projectOptions, setProjectOptions] = useState<Option[]>([]);
   const [projectOffset, setProjectOffset] = useState(0);
   const [hasMoreProjects, setHasMoreProjects] = useState(true);
+  const [projectSearchTimer, setProjectSearchTimer] =
+    useState<NodeJS.Timeout | null>(null);
 
   const projectsPerPage = 10;
 
-  // Debounce the numeric and text inputs to prevent excessive API calls
-  const debouncedFilters = useDebounce(localFilters, 500);
-  const debouncedProjectSearch = useDebounce(projectSearchTerm, 300);
+  // Update local state when props change
+  useEffect(() => {
+    setInputValues({
+      searchTerm: filters.searchTerm || '',
+      minPrice: filters.minPrice || '',
+      maxPrice: filters.maxPrice || '',
+      minRooms: filters.minRooms || '',
+      maxRooms: filters.maxRooms || '',
+      minFloorArea: filters.minFloorArea || '',
+      maxFloorArea: filters.maxFloorArea || '',
+    });
+  }, [filters]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (projectSearchTimer) clearTimeout(projectSearchTimer);
+    };
+  }, [projectSearchTimer]);
 
   // Query for projects with pagination and search
   const {
@@ -67,7 +101,7 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
     fetchMore,
   } = useQuery(GET_PROJECTS, {
     variables: {
-      searchTerm: debouncedProjectSearch,
+      searchTerm: projectSearchTerm,
       limit: projectsPerPage,
       offset: 0,
     },
@@ -84,49 +118,57 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
     },
   });
 
-  useEffect(() => {
-    if (JSON.stringify(localFilters) !== JSON.stringify(filters)) {
-      setLocalFilters(filters);
-    }
-  }, [filters]);
-
-  // Update parent component with debounced filters
-  useEffect(() => {
-    if (JSON.stringify(debouncedFilters) !== JSON.stringify(filters)) {
-      onChange(debouncedFilters);
-    }
-  }, [debouncedFilters, onChange, filters]);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
 
-    if (type === 'number') {
-      setLocalFilters({
-        ...localFilters,
-        [name]: value ? Number(value) : undefined,
-      });
-    } else {
-      setLocalFilters({
-        ...localFilters,
-        [name]: value,
-      });
+    // Update local state immediately for responsive UI
+    setInputValues((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    // Clear any existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
+
+    // Set new timer to update the parent after typing stops
+    debounceTimerRef.current = setTimeout(() => {
+      const processedValue =
+        type === 'number' ? (value ? Number(value) : undefined) : value;
+
+      onChange({
+        ...filters,
+        [name]: processedValue,
+      });
+    }, 500);
   };
 
+  // Direct updates for multi-select/checkbox values (no debounce)
   const handleProjectsChange = (selectedIds: string[]) => {
-    setLocalFilters({ ...localFilters, projectIds: selectedIds });
+    onChange({
+      ...filters,
+      projectIds: selectedIds,
+    });
   };
 
   const handleProjectSearch = (searchTerm: string) => {
-    setProjectSearchTerm(searchTerm);
-    setProjectOffset(0);
-    setHasMoreProjects(true);
+    // Debounce project search
+    if (projectSearchTimer) clearTimeout(projectSearchTimer);
+
+    const timer = setTimeout(() => {
+      setProjectSearchTerm(searchTerm);
+      setProjectOffset(0);
+      setHasMoreProjects(true);
+    }, 300);
+
+    setProjectSearchTimer(timer);
   };
 
   const handleLoadMoreProjects = () => {
     fetchMore({
       variables: {
-        searchTerm: debouncedProjectSearch,
+        searchTerm: projectSearchTerm,
         limit: projectsPerPage,
         offset: projectOffset,
       },
@@ -155,14 +197,37 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
   };
 
   const handleAmenityChange = (amenityId: string, checked: boolean) => {
-    const currentAmenities = localFilters.amenityIds || [];
+    const currentAmenities = filters.amenityIds || [];
     const newAmenities = checked
       ? [...currentAmenities, amenityId]
       : currentAmenities.filter((id) => id !== amenityId);
 
-    // Just update local state and let the debounced effect handle parent updates
-    // This prevents multiple rapid updates that cause the flickering
-    setLocalFilters({ ...localFilters, amenityIds: newAmenities });
+    onChange({
+      ...filters,
+      amenityIds: newAmenities,
+    });
+  };
+
+  const handleReset = () => {
+    // Clear the debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+
+    // Reset local input state
+    setInputValues({
+      searchTerm: '',
+      minPrice: '',
+      maxPrice: '',
+      minRooms: '',
+      maxRooms: '',
+      minFloorArea: '',
+      maxFloorArea: '',
+    });
+
+    // Reset filters
+    onChange({});
   };
 
   return (
@@ -170,31 +235,33 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
       <CardHeader>
         <CardTitle className='flex justify-between items-center'>
           <span>Filters</span>
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={handleReset}
+            className='flex items-center gap-1'
+          >
+            <X size={14} />
+            Reset All
+          </Button>
         </CardTitle>
       </CardHeader>
       <CardContent className='space-y-4'>
         <div className='space-y-2'>
           <Label htmlFor='searchTerm'>Search by name or number</Label>
-          <div className='relative'>
-            <Input
-              id='searchTerm'
-              name='searchTerm'
-              placeholder='Search units...'
-              value={localFilters.searchTerm || ''}
-              onChange={handleInputChange}
-            />
-            {localFilters.searchTerm !== debouncedFilters.searchTerm && (
-              <div className='absolute right-3 top-1/2 -translate-y-1/2'>
-                <div className='h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-primary'></div>
-              </div>
-            )}
-          </div>
+          <Input
+            id='searchTerm'
+            name='searchTerm'
+            placeholder='Search units...'
+            value={inputValues.searchTerm}
+            onChange={handleInputChange}
+          />
         </div>
 
         <MultiSelect
           label='Projects'
           options={projectOptions}
-          selectedIds={localFilters.projectIds || []}
+          selectedIds={filters.projectIds || []}
           onChange={handleProjectsChange}
           placeholder='Select projects'
           maxHeight={200}
@@ -208,102 +275,72 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
         <div className='space-y-2'>
           <Label>Price Range</Label>
           <div className='flex gap-2'>
-            <div className='relative flex-1'>
-              <Input
-                type='number'
-                name='minPrice'
-                placeholder='Min'
-                value={localFilters.minPrice || ''}
-                onChange={handleInputChange}
-              />
-              {localFilters.minPrice !== debouncedFilters.minPrice && (
-                <div className='absolute right-3 top-1/2 -translate-y-1/2'>
-                  <div className='h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-primary'></div>
-                </div>
-              )}
-            </div>
-            <div className='relative flex-1'>
-              <Input
-                type='number'
-                name='maxPrice'
-                placeholder='Max'
-                value={localFilters.maxPrice || ''}
-                onChange={handleInputChange}
-              />
-              {localFilters.maxPrice !== debouncedFilters.maxPrice && (
-                <div className='absolute right-3 top-1/2 -translate-y-1/2'>
-                  <div className='h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-primary'></div>
-                </div>
-              )}
-            </div>
+            <Input
+              type='number'
+              name='minPrice'
+              placeholder='Min'
+              value={inputValues.minPrice}
+              onChange={handleInputChange}
+              className='flex-1'
+              min={0}
+            />
+            <Input
+              type='number'
+              name='maxPrice'
+              placeholder='Max'
+              value={inputValues.maxPrice}
+              onChange={handleInputChange}
+              className='flex-1'
+              min={0}
+            />
           </div>
         </div>
 
         <div className='space-y-2'>
           <Label>Rooms</Label>
           <div className='flex gap-2'>
-            <div className='relative flex-1'>
-              <Input
-                type='number'
-                name='minRooms'
-                placeholder='Min'
-                value={localFilters.minRooms || ''}
-                onChange={handleInputChange}
-              />
-              {localFilters.minRooms !== debouncedFilters.minRooms && (
-                <div className='absolute right-3 top-1/2 -translate-y-1/2'>
-                  <div className='h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-primary'></div>
-                </div>
-              )}
-            </div>
-            <div className='relative flex-1'>
-              <Input
-                type='number'
-                name='maxRooms'
-                placeholder='Max'
-                value={localFilters.maxRooms || ''}
-                onChange={handleInputChange}
-              />
-              {localFilters.maxRooms !== debouncedFilters.maxRooms && (
-                <div className='absolute right-3 top-1/2 -translate-y-1/2'>
-                  <div className='h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-primary'></div>
-                </div>
-              )}
-            </div>
+            <Input
+              type='number'
+              name='minRooms'
+              placeholder='Min'
+              value={inputValues.minRooms}
+              onChange={handleInputChange}
+              className='flex-1'
+              min={0}
+            />
+            <Input
+              type='number'
+              name='maxRooms'
+              placeholder='Max'
+              value={inputValues.maxRooms}
+              onChange={handleInputChange}
+              className='flex-1'
+              min={0}
+            />
           </div>
         </div>
 
         <div className='space-y-2'>
           <Label>Area (sqm)</Label>
           <div className='flex gap-2'>
-            <div className='relative flex-1'>
-              <Input
-                type='number'
-                name='minFloorArea'
-                placeholder='Min'
-                value={localFilters.minFloorArea || ''}
-                onChange={handleInputChange}
-              />
-              {localFilters.minFloorArea !== debouncedFilters.minFloorArea && (
-                <div className='absolute right-3 top-1/2 -translate-y-1/2'>
-                  <div className='h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-primary'></div>
-                </div>
-              )}
-            </div>
-            <div className='relative flex-1'>
-              <Input
-                type='number'
-                name='maxFloorArea'
-                placeholder='Max'
-                value={localFilters.maxFloorArea || ''}
-                onChange={handleInputChange}
-              />
-              {localFilters.maxFloorArea !== debouncedFilters.maxFloorArea && (
-                <div className='absolute right-3 top-1/2 -translate-y-1/2'>
-                  <div className='h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-primary'></div>
-                </div>
-              )}
-            </div>
+            <Input
+              type='number'
+              name='minFloorArea'
+              placeholder='Min'
+              value={inputValues.minFloorArea}
+              onChange={handleInputChange}
+              className='flex-1'
+              min={0}
+            />
+            <Input
+              type='number'
+              name='maxFloorArea'
+              placeholder='Max'
+              value={inputValues.maxFloorArea}
+              onChange={handleInputChange}
+              className='flex-1'
+              min={0}
+            />
           </div>
         </div>
 
@@ -314,7 +351,7 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
               <div key={amenity.id} className='flex items-center space-x-2'>
                 <Checkbox
                   id={`amenity-${amenity.id}`}
-                  checked={(localFilters.amenityIds || []).includes(amenity.id)}
+                  checked={(filters.amenityIds || []).includes(amenity.id)}
                   onCheckedChange={(checked) =>
                     handleAmenityChange(amenity.id, checked as boolean)
                   }
