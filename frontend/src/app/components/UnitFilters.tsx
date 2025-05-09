@@ -46,11 +46,7 @@ type FilterProps = {
   totalUnits?: number;
 };
 
-export default function UnitFilters({
-  filters,
-  onChange,
-  totalUnits = 0,
-}: FilterProps) {
+export default function UnitFilters({ filters, onChange }: FilterProps) {
   const { data, loading } = useQuery(GET_FILTER_DATA);
   const [localFilters, setLocalFilters] = useState(filters);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
@@ -168,11 +164,6 @@ export default function UnitFilters({
       <CardHeader>
         <CardTitle className='flex justify-between items-center'>
           <span>Filters</span>
-
-          <Badge variant='outline' className='ml-2'>
-            {totalUnits}{' '}
-            {totalUnits === 1 ? 'unit available' : 'units available'}
-          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className='space-y-4'>

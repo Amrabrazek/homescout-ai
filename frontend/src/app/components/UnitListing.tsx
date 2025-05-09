@@ -63,10 +63,7 @@ const UNITS_PER_PAGE = 20;
 // Fixed number of skeleton cards to display in initial load
 const SKELETON_COUNT = 9;
 
-export default function UnitListing({
-  filters,
-  onCountsUpdate,
-}: UnitListingProps) {
+export default function UnitListing({ filters }: UnitListingProps) {
   const [hasMore, setHasMore] = useState(true);
   const observer = useRef<IntersectionObserver | null>(null);
   const lastUnitElementRef = useRef<HTMLDivElement | null>(null);
@@ -142,13 +139,6 @@ export default function UnitListing({
     };
   }, [loading, hasMore, loadMoreUnits]);
 
-  // Notify parent component about the counts when data changes
-  useEffect(() => {
-    if (data?.units) {
-      onCountsUpdate?.(data.units.total, data.units.items.length);
-    }
-  }, [data?.units, onCountsUpdate]);
-
   if (error) {
     return (
       <div className='w-full p-8 text-center'>
@@ -176,12 +166,6 @@ export default function UnitListing({
         </h2>
       </div>
 
-      {/* 
-        Two layout options based on state:
-        1. Grid layout for loading and populated states
-        2. Full width layout for empty state
-        Both with fixed dimensions to prevent layout shifts
-      */}
       {units.length === 0 && !isInitialLoading ? (
         // Empty state container with consistent dimensions
         <div className='w-full min-h-[800px] flex items-center justify-center'>
