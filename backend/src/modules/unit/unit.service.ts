@@ -18,6 +18,7 @@ import { AmenityService } from '../amenity/amenity.service';
 import { ImageService } from '../image/image.service';
 import { ProjectService } from '../project/project.service';
 import { CreateUnitInput } from './dto/create-unit.input';
+import { UpdateUnitInput } from './dto/update-unit.input';
 import { UnitFilterInput } from './dto/unit-filter.input';
 
 @Injectable()
@@ -228,6 +229,42 @@ export class UnitService {
     }
 
     return this.findOne(savedUnit.id);
+  }
+
+  async update(id: string, updateUnitInput: UpdateUnitInput): Promise<Unit> {
+    // First, check if unit exists
+    const existingUnit = await this.findOne(id);
+
+    if (!existingUnit) {
+      throw new NotFoundException(`Unit with ID ${id} not found`);
+    }
+
+    const { amenityIds, imageIds, ...unitData } = updateUnitInput;
+
+    // If projectId is being updated, verify the new project exists
+    if (unitData.projectId) {
+      await this.projectService.findOne(unitData.projectId);
+    }
+
+    // Update the unit properties
+    this.unitRepository.merge(existingUnit, unitData);
+    const updatedUnit = await this.unitRepository.save(existingUnit);
+
+    // Update amenities if provided
+    if (amenityIds && amenityIds.length > 0) {
+      const amenities = await this.amenityService.findByIds(amenityIds);
+      updatedUnit.amenities = amenities;
+      await this.unitRepository.save(updatedUnit);
+    }
+
+    // Update images if provided
+    if (imageIds && imageIds.length > 0) {
+      const images = await this.imageService.findByIds(imageIds);
+      updatedUnit.images = images;
+      await this.unitRepository.save(updatedUnit);
+    }
+
+    return this.findOne(updatedUnit.id);
   }
 
   async getUnitAmenities(unitId: string): Promise<Amenity[]> {

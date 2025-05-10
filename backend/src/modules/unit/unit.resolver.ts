@@ -8,6 +8,7 @@ import {
   Int,
   ObjectType,
   Field,
+  ID,
 } from '@nestjs/graphql';
 import { Project } from '../../common/entities/project.entity';
 import { Unit } from '../../common/entities/unit.entity';
@@ -16,6 +17,7 @@ import { Amenity } from '../../common/entities/amenity.entity';
 import { Image } from '../../common/entities/image.entity';
 import { ProjectService } from '../project/project.service';
 import { CreateUnitInput } from './dto/create-unit.input';
+import { UpdateUnitInput } from './dto/update-unit.input';
 import { UnitFilterInput } from './dto/unit-filter.input';
 import { UnitService } from './unit.service';
 
@@ -59,6 +61,13 @@ export class UnitResolver {
     @Args('createUnitInput') createUnitInput: CreateUnitInput
   ): Promise<Unit> {
     return this.unitService.create(createUnitInput);
+  }
+
+  @Mutation(() => Unit)
+  async updateUnit(
+    @Args('updateUnitInput') updateUnitInput: UpdateUnitInput
+  ): Promise<Unit> {
+    return this.unitService.update(updateUnitInput.id, updateUnitInput);
   }
 
   @ResolveField(() => Project)
