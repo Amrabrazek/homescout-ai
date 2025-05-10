@@ -16,7 +16,8 @@ export class ProjectService {
   async findAll(
     searchTerm?: string,
     limit?: number,
-    offset?: number
+    offset?: number,
+    developerId?: string
   ): Promise<Project[]> {
     const where: any = {};
 
@@ -25,6 +26,10 @@ export class ProjectService {
       where.name = Raw((alias) => `LOWER(${alias}) LIKE LOWER(:searchTerm)`, {
         searchTerm: `%${searchTerm}%`,
       });
+    }
+
+    if (developerId) {
+      where.developerId = developerId;
     }
 
     const take = limit && limit > 0 ? limit : undefined;

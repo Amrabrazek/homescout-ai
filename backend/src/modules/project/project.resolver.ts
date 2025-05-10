@@ -24,9 +24,11 @@ export class ProjectResolver {
   async findAll(
     @Args('searchTerm', { nullable: true }) searchTerm?: string,
     @Args('limit', { type: () => Int, nullable: true }) limit?: number,
-    @Args('offset', { type: () => Int, nullable: true }) offset?: number
+    @Args('offset', { type: () => Int, nullable: true }) offset?: number,
+    @Args('developerId', { type: () => String, nullable: true })
+    developerId?: string
   ): Promise<Project[]> {
-    return this.projectService.findAll(searchTerm, limit, offset);
+    return this.projectService.findAll(searchTerm, limit, offset, developerId);
   }
 
   @Query(() => Project, { name: 'project' })
