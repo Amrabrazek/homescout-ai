@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { getClient } from '@/lib/apollo/client';
+import { getClient, getServerClient } from '@/lib/apollo/client';
 import { GET_UNIT } from './queries';
 import type { Unit, GetUnitQueryResponse } from './types';
 
@@ -8,7 +8,7 @@ import type { Unit, GetUnitQueryResponse } from './types';
  * This is cached to prevent duplicate requests during server rendering
  */
 export const getUnitById = cache(async (id: string): Promise<Unit | null> => {
-  const client = getClient();
+  const client = getServerClient();
 
   try {
     const { data } = await client.query<GetUnitQueryResponse>({

@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import UnitDetails, { UnitDetailSkeleton } from './_components/UnitDetail';
 import { Suspense } from 'react';
-import { getUnitById } from '@/lib/graphql/units/server';
+import { getUnitById } from '@/lib/graphql/units/loaders';
 
 type Props = {
   params: { id: string };
