@@ -5,9 +5,6 @@
 .env.test.local
 .env.production.local
 
-# Database data
-volumes/db/data/
-
 # Dependencies
 node_modules/
 .pnp/
@@ -36,7 +33,7 @@ docker-volumes/
 .supabase/
 **/supabase/.branches/
 **/supabase/.temp/
-**/supabase/volumes/
+**/supabase/volumes/db/data/
 **/supabase/config.local.toml
 **/*-service-account-keys.json
 **/supabase/.env
