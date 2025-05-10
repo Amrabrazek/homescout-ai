@@ -1,4 +1,5 @@
 import FloatingRedirection from '@/components/ui/floating-redirection';
+import pathsConfig from '@/config/paths.config';
 
 export default function HomeLayout({
   children,
@@ -8,7 +9,7 @@ export default function HomeLayout({
   return (
     <>
       {children}
-      <FloatingRedirection redirectionUrl='/dashboard/units/new' />
+      <FloatingRedirection redirectionUrl={pathsConfig.units.new} />
     </>
   );
 }

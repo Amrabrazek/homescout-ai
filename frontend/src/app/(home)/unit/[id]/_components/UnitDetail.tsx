@@ -10,6 +10,7 @@ import { formatPrice, formatArea } from '@/lib/utils/formatters';
 import { ArrowLeft, Bed, Bath, Home, Info } from 'lucide-react';
 import { CardDescription } from '@/components/ui/card';
 import { Unit } from '@/lib/graphql/units/types';
+import pathsConfig from '@config/paths.config';
 
 type UnitDetailsProps = {
   unit: Unit;
@@ -19,7 +20,7 @@ export default function UnitDetails({ unit }: UnitDetailsProps) {
   return (
     <div className='container mx-auto py-8'>
       <Button variant='ghost' asChild className='mb-6 pl-0'>
-        <Link href='/' className='flex items-center gap-2'>
+        <Link href={pathsConfig.home.index} className='flex items-center gap-2'>
           <ArrowLeft size={16} />
           Back to Listings
         </Link>

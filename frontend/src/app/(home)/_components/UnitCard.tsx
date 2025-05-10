@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice } from '@/lib/utils/formatters';
+import pathsConfig from '@config/paths.config';
 
 type UnitCardProps = {
   unit: {
@@ -55,7 +56,7 @@ export default function UnitCard({ unit }: UnitCardProps) {
         };
 
   return (
-    <Link href={`/unit/${unit.id}`}>
+    <Link href={`${pathsConfig.units.detail.replace('[id]', unit.id)}`}>
       <Card className='h-full overflow-hidden hover:shadow-lg transition-shadow duration-300'>
         <div className='relative w-full h-48'>
           <Image
