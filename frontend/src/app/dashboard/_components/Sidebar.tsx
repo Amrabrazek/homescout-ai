@@ -18,11 +18,6 @@ const items = [
     url: pathsConfig.home.index,
     icon: Home,
   },
-  {
-    title: 'Units',
-    url: pathsConfig.units.listing,
-    icon: Building2,
-  },
 ];
 
 export function AppSidebar() {
