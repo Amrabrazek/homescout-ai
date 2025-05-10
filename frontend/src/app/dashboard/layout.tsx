@@ -14,11 +14,20 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      style={
+        {
+          '--sidebar-width': '16rem',
+          '--sidebar-width-mobile': '18rem',
+        } as React.CSSProperties
+      }
+    >
       <AppSidebar />
-      <main>
-        <SidebarTrigger />
-        <div className='flex-1'>{children}</div>
+      <main className='w-full'>
+        <div className='sticky top-0 z-10'>
+          <SidebarTrigger />
+        </div>
+        <div className='w-full min-w-0'>{children}</div>
       </main>
     </SidebarProvider>
   );
