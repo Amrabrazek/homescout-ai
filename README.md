@@ -21,6 +21,9 @@ A full-stack application for listing and browsing apartment units, complete with
 │  │  ├─ app.module.ts      # Root module
 │  │  ├─ main.ts            # Application entry point
 │  │  └─ seed.ts            # Database seeder
+│  ├─ .env                  # Backend-specific environment variables
+│  ├─ .env.example          # Example backend environment variables
+│  └─ Dockerfile            # Backend container configuration
 ├─ frontend/                # Next.js frontend
 │  ├─ src/
 │  │  ├─ app/               # App router pages and layouts
@@ -28,14 +31,13 @@ A full-stack application for listing and browsing apartment units, complete with
 │  │  ├─ hooks/             # Custom React hooks
 │  │  ├─ lib/               # Library code and providers
 │  │  └─ utils/             # Utility functions
+│  ├─ .env                  # Frontend-specific environment variables
+│  ├─ .env.example          # Example frontend environment variables
+│  └─ Dockerfile            # Frontend container configuration
 ├─ supabase/                # Supabase local development
-│  ├─ migrations/           # Database migrations
-│  ├─ seed.sql              # Initial seed data
-│  └─ volumes/              # Local storage volumes
-├─ packages/                # Shared packages
-│  └─ shared/               # Shared resources between frontend and backend
-│     ├─ types/             # Common TypeScript types
-│     └─ lib/               # Shared utilities
+│  ├─ volumes/              # Local storage volumes
+├─ .env                     # Root environment variables for Docker Compose
+├─ .env.example             # Example root environment variables
 └─ docker-compose.yml       # Docker composition
 ```
 
@@ -51,7 +53,7 @@ A full-stack application for listing and browsing apartment units, complete with
 1. Clone the repository
 
    ```bash
-   git clone https://github.com/yourusername/nawy-task.git
+   git clone https://github.com/Amrabrazek/nawy-task.git
    cd nawy-task
    ```
 
@@ -64,16 +66,10 @@ A full-stack application for listing and browsing apartment units, complete with
 3. Start the development environment
 
    ```bash
-   docker-compose up
+   docker compose up
    ```
 
-4. Seed the database (first time only)
-
-   ```bash
-   docker exec -it nawy-backend npm run seed
-   ```
-
-5. Access the application:
+4. Access the application:
    - Frontend: http://localhost:3000
    - GraphQL Playground: http://localhost:3001/graphql
    - Supabase Studio: http://localhost:8000
@@ -85,8 +81,7 @@ A full-stack application for listing and browsing apartment units, complete with
 1. Start Supabase locally
 
    ```bash
-   cd supabase
-   docker-compose up
+   docker-compose up db auth rest realtime storage kong
    ```
 
 2. Access Supabase Studio at http://localhost:8000
@@ -105,14 +100,26 @@ A full-stack application for listing and browsing apartment units, complete with
    npm install
    ```
 
-3. Create a `.env` file with database connection and Supabase details
+3. Create a `.env` file with database connection and Supabase details (copy from `.env.example`)
 
    ```
+   cp .env.example .env
+   ```
+
+   Then update the values:
+
+   ```
+   NODE_ENV=development
+   PORT=3001
+
+   # Database
    DB_HOST=localhost
    DB_PORT=5432
-   DB_USERNAME=postgres
-   DB_PASSWORD=postgres
+   DB_USERNAME=supabase_admin
+   DB_PASSWORD=your-super-secret-and-long-postgres-password
    DB_NAME=postgres
+
+   # Supabase
    SUPABASE_URL=http://localhost:8000
    SUPABASE_ANON_KEY=your-anon-key
    SUPABASE_SERVICE_KEY=your-service-key
@@ -144,18 +151,54 @@ A full-stack application for listing and browsing apartment units, complete with
    npm install
    ```
 
-3. Create a `.env.local` file with GraphQL and Supabase connection details
+3. Update the `.env` file with the necessary values:
 
    ```
-   NEXT_PUBLIC_GRAPHQL_ENDPOINT=http://localhost:3001/graphql
    NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   NEXT_PUBLIC_GRAPHQL_ENDPOINT=http://localhost:3001/graphql
    ```
 
 4. Start the development server
    ```bash
    npm run dev
    ```
+
+## 🔒 Environment Variables
+
+The application uses multiple environment files:
+
+### Root `.env` (for Docker Compose)
+
+Contains all environment variables shared between services and used by Docker Compose:
+
+- Database credentials
+- JWT secrets
+- Supabase configuration
+- API keys
+
+### Backend `.env`
+
+Backend-specific environment variables:
+
+- Node environment
+- Database connection details
+- JWT configuration
+- Supabase connection details
+
+### Frontend `.env`
+
+Frontend-specific environment variables:
+
+- Public API endpoints
+- Supabase public URL and anon key
+- GraphQL endpoint
+
+### Best Practices
+
+- Never commit actual `.env` files containing secrets to git
+- Use `.env.example` files as templates
+- For production, use environment variables directly in your deployment platform
 
 ## 📸 File Storage with Supabase
 
