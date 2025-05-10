@@ -8,7 +8,6 @@ import {
   Int,
   ObjectType,
   Field,
-  ID,
 } from '@nestjs/graphql';
 import { Project } from '../../common/entities/project.entity';
 import { Unit } from '../../common/entities/unit.entity';
