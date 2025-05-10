@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatPrice } from '@/app/utils/formatter';
+import { formatPrice } from '@/lib/utils/formatters';
 
 type UnitCardProps = {
   unit: {

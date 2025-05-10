@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import UnitListing from '@/app/components/UnitListing';
-import UnitFilters from '@/app/components/UnitFilters';
+import { useState } from 'react';
+import UnitListing from './UnitListing';
+import UnitFilters from './UnitFilters';
 
 type FilterState = {
   searchTerm?: string;

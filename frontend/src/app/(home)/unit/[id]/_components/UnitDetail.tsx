@@ -6,15 +6,16 @@ import { DogIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatPrice, formatArea } from '@/app/utils/formatter';
+import { formatPrice, formatArea } from '@/lib/utils/formatters';
 import { ArrowLeft, Bed, Bath, Home, Info } from 'lucide-react';
 import { CardDescription } from '@/components/ui/card';
+import { Unit } from '@/lib/graphql/units/types';
 
-type UnitDetailClientProps = {
-  unit: any;
+type UnitDetailsProps = {
+  unit: Unit;
 };
 
-export default function UnitDetailClient({ unit }: UnitDetailClientProps) {
+export default function UnitDetails({ unit }: UnitDetailsProps) {
   return (
     <div className='container mx-auto py-8'>
       <Button variant='ghost' asChild className='mb-6 pl-0'>

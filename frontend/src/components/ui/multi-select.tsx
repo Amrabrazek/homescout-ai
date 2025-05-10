@@ -3,7 +3,7 @@ import { Badge } from './badge';
 import { X, Search, Loader2, ChevronDown } from 'lucide-react';
 import { Checkbox } from './checkbox';
 import { Label } from './label';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/ui';
 import { Input } from './input';
 
 export type Option = {

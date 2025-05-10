@@ -1,5 +1,5 @@
-import UnitSearch from '@/app/components/UnitSearch';
-import HomeHero from '@/app/components/HomeHero';
+import UnitSearch from './_components/UnitSearch';
+import HomeHero from './_components/HomeHero';
 
 // Page metadata for SEO
 export const metadata = {
