@@ -1,5 +1,7 @@
 import { useQuery } from '@apollo/client';
-import { GET_UNITS, GET_FILTER_DATA, GET_PROJECTS } from './queries';
+import { GET_UNITS, GET_FILTER_DATA } from './queries';
+import { useState, useEffect } from 'react';
+
 import type {
   GetUnitsQueryResponse,
   GetUnitsQueryVariables,
@@ -25,46 +27,65 @@ export function useFilterData() {
   return useQuery(GET_FILTER_DATA);
 }
 
-export function useProjects(searchTerm: string, offset = 0) {
-  return useQuery(GET_PROJECTS, {
-    variables: {
-      searchTerm,
-      limit: 10,
-      offset,
-    },
-  });
-}
-
 // Helper hook for infinite scroll
 export function useInfiniteUnits(filter: UnitFilter) {
   const { data, loading, error, fetchMore, networkStatus } = useUnits(filter);
+  const [items, setItems] = useState<Unit[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+
+  // Reset items when filter changes
+  useEffect(() => {
+    if (data?.units.items) {
+      setItems(data.units.items);
+      // Check if we should allow loading more
+      setHasMore(data.units.items.length < data.units.total);
+    }
+  }, [data, filter]);
 
   const loadMore = async () => {
-    if (loading || !data?.units.items.length) return;
+    if (loading || !items.length || !hasMore) return;
 
-    await fetchMore({
-      variables: {
-        offset: data.units.items.length,
-      },
-      updateQuery: (prev, { fetchMoreResult }) => {
-        if (!fetchMoreResult) return prev;
-        return {
-          units: {
-            items: [...prev.units.items, ...fetchMoreResult.units.items],
-            total: fetchMoreResult.units.total,
-            __typename: prev.units.__typename,
-          },
-        };
-      },
-    });
+    try {
+      const result = await fetchMore({
+        variables: {
+          offset: items.length,
+        },
+        updateQuery: (prev, { fetchMoreResult }) => {
+          if (!fetchMoreResult) return prev;
+
+          const newItems = fetchMoreResult.units.items;
+          const updatedItems = [...prev.units.items, ...newItems];
+
+          // Update hasMore flag based on total vs current items
+          setHasMore(updatedItems.length < fetchMoreResult.units.total);
+
+          return {
+            units: {
+              items: updatedItems,
+              total: fetchMoreResult.units.total,
+              __typename: prev.units.__typename,
+            },
+          };
+        },
+      });
+
+      // If no new items were returned, we've reached the end
+      if (result.data.units.items.length === 0) {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error('Error loading more units:', err);
+      // Don't disable infinite scroll on error to allow retrying
+    }
   };
 
   return {
-    units: data?.units.items || [],
+    units: items,
     total: data?.units.total || 0,
     loading,
     error,
     loadMore,
+    hasMore,
     isFetchingMore: networkStatus === 3,
   };
 }

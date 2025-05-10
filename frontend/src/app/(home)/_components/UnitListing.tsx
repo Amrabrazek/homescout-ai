@@ -17,21 +17,15 @@ export default function UnitListing({
   filters,
   onCountsUpdate,
 }: UnitListingProps) {
-  const [hasMore, setHasMore] = useState(true);
   const observer = useRef<IntersectionObserver | null>(null);
   const lastUnitElementRef = useRef<HTMLDivElement | null>(null);
 
-  const { units, total, loading, error, loadMore, isFetchingMore } =
+  const { units, total, loading, error, loadMore, isFetchingMore, hasMore } =
     useInfiniteUnits(filters);
-
-  // Reset hasMore when filters change
-  useEffect(() => {
-    setHasMore(true);
-  }, [filters]);
 
   // Setup the intersection observer to detect when user scrolls to the bottom
   useEffect(() => {
-    if (loading) return;
+    if (loading && !isFetchingMore) return;
 
     if (observer.current) {
       observer.current.disconnect();
@@ -52,7 +46,7 @@ export default function UnitListing({
         observer.current.disconnect();
       }
     };
-  }, [loading, hasMore, loadMore]);
+  }, [loading, hasMore, loadMore, isFetchingMore]);
 
   // Update counts when units change
   useEffect(() => {

@@ -1,34 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useQuery } from '@apollo/client';
-import { gql } from '@apollo/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { MultiSelect, Option } from '@/components/ui/multi-select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-
-const GET_FILTER_DATA = gql`
-  query GetFilterData {
-    amenities {
-      id
-      name
-      icon
-    }
-  }
-`;
-
-const GET_PROJECTS = gql`
-  query GetProjects($searchTerm: String, $limit: Int, $offset: Int) {
-    projects(searchTerm: $searchTerm, limit: $limit, offset: $offset) {
-      id
-      name
-    }
-  }
-`;
+import { useFilterData } from '@/lib/graphql/units/hooks';
+import { useProjects } from '@/lib/graphql/projects/hooks';
 
 type FilterProps = {
   filters: {
@@ -47,7 +28,7 @@ type FilterProps = {
 };
 
 export default function UnitFilters({ filters, onChange }: FilterProps) {
-  const { data, loading } = useQuery(GET_FILTER_DATA);
+  const { data, loading } = useFilterData();
 
   // Local input state - only for controlled inputs
   const [inputValues, setInputValues] = useState({
@@ -65,13 +46,21 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
 
   // For project search and pagination
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
-  const [projectOptions, setProjectOptions] = useState<Option[]>([]);
-  const [projectOffset, setProjectOffset] = useState(0);
-  const [hasMoreProjects, setHasMoreProjects] = useState(true);
   const [projectSearchTimer, setProjectSearchTimer] =
     useState<NodeJS.Timeout | null>(null);
 
   const projectsPerPage = 10;
+
+  // Use the project options hook
+  const {
+    projects: projectOptions,
+    loading: projectsLoading,
+    hasMore: hasMoreProjects,
+    loadMore: handleLoadMoreProjects,
+  } = useProjects({
+    searchTerm: projectSearchTerm,
+    limit: projectsPerPage,
+  });
 
   // Update local state when props change
   useEffect(() => {
@@ -93,30 +82,6 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
       if (projectSearchTimer) clearTimeout(projectSearchTimer);
     };
   }, [projectSearchTimer]);
-
-  // Query for projects with pagination and search
-  const {
-    data: projectsData,
-    loading: projectsLoading,
-    fetchMore,
-  } = useQuery(GET_PROJECTS, {
-    variables: {
-      searchTerm: projectSearchTerm,
-      limit: projectsPerPage,
-      offset: 0,
-    },
-    onCompleted: (data) => {
-      const projects = data.projects || [];
-      setProjectOptions(
-        projects.map((project: any) => ({
-          id: project.id,
-          label: project.name,
-        }))
-      );
-      setHasMoreProjects(projects.length === projectsPerPage);
-      setProjectOffset(projectsPerPage);
-    },
-  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -158,42 +123,9 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
 
     const timer = setTimeout(() => {
       setProjectSearchTerm(searchTerm);
-      setProjectOffset(0);
-      setHasMoreProjects(true);
     }, 300);
 
     setProjectSearchTimer(timer);
-  };
-
-  const handleLoadMoreProjects = () => {
-    fetchMore({
-      variables: {
-        searchTerm: projectSearchTerm,
-        limit: projectsPerPage,
-        offset: projectOffset,
-      },
-      updateQuery: (prev, { fetchMoreResult }) => {
-        if (!fetchMoreResult) return prev;
-
-        const newProjects = fetchMoreResult.projects;
-        setHasMoreProjects(newProjects.length === projectsPerPage);
-        setProjectOffset(projectOffset + projectsPerPage);
-
-        // Update project options
-        setProjectOptions([
-          ...projectOptions,
-          ...newProjects.map((project: any) => ({
-            id: project.id,
-            label: project.name,
-          })),
-        ]);
-
-        return {
-          ...prev,
-          projects: [...prev.projects, ...newProjects],
-        };
-      },
-    });
   };
 
   const handleAmenityChange = (amenityId: string, checked: boolean) => {
@@ -260,7 +192,11 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
 
         <MultiSelect
           label='Projects'
-          options={projectOptions}
+          options={projectOptions.map((project) => ({
+            id: project.id,
+            label: `${project.name} | ${project.developer.name}`,
+            value: project.id,
+          }))}
           selectedIds={filters.projectIds || []}
           onChange={handleProjectsChange}
           placeholder='Select projects'
