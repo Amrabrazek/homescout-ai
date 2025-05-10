@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import UnitDetails, { UnitDetailSkeleton } from './_components/UnitDetail';
 import { Suspense } from 'react';
-import { getUnitById } from '@/lib/graphql/units/loaders';
+import { getUnitById } from '@/lib/graphql/units/server.loaders';
 
 type Props = {
   params: { id: string };
@@ -29,19 +29,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function UnitPage({ params }: Props) {
-  return (
-    <Suspense fallback={<UnitDetailSkeleton />}>
-      <UnitContent id={params.id} />
-    </Suspense>
-  );
-}
-
-async function UnitContent({ id }: { id: string }) {
-  const unit = await getUnitById(id);
+  const unit = await getUnitById(params.id);
 
   if (!unit) {
     notFound();
   }
 
-  return <UnitDetails unit={unit} />;
+  return (
+    <Suspense fallback={<UnitDetailSkeleton />}>
+      <UnitDetails unit={unit} />
+    </Suspense>
+  );
 }
