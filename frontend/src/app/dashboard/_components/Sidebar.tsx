@@ -1,0 +1,62 @@
+import { Building2, MapPinHouse, Pickaxe, Home } from 'lucide-react';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/components/ui/sidebar';
+import pathsConfig from '@config/paths.config';
+
+// Menu items.
+const items = [
+  {
+    title: 'Home',
+    url: pathsConfig.home.index,
+    icon: Home,
+  },
+  {
+    title: 'Units',
+    url: pathsConfig.units.listing,
+    icon: Building2,
+  },
+  {
+    title: 'Projects',
+    url: pathsConfig.projects.listing,
+    icon: MapPinHouse,
+  },
+  {
+    title: 'Developers',
+    url: pathsConfig.developers.listing,
+    icon: Pickaxe,
+  },
+];
+
+export function AppSidebar() {
+  return (
+    <Sidebar>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <a href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  );
+}
