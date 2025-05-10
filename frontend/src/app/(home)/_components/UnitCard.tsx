@@ -14,6 +14,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice } from '@/lib/utils/formatters';
 import pathsConfig from '@config/paths.config';
+import { ImageIcon } from 'lucide-react';
 
 type UnitCardProps = {
   unit: {
@@ -46,25 +47,28 @@ type UnitCardProps = {
 };
 
 export default function UnitCard({ unit }: UnitCardProps) {
-  // Get the first image or use a placeholder
-  const featuredImage =
-    unit.images && unit.images.length > 0
-      ? unit.images[0]
-      : {
-          url: 'https://picsum.photos/400/300?placeholder',
-          altText: 'Property placeholder',
-        };
+  // Check if the unit has any images
+  const hasImages = unit.images && unit.images.length > 0;
 
   return (
     <Link href={`${pathsConfig.units.detail.replace('[id]', unit.id)}`}>
       <Card className='h-full overflow-hidden hover:shadow-lg transition-shadow duration-300'>
         <div className='relative w-full h-48'>
-          <Image
-            src={featuredImage.url}
-            alt={featuredImage.altText || unit.name}
-            fill
-            className='object-cover'
-          />
+          {hasImages ? (
+            <Image
+              src={unit.images[0].url}
+              alt={unit.images[0].altText || unit.name}
+              fill
+              className='object-cover'
+            />
+          ) : (
+            <div className='w-full h-full bg-gray-100 flex items-center justify-center'>
+              <div className='flex flex-col items-center justify-center text-muted-foreground'>
+                <ImageIcon className='w-12 h-12 mb-2 opacity-20' />
+                <span className='text-sm'>No image available</span>
+              </div>
+            </div>
+          )}
         </div>
         <CardHeader className='p-4 pb-2'>
           <div className='flex justify-between items-start'>
