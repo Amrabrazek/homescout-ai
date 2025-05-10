@@ -24,7 +24,7 @@ export default function DashboardLayout({
     >
       <AppSidebar />
       <main className='w-full'>
-        <div className='sticky top-0 z-10'>
+        <div className='sticky top-0 z-20'>
           <SidebarTrigger />
         </div>
         <div className='w-full min-w-0'>{children}</div>
