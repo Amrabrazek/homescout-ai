@@ -22,10 +22,26 @@ export class ProjectService {
     const where: any = {};
 
     if (searchTerm) {
-      // Search in project name
+      // Search in project name or developer name
       where.name = Raw((alias) => `LOWER(${alias}) LIKE LOWER(:searchTerm)`, {
         searchTerm: `%${searchTerm}%`,
       });
+
+      // Use query builder to search in related developer's name
+      return this.projectRepository
+        .createQueryBuilder('project')
+        .leftJoinAndSelect('project.developer', 'developer')
+        .where(developerId ? 'developer.id = :developerId' : '1=1', {
+          developerId,
+        })
+        .andWhere(
+          '(LOWER(project.name) LIKE LOWER(:searchTerm) OR LOWER(developer.name) LIKE LOWER(:searchTerm))',
+          { searchTerm: `%${searchTerm}%` }
+        )
+        .take(limit && limit > 0 ? limit : undefined)
+        .skip(offset && offset > 0 ? offset : 0)
+        .orderBy('project.name', 'ASC')
+        .getMany();
     }
 
     if (developerId) {
