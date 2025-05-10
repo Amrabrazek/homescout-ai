@@ -12,7 +12,6 @@ import {
   FormTextareaField,
   PriceWithCurrencyFormField,
 } from '@/components/ui/form-fields';
-import { useToast } from '@/hooks/use-toast';
 import { UnitFormValues, unitSchema } from '@/lib/graphql/units/schema';
 import {
   createUnit,
@@ -22,16 +21,18 @@ import {
 import { ProjectSelector } from './ProjectSelector';
 import { AmenitySelector } from './AmenitySelector';
 import { MediaUploader } from '@/components/ui/media-uploader';
-import { ArrowLeft, Copy, ExternalLink, Loader2 } from 'lucide-react';
+import { Copy, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Unit } from '@/lib/graphql/units/types';
+import { useRouter } from 'next/navigation';
 
 interface UnitFormProps {
   unitData: Unit | null;
 }
 
 export function UnitForm({ unitData }: UnitFormProps) {
+  const router = useRouter();
   const isEditing = !!unitData?.id;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
@@ -55,9 +56,6 @@ export function UnitForm({ unitData }: UnitFormProps) {
       imageIds: unitData?.images?.map((img) => img.id) || [],
     },
   });
-
-  console.log('errors', form.formState.errors);
-  console.log('form values', form.getValues());
 
   // Handle copy link to clipboard
   const handleCopyLink = () => {
@@ -167,10 +165,13 @@ export function UnitForm({ unitData }: UnitFormProps) {
           } successfully`
         );
 
-        // Reset form if creating a new unit and staying on the page
+        // Handle redirect for new unit
         if (!isEditing) {
-          form.reset();
-          setUploadFiles([]);
+          // Navigate to the newly created unit's edit page
+          router.push(`/dashboard/units/${result.data.id}`);
+        } else {
+          // For editing, just reset the form state
+          setIsSubmitting(false);
         }
       } else {
         toast.dismiss(saveToastId);
@@ -183,7 +184,6 @@ export function UnitForm({ unitData }: UnitFormProps) {
       }
     } catch (error: any) {
       console.error('Form submission error:', error);
-    } finally {
       setIsSubmitting(false);
     }
   };

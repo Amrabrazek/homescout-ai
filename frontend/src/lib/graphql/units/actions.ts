@@ -16,9 +16,7 @@ export async function createUnit(data: UnitFormValues) {
       },
     });
 
-    // Revalidate paths to update the UI
-    redirect(`/dashboard/units/${response.data.createUnit.id}`);
-
+    // Return the data so the component can handle the redirect
     return {
       success: true,
       data: response.data.createUnit,
