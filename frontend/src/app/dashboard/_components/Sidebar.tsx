@@ -23,16 +23,6 @@ const items = [
     url: pathsConfig.units.listing,
     icon: Building2,
   },
-  {
-    title: 'Projects',
-    url: pathsConfig.projects.listing,
-    icon: MapPinHouse,
-  },
-  {
-    title: 'Developers',
-    url: pathsConfig.developers.listing,
-    icon: Pickaxe,
-  },
 ];
 
 export function AppSidebar() {
