@@ -1,13 +1,4 @@
-export interface Developer {
-  id: string;
-  name: string;
-}
-
-export interface Project {
-  id: string;
-  name: string;
-  developer: Developer;
-}
+import { Project } from '../projects/types';
 
 export interface Amenity {
   id: string;

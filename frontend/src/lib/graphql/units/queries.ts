@@ -47,15 +47,6 @@ export const GET_FILTER_DATA = gql`
   }
 `;
 
-export const GET_PROJECTS = gql`
-  query GetProjects($searchTerm: String, $limit: Int, $offset: Int) {
-    projects(searchTerm: $searchTerm, limit: $limit, offset: $offset) {
-      id
-      name
-    }
-  }
-`;
-
 export const GET_UNIT = gql`
   query GetUnit($id: String!) {
     unit(id: $id) {

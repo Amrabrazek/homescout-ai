@@ -45,7 +45,7 @@ export function FormPageHeader({
   const headerTitle = isEditing ? title ?? '' : `New ${entityName}`;
 
   return (
-    <div className='bg-background form-header sticky top-0 w-full sm:-top-2'>
+    <div className='bg-background form-header z-10 sticky top-0 w-full sm:-top-2 bg-white'>
       {/* Desktop header */}
       <div className='hidden flex-1 items-start gap-4 px-8 py-6 sm:grid sm:gap-8'>
         <div className='flex items-center gap-2'>
