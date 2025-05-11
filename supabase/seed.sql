@@ -372,9 +372,16 @@ DECLARE
   units_per_project INT;
   total_floors INT;
   current_floor INT;
+  random_created_at TIMESTAMP;
+  current_time_var TIMESTAMP;
+  one_month_ago TIMESTAMP;
 BEGIN
   -- Only proceed if units table is empty
   IF NOT EXISTS (SELECT 1 FROM public.units LIMIT 1) THEN
+    -- Get current date and one month ago date for random created_at timestamps
+    current_time_var := NOW();
+    one_month_ago := current_time_var - INTERVAL '30 days';
+  
     -- Get all project IDs
     SELECT ARRAY(SELECT id FROM public.projects ORDER BY id) INTO project_ids;
     -- Get all image IDs
@@ -405,6 +412,9 @@ BEGIN
         -- Randomly select floor and unit details
         current_floor := floor(random() * total_floors + 1);
         
+        -- Generate random created_at timestamp in the last month
+        random_created_at := one_month_ago + (random() * (current_time_var - one_month_ago));
+        
         -- Insert a unit
         INSERT INTO public.units (
           name, 
@@ -415,7 +425,8 @@ BEGIN
           floor_area, 
           description, 
           price, 
-          project_id
+          project_id,
+          created_at
         ) VALUES (
           unit_names[floor(random() * array_length(unit_names, 1) + 1)], 
           CONCAT(
@@ -431,7 +442,8 @@ BEGIN
           floor_area_options[floor(random() * array_length(floor_area_options, 1) + 1)], 
           descriptions[floor(random() * array_length(descriptions, 1) + 1)],
           price_options[floor(random() * array_length(price_options, 1) + 1)], 
-          current_project_id
+          current_project_id,
+          random_created_at
         ) RETURNING id INTO unit_id;
         
         -- Assign random images to unit (between 3 and 8 images)
