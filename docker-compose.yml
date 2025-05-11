@@ -39,27 +39,27 @@ services:
       - /app/dist
 
   # Next.js Frontend
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   container_name: nawy-frontend
-  #   restart: unless-stopped
-  #   ports:
-  #     - '3000:3000'
-  #   depends_on:
-  #     - backend
-  #   environment:
-  #     NEXT_PUBLIC_GRAPHQL_ENDPOINT: http://localhost:3001/graphql
-  #     NEXT_PUBLIC_SUPABASE_URL: http://localhost:8000
-  #     NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
-  #   volumes:
-  #     - ./frontend:/app
-  #     - /app/node_modules
-  #     - /app/.next
-  #   networks:
-  #     - nawy-network
-  #   command: npm run dev
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nawy-frontend
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_GRAPHQL_ENDPOINT: http://localhost:3001/graphql
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:8000
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - nawy-network
+    command: npm run dev
 
   studio:
     container_name: supabase-studio
