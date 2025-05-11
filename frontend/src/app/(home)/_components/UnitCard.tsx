@@ -57,7 +57,7 @@ export default function UnitCard({ unit }: UnitCardProps) {
 
   return (
     <Link href={`${pathsConfig.units.detail.replace('[id]', unit.id)}`}>
-      <Card className='h-full overflow-hidden hover:shadow-lg transition-shadow duration-300'>
+      <Card className='h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col'>
         <div className='relative w-full h-48'>
           {hasImages ? (
             <Image
@@ -91,12 +91,17 @@ export default function UnitCard({ unit }: UnitCardProps) {
                 {unit.project.name} | {unit.project.developer.name}
               </CardDescription>
             </div>
-            <Badge variant='outline' className='bg-primary/10'>
-              {unit.number}
+            <Badge
+              variant='outline'
+              className='bg-primary/10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]'
+            >
+              {unit.number.length > 8
+                ? `${unit.number.substring(0, 8)}...`
+                : unit.number}
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className='p-4 pt-0 pb-2'>
+        <CardContent className='p-4 pt-0 pb-2 flex-grow'>
           <div className='flex justify-between mb-2 text-sm'>
             <span>{unit.rooms} Rooms</span>
             <span>{unit.bathrooms} Bathrooms</span>
@@ -123,7 +128,7 @@ export default function UnitCard({ unit }: UnitCardProps) {
             )}
           </div>
         </CardContent>
-        <CardFooter className='p-4 pt-2 border-t'>
+        <CardFooter className='p-4 pt-2 border-t h-[60px] flex items-center'>
           <div className='w-full text-right font-bold text-lg'>
             {formatPrice(unit.price)}
           </div>
@@ -136,7 +141,7 @@ export default function UnitCard({ unit }: UnitCardProps) {
 // Create a skeleton version of the card that exactly matches the structure
 export function UnitCardSkeleton() {
   return (
-    <Card className='h-full overflow-hidden'>
+    <Card className='h-full overflow-hidden flex flex-col'>
       {/* Image placeholder */}
       <div className='relative w-full h-48'>
         <Skeleton className='h-full w-full' />
@@ -152,7 +157,7 @@ export function UnitCardSkeleton() {
         </div>
       </CardHeader>
 
-      <CardContent className='p-4 pt-0 pb-2'>
+      <CardContent className='p-4 pt-0 pb-2 flex-grow'>
         <div className='flex justify-between mb-2'>
           <Skeleton className='h-4 w-16' /> {/* Rooms */}
           <Skeleton className='h-4 w-20' /> {/* Bathrooms */}
@@ -166,7 +171,7 @@ export function UnitCardSkeleton() {
         </div>
       </CardContent>
 
-      <CardFooter className='p-4 pt-2 border-t'>
+      <CardFooter className='p-4 pt-2 border-t h-[60px] flex items-center'>
         <div className='w-full flex justify-end'>
           <Skeleton className='h-6 w-24' /> {/* Price */}
         </div>

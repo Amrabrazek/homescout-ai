@@ -41,10 +41,10 @@ export function HeroCover({
             onClick={scrollToContent}
             variant='outline'
             size='lg'
-            className='mt-6 border-white text-white hover:bg-white hover:text-black transition-colors'
+            className='mt-6 border-2 border-white text-white hover:bg-white/20 hover:border-primary hover:text-primary transition-all duration-300 rounded-full px-8 shadow-lg backdrop-blur-sm bg-black/10 font-medium'
           >
             Browse Properties
-            <ArrowDown className='ml-2 h-4 w-4' />
+            <ArrowDown className='ml-2 h-4 w-4 animate-pulse' />
           </Button>
         )}
       </div>
