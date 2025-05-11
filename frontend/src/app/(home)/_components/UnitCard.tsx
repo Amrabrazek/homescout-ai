@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice } from '@/lib/utils/formatters';
 import pathsConfig from '@config/paths.config';
 import { ImageIcon } from 'lucide-react';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays } from 'date-fns/differenceInDays';
 
 type UnitCardProps = {
   unit: {
