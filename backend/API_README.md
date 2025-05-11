@@ -82,7 +82,8 @@ The `units` query supports extensive filtering options including:
 1. **Browse Units**: Query units with filtering, sorting and pagination
 2. **Unit Details**: Get full unit details including related project, developer, and amenities
 3. **Add a Unit**: Create a unit with related amenities and images
-4. **Browse Projects**: Find projects by developer or search term
+4. **Update a Unit**: Update a unit
+5. **Browse Projects**: Find projects by developer or search term
 
 ## Need Help?
 

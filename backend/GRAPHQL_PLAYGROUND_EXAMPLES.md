@@ -10,6 +10,182 @@ This document contains ready-to-use examples that you can copy and paste directl
 4. Paste them into the left panel of GraphQL Playground
 5. Click the "Play" button to execute
 
+## Common Workflow Examples
+
+Here are complete examples for common workflows:
+
+### Workflow: Adding a New Property
+
+1. First, create a developer (if not exists):
+
+```graphql
+mutation CreateNewDeveloper {
+  createDeveloper(createDeveloperInput: { name: "Skyline Development Group" }) {
+    id
+    name
+  }
+}
+```
+
+2. Create a project under the developer:
+
+```graphql
+mutation CreateNewProject {
+  createProject(
+    createProjectInput: {
+      name: "Garden Heights"
+      developerId: "developer-id-from-step-1"
+    }
+  ) {
+    id
+    name
+  }
+}
+```
+
+3. Create amenities (if not exist):
+
+```graphql
+mutation CreateAmenities {
+  pool: createAmenity(
+    createAmenityInput: { name: "Swimming Pool", icon: "pool" }
+  ) {
+    id
+  }
+  gym: createAmenity(
+    createAmenityInput: { name: "Fitness Center", icon: "fitness_center" }
+  ) {
+    id
+  }
+}
+```
+
+4. Create images for the unit:
+
+```graphql
+mutation CreateImages {
+  livingRoom: createImage(
+    createImageInput: {
+      url: "https://example.com/living-room.jpg"
+      alt_text: "Spacious living room"
+    }
+  ) {
+    id
+  }
+  bedroom: createImage(
+    createImageInput: {
+      url: "https://example.com/bedroom.jpg"
+      alt_text: "Master bedroom"
+    }
+  ) {
+    id
+  }
+}
+```
+
+5. Finally, create the unit with references:
+
+```graphql
+mutation CreateNewUnit {
+  createUnit(
+    createUnitInput: {
+      name: "Luxury Garden Apartment"
+      number: "A105"
+      description: "Beautiful apartment with garden views"
+      price: 3200000
+      rooms: 3
+      bathrooms: 2
+      floor: 1
+      floorArea: 175
+      projectId: "project-id-from-step-2"
+      amenityIds: ["pool-id-from-step-3", "gym-id-from-step-3"]
+      imageIds: ["livingroom-id-from-step-4", "bedroom-id-from-step-4"]
+    }
+  ) {
+    id
+    name
+    price
+    amenities {
+      name
+    }
+    images {
+      url
+    }
+  }
+}
+```
+
+### Workflow: Updating Property Details
+
+1. First, get the current unit details:
+
+```graphql
+query GetUnitToUpdate {
+  unit(id: "unit-id-to-update") {
+    id
+    name
+    number
+    description
+    price
+    rooms
+    bathrooms
+    floor
+    floorArea
+    projectId
+    amenities {
+      id
+      name
+    }
+    images {
+      id
+      url
+    }
+  }
+}
+```
+
+2. Update the unit with new details:
+
+```graphql
+mutation UpdateExistingUnit {
+  updateUnit(
+    updateUnitInput: {
+      id: "unit-id-to-update"
+      price: 3400000
+      description: "Newly renovated luxury apartment with garden views"
+      amenityIds: [
+        "existing-amenity-id-1"
+        "existing-amenity-id-2"
+        "new-amenity-id"
+      ]
+      imageIds: ["existing-image-id-1", "existing-image-id-2", "new-image-id"]
+    }
+  ) {
+    id
+    name
+    price
+    description
+    amenities {
+      name
+    }
+    images {
+      url
+    }
+  }
+}
+```
+
+### Workflow: Removing a Property
+
+```graphql
+mutation DeleteExistingUnit {
+  deleteUnit(id: "unit-id-to-delete") {
+    id
+    name
+  }
+}
+```
+
 ## Queries
 
 ### List Units (with filtering and pagination)
