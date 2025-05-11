@@ -92,6 +92,13 @@ This option runs everything in Docker containers (frontend, backend, and all Sup
    cd nawy-task
    ```
 
+  or 
+
+  ```bash
+  git clone git@github.com:Amrabrazek/nawy-task.git
+  cd nawy-task
+  ```
+
 2. Create `.env` file with required environment variables
 
    ```bash
@@ -114,6 +121,14 @@ Due to limitations with Docker bind mounts on macOS that can affect local file s
    git clone https://github.com/Amrabrazek/nawy-task.git
    cd nawy-task
    ```
+
+  or 
+
+  ```bash
+  git clone git@github.com:Amrabrazek/nawy-task.git
+  cd nawy-task
+  ```
+
 
 2. Create `.env` file with required environment variables
 

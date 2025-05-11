@@ -7,6 +7,9 @@ type UploadResult = {
   path?: string;
 };
 
+// Max expiration time for Supabase signed URLs (60 days in seconds)
+const MAX_EXPIRY_SECONDS = 60 * 24 * 60 * 60; // 60 days
+
 /**
  * Uploads a file to Supabase storage
  * @param file File to upload
@@ -44,14 +47,20 @@ export async function uploadFileToStorage(
       return { success: false, error: error.message };
     }
 
-    // Get public URL
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+    // Generate a signed URL with maximum allowed expiration (60 days)
+    const { data: signedUrlData, error: signedUrlError } =
+      await supabase.storage
+        .from(bucketName)
+        .createSignedUrl(filePath, MAX_EXPIRY_SECONDS);
+
+    if (signedUrlError) {
+      console.error('Signed URL generation error:', signedUrlError);
+      return { success: false, error: signedUrlError.message };
+    }
 
     return {
       success: true,
-      url: publicUrl,
+      url: signedUrlData.signedUrl,
       path: filePath,
     };
   } catch (error: any) {
@@ -85,4 +94,33 @@ export async function uploadFilesToStorage(
   );
 
   return Promise.all(uploadPromises);
+}
+
+/**
+ * Gets a signed URL for a file in Supabase storage
+ * @param filePath Path to the file in storage
+ * @param bucketName Storage bucket name
+ * @param expiresIn Expiration time in seconds (default: 60 days)
+ * @returns Signed URL or null if there was an error
+ */
+export async function getSignedUrl(
+  filePath: string,
+  bucketName = 'images',
+  expiresIn = MAX_EXPIRY_SECONDS
+): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .createSignedUrl(filePath, expiresIn);
+
+    if (error) {
+      console.error('Signed URL error:', error);
+      return null;
+    }
+
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Failed to get signed URL:', error);
+    return null;
+  }
 }
