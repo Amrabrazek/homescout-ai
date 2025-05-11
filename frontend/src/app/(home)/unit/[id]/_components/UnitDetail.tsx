@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { DogIcon } from 'lucide-react';
@@ -7,16 +8,28 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice, formatArea } from '@/lib/utils/formatters';
-import { ArrowLeft, Bed, Bath, Home, Info } from 'lucide-react';
+import {
+  ArrowLeft,
+  Bed,
+  Bath,
+  Home,
+  Info,
+  MessageSquare,
+  Pencil,
+} from 'lucide-react';
 import { CardDescription } from '@/components/ui/card';
 import { Unit } from '@/lib/graphql/units/types';
 import pathsConfig from '@config/paths.config';
+import ImagesGallery from '@/components/ui/images-gallery';
+import ContactModal from './ContactModal';
 
 type UnitDetailsProps = {
   unit: Unit;
 };
 
 export default function UnitDetails({ unit }: UnitDetailsProps) {
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+
   return (
     <div className='container mx-auto py-8'>
       <Button variant='ghost' asChild className='mb-6 pl-0'>
@@ -30,37 +43,13 @@ export default function UnitDetails({ unit }: UnitDetailsProps) {
         {/* Left: Images and Details */}
         <div className='md:col-span-2 space-y-6'>
           {/* Main Image */}
-          <div className='relative w-full h-[400px] rounded-lg overflow-hidden'>
-            {unit.images && unit.images.length > 0 ? (
-              <Image
-                src={unit.images[0].url}
-                alt={unit.images[0].altText || unit.name}
-                fill
-                className='object-cover'
-              />
-            ) : (
-              <div className='w-full h-full bg-gray-200 flex items-center justify-center'>
-                <Info size={48} className='text-gray-400' />
-              </div>
-            )}
-          </div>
-
-          {/* Image Gallery */}
-          {unit.images && unit.images.length > 1 && (
-            <div className='grid grid-cols-4 gap-2'>
-              {unit.images.slice(1, 5).map((image: any) => (
-                <div
-                  key={image.id}
-                  className='relative h-24 rounded overflow-hidden'
-                >
-                  <Image
-                    src={image.url}
-                    alt={image.altText || 'Property image'}
-                    fill
-                    className='object-cover'
-                  />
-                </div>
-              ))}
+          {unit.images && unit.images.length > 0 ? (
+            <ImagesGallery
+              images={unit.images.map((image: any) => image.url)}
+            />
+          ) : (
+            <div className='relative w-full h-[400px] rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center'>
+              <Info size={48} className='text-gray-400' />
             </div>
           )}
 
@@ -105,7 +94,19 @@ export default function UnitDetails({ unit }: UnitDetailsProps) {
         {/* Right: Price and Info */}
         <div className='space-y-6'>
           <div className='bg-white p-6 rounded-lg shadow-sm'>
-            <h1 className='text-2xl font-bold mb-1'>{unit.name}</h1>
+            <div className='flex justify-between items-start'>
+              <h1 className='text-2xl font-bold mb-1'>{unit.name}</h1>
+              <Button
+                variant='ghost'
+                size='sm'
+                className='rounded-full p-2 hover:bg-gray-100'
+                asChild
+              >
+                <Link href={`/dashboard/units/${unit.id}`}>
+                  <Pencil size={18} />
+                </Link>
+              </Button>
+            </div>
             <div className='text-gray-600 mb-3'>
               {unit.project.name} | {unit.project.developer.name}
             </div>
@@ -115,7 +116,7 @@ export default function UnitDetails({ unit }: UnitDetailsProps) {
               <Badge variant='outline'>Floor {unit.floor}</Badge>
             </div>
 
-            <div className='flex justify-between mb-6'>
+            <div className='flex flex-col sm:flex-row sm:justify-between gap-4 sm:gap-0 mb-6'>
               <div className='flex items-center gap-2'>
                 <Bed size={20} />
                 <span>{unit.rooms} Rooms</span>
@@ -137,10 +138,32 @@ export default function UnitDetails({ unit }: UnitDetailsProps) {
               </div>
             </div>
 
-            <Button className='w-full mt-6'>Contact Agent</Button>
+            <Button
+              className='w-full mt-6'
+              onClick={() => setContactModalOpen(true)}
+            >
+              Contact Agent
+            </Button>
+            <Button
+              variant='outline'
+              className='w-full mt-3 bg-green-500 hover:bg-green-600 text-white border-0'
+              onClick={() =>
+                window.open(`https://wa.me/201099902278`, '_blank')
+              }
+            >
+              <MessageSquare size={18} className='mr-2' />
+              WhatsApp Agent
+            </Button>
           </div>
         </div>
       </div>
+
+      <ContactModal
+        isOpen={contactModalOpen}
+        onClose={() => setContactModalOpen(false)}
+        unitId={unit.id}
+        unitName={unit.name}
+      />
     </div>
   );
 }
