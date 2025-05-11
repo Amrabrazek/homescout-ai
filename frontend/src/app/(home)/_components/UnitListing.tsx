@@ -59,8 +59,13 @@ export default function UnitListing({
 
   if (error) {
     return (
-      <div className='w-full p-8 text-center'>
-        <p className='text-red-500'>Error loading units: {error.message}</p>
+      <div className='w-full min-h-[800px] flex items-center justify-center'>
+        <div className='w-full max-w-[550px]'>
+          <EmptyState
+            title='Unable to load units'
+            description='There was a problem loading the available units. Please try again later.'
+          />
+        </div>
       </div>
     );
   }
