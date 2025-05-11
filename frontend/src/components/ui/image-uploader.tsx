@@ -1,10 +1,16 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { uploadFilesToStorage } from '@/lib/supabase/storage';
 import { createImageEntity } from '@/lib/graphql/units/actions';
 import { Button } from './button';
 import { Card } from './card';
 import { Progress } from './progress';
-import { XIcon, ImageIcon, UploadIcon } from 'lucide-react';
+import {
+  XIcon,
+  ImageIcon,
+  UploadIcon,
+  MoveIcon,
+  GripVertical,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 export type UploadStatus = 'idle' | 'uploading' | 'creating' | 'done' | 'error';
@@ -33,6 +39,10 @@ export function ImageUploader({
   const [progress, setProgress] = useState(0);
   const [images, setImages] = useState<ImageData[]>(initialImages);
 
+  // For image reordering
+  const [draggedImage, setDraggedImage] = useState<string | null>(null);
+  const [dragOverImage, setDragOverImage] = useState<string | null>(null);
+
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -43,9 +53,14 @@ export function ImageUploader({
     }
   }, []);
 
-  const removeImage = useCallback((id: string) => {
-    setImages((prev) => prev.filter((img) => img.id !== id));
-  }, []);
+  const removeImage = useCallback(
+    (id: string) => {
+      const updatedImages = images.filter((img) => img.id !== id);
+      setImages(updatedImages);
+      onImagesUploaded(updatedImages);
+    },
+    [images, onImagesUploaded]
+  );
 
   const processFiles = useCallback(
     async (files: File[]) => {
@@ -126,10 +141,11 @@ export function ImageUploader({
         }
 
         // Update state with new images
-        setImages((prev) => [...prev, ...newImages]);
+        const updatedImages = [...images, ...newImages];
+        setImages(updatedImages);
 
         // Call callback with all images (existing + new)
-        onImagesUploaded([...images, ...newImages]);
+        onImagesUploaded(updatedImages);
 
         toast.dismiss(uploadToastId);
         toast.success(`Successfully uploaded ${newImages.length} images`);
@@ -175,6 +191,60 @@ export function ImageUploader({
     const input = document.getElementById('file-upload') as HTMLInputElement;
     if (input) input.click();
   }, []);
+
+  // Image reordering handlers
+  const handleImageDragStart = (e: React.DragEvent, id: string) => {
+    e.stopPropagation(); // Prevent parent drag handler from firing
+    setDraggedImage(id);
+    // This is needed for Firefox
+    e.dataTransfer.setData('text/plain', id);
+    // Make the drag image transparent (not showing)
+    const img = new Image();
+    img.src =
+      'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(img, 0, 0);
+  };
+
+  const handleImageDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent parent drag handler from firing
+    if (id !== draggedImage) {
+      setDragOverImage(id);
+    }
+  };
+
+  const handleImageDragEnd = () => {
+    setDraggedImage(null);
+    setDragOverImage(null);
+  };
+
+  const handleImageDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent parent drag handler from firing
+
+    if (!draggedImage || draggedImage === targetId) {
+      setDraggedImage(null);
+      setDragOverImage(null);
+      return;
+    }
+
+    // Reorder the images
+    const newImages = [...images];
+    const draggedIdx = newImages.findIndex((img) => img.id === draggedImage);
+    const targetIdx = newImages.findIndex((img) => img.id === targetId);
+
+    if (draggedIdx !== -1 && targetIdx !== -1) {
+      const [removed] = newImages.splice(draggedIdx, 1);
+      newImages.splice(targetIdx, 0, removed);
+
+      setImages(newImages);
+      onImagesUploaded(newImages);
+      toast.success('Image order updated');
+    }
+
+    setDraggedImage(null);
+    setDragOverImage(null);
+  };
 
   const isUploading =
     uploadStatus === 'uploading' || uploadStatus === 'creating';
@@ -225,6 +295,11 @@ export function ImageUploader({
               <p className='text-xs text-gray-400 text-center'>
                 {images.length} of {maxFiles} images uploaded
               </p>
+              {images.length > 1 && (
+                <p className='text-xs text-gray-400 text-center mt-1'>
+                  Drag images to reorder them
+                </p>
+              )}
             </>
           )}
         </div>
@@ -233,25 +308,35 @@ export function ImageUploader({
       {images.length > 0 && (
         <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4'>
           {images.map((image) => (
-            <Card key={image.id} className='relative group overflow-hidden'>
+            <Card
+              key={image.id}
+              className={`relative group overflow-hidden transition-all ${
+                draggedImage === image.id ? 'opacity-50' : ''
+              } ${dragOverImage === image.id ? 'border-primary border-2' : ''}`}
+              draggable={!isDisabled}
+              onDragStart={(e) => handleImageDragStart(e, image.id)}
+              onDragOver={(e) => handleImageDragOver(e, image.id)}
+              onDragEnd={handleImageDragEnd}
+              onDrop={(e) => handleImageDrop(e, image.id)}
+            >
               <div className='aspect-square relative'>
                 <img
                   src={image.url}
                   alt={image.altText || 'Uploaded image'}
                   className='object-cover w-full h-full rounded-md'
                 />
+                <div className='absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-all'>
+                  <GripVertical className='text-white opacity-0 group-hover:opacity-50 cursor-move' />
+                </div>
                 <button
                   className='absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity'
                   onClick={(e) => {
                     e.stopPropagation();
                     removeImage(image.id);
-                    onImagesUploaded(
-                      images.filter((img) => img.id !== image.id)
-                    );
                   }}
-                  disabled={isDisabled || isUploading}
+                  disabled={isDisabled}
                 >
-                  <XIcon className='w-4 h-4' />
+                  <XIcon className='h-4 w-4' />
                 </button>
               </div>
             </Card>

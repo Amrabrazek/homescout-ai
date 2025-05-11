@@ -22,6 +22,7 @@ export interface Unit {
   floorArea: number;
   price: number;
   description?: string;
+  createdAt: string;
   project: Project;
   amenities: Amenity[];
   images: Image[];

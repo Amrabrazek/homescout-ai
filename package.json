@@ -16,5 +16,9 @@
   "bugs": {
     "url": "https://github.com/Amrabrazek/nawy-task/issues"
   },
-  "homepage": "https://github.com/Amrabrazek/nawy-task#readme"
+  "homepage": "https://github.com/Amrabrazek/nawy-task#readme",
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "quill-blot-formatter": "^1.0.5"
+  }
 }
