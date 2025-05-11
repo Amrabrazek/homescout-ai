@@ -12,24 +12,18 @@ async function setupE2ETestEnvironment() {
   // Load test environment variables
   dotenv.config({ path: '.env.test' });
 
-  console.log('Setting up e2e test environment...');
-
   try {
     // Initialize test data store
     TestDataStore.reset();
     const testProjectId = TestDataStore.initialize();
-    console.log(`Created test project with ID: ${testProjectId}`);
 
     // Update .env.test file with the test project ID
     updateEnvFile(testProjectId);
-
-    console.log('E2E test environment setup complete!');
   } catch (error) {
     console.error('Error setting up test environment:', error);
 
     // Even on error, create a mock project ID
     const mockProjectId = uuidv4();
-    console.log(`Using mock project ID: ${mockProjectId} for tests`);
     updateEnvFile(mockProjectId);
   }
 }
@@ -60,7 +54,6 @@ function updateEnvFile(projectId: string) {
 
     // Write the updated content back to the file
     fs.writeFileSync(envFilePath, envContent);
-    console.log(`Updated ${envFilePath} with test project ID: ${projectId}`);
   } catch (err) {
     console.error('Error updating .env.test file:', err);
   }

@@ -20,12 +20,10 @@ describe('Unit Operations (e2e)', () => {
       // First try .env.test in root directory
       const rootEnvPath = path.join(process.cwd(), '.env.test');
       if (fs.existsSync(rootEnvPath)) {
-        console.log('Loading test environment from', rootEnvPath);
         dotenv.config({ path: rootEnvPath });
 
         const testProjectId = process.env.E2E_TEST_PROJECT_ID;
         if (testProjectId && testProjectId.trim() !== '') {
-          console.log('Found project ID in .env.test:', testProjectId);
           return testProjectId;
         }
       }
@@ -53,7 +51,6 @@ describe('Unit Operations (e2e)', () => {
 
       // Get project ID from the test data store
       projectId = loadTestEnv();
-      console.log(`Using project ID: ${projectId} for unit tests`);
     } catch (error) {
       console.error('Error setting up test app:', error);
       throw error;
@@ -121,7 +118,6 @@ describe('Unit Operations (e2e)', () => {
               (e) => e.message && e.message.includes('project')
             )
           ) {
-            console.log('Skipping test due to project ID issues');
             return;
           }
         }

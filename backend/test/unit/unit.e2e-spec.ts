@@ -22,7 +22,6 @@ describe('UnitResolver (e2e)', () => {
     // Get a valid project ID from the test data store
     if (TestDataStore.projects.size > 0) {
       projectId = Array.from(TestDataStore.projects.values())[0].id;
-      console.log(`Using project ID: ${projectId} for unit tests`);
     } else {
       console.error('No projects found in test data store');
     }
@@ -39,7 +38,6 @@ describe('UnitResolver (e2e)', () => {
   it('should create a new unit', async () => {
     // Skip test if no valid project ID is available
     if (!projectId) {
-      console.log('Skipping test: no valid project ID');
       return;
     }
 

@@ -62,13 +62,6 @@ export default function ContactModal({
   const onSubmit = async (data: ContactFormValues) => {
     setIsSubmitting(true);
     try {
-      // Here you would normally send this data to your backend
-      console.log('Contact form submitted:', {
-        ...data,
-        unitId,
-        unitName,
-      });
-
       // Simulate API call with timeout
       await new Promise((resolve) => setTimeout(resolve, 1000));
 

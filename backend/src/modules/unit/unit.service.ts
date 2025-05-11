@@ -46,9 +46,6 @@ export class UnitService {
   ): Promise<Unit[]> {
     const where: any = {};
 
-    console.log('filter', filter);
-    console.log('sort', sort);
-
     if (filter) {
       if (filter.searchTerm) {
         // Search in both name and number fields with OR condition

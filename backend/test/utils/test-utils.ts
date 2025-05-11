@@ -44,7 +44,6 @@ export const TestDataStore = {
       updated_at: new Date(),
     });
 
-    console.log(`Initialized test store with project ID: ${projectId}`);
     return projectId;
   },
 
@@ -66,7 +65,6 @@ export function loadTestEnv() {
     // Try to load .env.test file
     const testEnvPath = path.join(process.cwd(), '.env.test');
     if (fs.existsSync(testEnvPath)) {
-      console.log('Loading test environment from', testEnvPath);
       dotenv.config({ path: testEnvPath });
       return true;
     }
@@ -75,7 +73,6 @@ export function loadTestEnv() {
   }
 
   // Fallback to default .env
-  console.log('Using default environment variables');
   dotenv.config();
   return false;
 }

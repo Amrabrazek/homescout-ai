@@ -94,11 +94,9 @@ export function ImageUploader({
           `Uploading ${validFiles.length} images...`
         );
         const uploadResults = await uploadFilesToStorage(validFiles);
-        console.log('uploadResults', uploadResults);
 
         // Check if any uploads failed
         const failedUploads = uploadResults.filter((result) => !result.success);
-        console.log('failedUploads', failedUploads);
 
         if (failedUploads.length > 0) {
           toast.dismiss(uploadToastId);
@@ -114,8 +112,6 @@ export function ImageUploader({
         const successfulUploads = uploadResults.filter(
           (result) => result.success && result.url
         );
-
-        console.log('successfulUploads', successfulUploads);
 
         const newImages: ImageData[] = [];
         let completed = 0;

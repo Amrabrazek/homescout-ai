@@ -37,7 +37,6 @@ export async function createUnit(data: UnitFormValues) {
 // Action to update a unit
 export async function updateUnit(data: UnitFormValues) {
   try {
-    console.log('data', data);
     const client = getServerClient();
     const response = await client.mutate({
       mutation: UPDATE_UNIT,
