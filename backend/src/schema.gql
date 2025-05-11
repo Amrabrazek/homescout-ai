@@ -1,0 +1,148 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Amenity {
+  icon: String
+  id: ID!
+  name: String!
+  units: [Unit!]
+}
+
+input CreateAmenityInput {
+  icon: String
+  name: String!
+}
+
+input CreateDeveloperInput {
+  name: String!
+}
+
+input CreateImageInput {
+  altText: String
+  order: Int
+  url: String!
+}
+
+input CreateProjectInput {
+  developerId: String!
+  name: String!
+}
+
+input CreateUnitInput {
+  amenityIds: [String!]
+  bathrooms: Int!
+  description: String
+  floor: Int!
+  floorArea: Float!
+  imageIds: [String!]
+  name: String!
+  number: String!
+  price: Float!
+  projectId: String!
+  rooms: Int!
+}
+
+type Developer {
+  id: ID!
+  name: String!
+  projects: [Project!]
+}
+
+type Image {
+  altText: String
+  id: ID!
+  units: [Unit!]
+  url: String!
+}
+
+type Mutation {
+  createAmenity(createAmenityInput: CreateAmenityInput!): Amenity!
+  createDeveloper(createDeveloperInput: CreateDeveloperInput!): Developer!
+  createImage(createImageInput: CreateImageInput!): Image!
+  createProject(createProjectInput: CreateProjectInput!): Project!
+  createUnit(createUnitInput: CreateUnitInput!): Unit!
+  updateUnit(updateUnitInput: UpdateUnitInput!): Unit!
+}
+
+type Project {
+  developer: Developer!
+  developerId: String!
+  id: ID!
+  name: String!
+  units: [Unit!]
+}
+
+type Query {
+  amenities: [Amenity!]!
+  amenity(id: String!): Amenity
+  developer(id: String!): Developer
+  developers: [Developer!]!
+  image(id: String!): Image
+  images: [Image!]!
+  project(id: String!): Project!
+  projects(developerId: String, limit: Int, offset: Int, searchTerm: String): [Project!]!
+  unit(id: String!): Unit
+  units(filter: UnitFilterInput, limit: Int, offset: Int): UnitResponse!
+}
+
+type Unit {
+  amenities: [Amenity!]
+  bathrooms: Int!
+  description: String
+  floor: Int!
+  floorArea: Float!
+  id: ID!
+  images: [Image!]
+  name: String!
+  number: String!
+  price: Float!
+  project: Project!
+  projectId: String!
+  rooms: Int!
+  unitImages: [UnitImage!]
+}
+
+input UnitFilterInput {
+  amenityIds: [String!]
+  maxFloorArea: Float
+  maxPrice: Float
+  maxRooms: Int
+  minFloorArea: Float
+  minPrice: Float
+  minRooms: Int
+
+  """Filter by multiple project IDs"""
+  projectIds: [String!]
+
+  """Search term to match against unit name or number"""
+  searchTerm: String
+}
+
+type UnitImage {
+  image: Image!
+  imageId: ID!
+  order: Int!
+  unit: Unit!
+  unitId: ID!
+}
+
+type UnitResponse {
+  items: [Unit!]!
+  total: Int!
+}
+
+input UpdateUnitInput {
+  amenityIds: [String!]
+  bathrooms: Int
+  description: String
+  floor: Int
+  floorArea: Float
+  id: ID
+  imageIds: [String!]
+  name: String
+  number: String
+  price: Float
+  projectId: String
+  rooms: Int
+}
