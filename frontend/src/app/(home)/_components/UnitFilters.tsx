@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Search } from 'lucide-react';
 import { useFilterData } from '@/lib/graphql/units/hooks';
 import { useProjects } from '@/lib/graphql/projects/hooks';
 
@@ -163,8 +163,8 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className='flex flex-col max-h-[calc(100vh-100px)]'>
+      <CardHeader className='flex-shrink-0'>
         <CardTitle className='flex justify-between items-center'>
           <span>Filters</span>
           <Button
@@ -178,7 +178,7 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
           </Button>
         </CardTitle>
       </CardHeader>
-      <CardContent className='space-y-4'>
+      <CardContent className='space-y-4 overflow-y-auto pb-6'>
         <div className='space-y-2'>
           <Label htmlFor='searchTerm'>Search by name or number</Label>
           <Input
@@ -190,23 +190,32 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
           />
         </div>
 
-        <MultiSelect
-          label='Projects'
-          options={projectOptions.map((project) => ({
-            id: project.id,
-            label: `${project.name} | ${project.developer.name}`,
-            value: project.id,
-          }))}
-          selectedIds={filters.projectIds || []}
-          onChange={handleProjectsChange}
-          placeholder='Select projects'
-          maxHeight={200}
-          searchable={true}
-          onSearch={handleProjectSearch}
-          onLoadMore={handleLoadMoreProjects}
-          isLoading={projectsLoading}
-          hasMore={hasMoreProjects}
-        />
+        <div className='space-y-2'>
+          <Label htmlFor='projects'>Projects</Label>
+          <div className='space-y-1'>
+            <MultiSelect
+              label='Projects'
+              options={projectOptions.map((project) => ({
+                id: project.id,
+                label: `${project.name} | ${project.developer.name}`,
+                value: project.id,
+              }))}
+              selectedIds={filters.projectIds || []}
+              onChange={handleProjectsChange}
+              placeholder='Select projects'
+              maxHeight={200}
+              searchable={true}
+              onSearch={handleProjectSearch}
+              onLoadMore={handleLoadMoreProjects}
+              isLoading={projectsLoading}
+              hasMore={hasMoreProjects}
+            />
+            <div className='flex items-center text-xs text-muted-foreground mt-1'>
+              <Search className='h-3 w-3 mr-1' />
+              <span>Search by project or developer name</span>
+            </div>
+          </div>
+        </div>
 
         <div className='space-y-2'>
           <Label>Price Range</Label>
