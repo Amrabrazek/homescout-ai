@@ -75,9 +75,15 @@ To stop all running Docker containers:
 docker stop $(docker ps -q)
 ```
 
-### Setup with Docker
+## Setup Options
 
-#### Option 1: Standard Setup (Linux/Windows)
+You can choose to run the entire stack in Docker, or run services in Docker and develop locally.
+
+### Option 1: Full Docker Setup
+
+This option runs everything in Docker containers (frontend, backend, and all Supabase services).
+
+#### For Linux/Windows
 
 1. Clone the repository
 
@@ -98,7 +104,7 @@ docker stop $(docker ps -q)
    docker compose up
    ```
 
-#### Option 2: macOS Setup with S3 Storage (Recommended for Mac)
+#### For macOS (S3 Storage)
 
 Due to limitations with Docker bind mounts on macOS that can affect local file storage, it's recommended to use the S3 storage backend:
 
@@ -123,6 +129,98 @@ Due to limitations with Docker bind mounts on macOS that can affect local file s
 
    This configuration uses MinIO as an S3-compatible storage backend instead of the local filesystem.
 
+### Option 2: Hybrid Setup (Recommended for Development)
+
+This approach runs Supabase services in Docker while allowing you to develop the frontend and backend locally.
+
+#### Step 1: Start the Supabase Services
+
+##### For Linux/Windows
+
+1. Modify the docker-compose.yml file to expose the database to your local network:
+
+   ```bash
+   # In docker-compose.yml, find the db service and uncomment these lines:
+   # ports:
+   #   - 5432:5432
+   ```
+
+2. Start only the Supabase services:
+
+   ```bash
+   docker compose up db auth rest realtime storage kong studio meta functions analytics imgproxy
+   ```
+
+##### For macOS (S3 Storage)
+
+1. Modify both docker-compose.yml and docker-compose.s3.yml files:
+
+   ```bash
+   # In docker-compose.yml, find the db service and uncomment these lines:
+   # ports:
+   #   - 5432:5432
+   ```
+
+2. Start only the Supabase services with S3 storage:
+
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.s3.yml up db auth rest realtime storage kong studio meta functions analytics imgproxy minio minio-createbucket
+   ```
+
+#### Step 2: Set up Backend Locally
+
+1. Navigate to the backend directory:
+
+   ```bash
+   cd backend
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Create a local `.env` file
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Make sure to use the same DB_PASSWORD that you specified in your root `.env` file.
+
+4. Start the backend server:
+
+   ```bash
+   npm run start:dev
+   ```
+
+#### Step 3: Set up Frontend Locally
+
+1. Navigate to the frontend directory:
+
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Create a local `.env` file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+4 Start the development server:
+
+```bash
+npm run dev
+```
+
 ### Access Credentials
 
 Once the application is running, you can access:
@@ -135,104 +233,6 @@ Once the application is running, you can access:
 - **MinIO Console** (S3 storage option): http://localhost:9001
   - Username: `supa-storage`
   - Password: `secret1234`
-
-### Local Development (without Docker)
-
-#### Supabase Setup
-
-1. Start Supabase locally
-
-   ```bash
-   docker-compose up db auth rest realtime storage kong
-   ```
-
-2. Access Supabase Studio at http://localhost:8000
-   - Username: `supabase`
-   - Password: `this_password_is_insecure_and_should_be_updated` (or your custom value from DASHBOARD_PASSWORD in .env)
-
-#### Backend Setup
-
-1. Navigate to the backend directory
-
-   ```bash
-   cd backend
-   ```
-
-2. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-3. Create a `.env` file with database connection and Supabase details
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   Then update the values:
-
-   ```
-   NODE_ENV=development
-   PORT=3001
-
-   # Database
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_USERNAME=supabase_admin
-   DB_PASSWORD=your-super-secret-and-long-postgres-password
-   DB_NAME=postgres
-
-   # Supabase
-   SUPABASE_URL=http://localhost:8000
-   SUPABASE_ANON_KEY=your-anon-key
-   SUPABASE_SERVICE_KEY=your-service-key
-   SUPABASE_JWT_SECRET=your-jwt-secret
-   ```
-
-4. Start the backend server
-
-   ```bash
-   npm run start:dev
-   ```
-
-5. Seed the database (first time only)
-   ```bash
-   npm run seed
-   ```
-
-#### Frontend Setup
-
-1. Navigate to the frontend directory
-
-   ```bash
-   cd frontend
-   ```
-
-2. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-3. Create and update the `.env` file with the necessary values:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   Then update with proper values:
-
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-   NEXT_PUBLIC_GRAPHQL_ENDPOINT=http://localhost:3001/graphql
-   ```
-
-4. Start the development server
-   ```bash
-   npm run dev
-   ```
 
 ## 🔒 Environment Variables
 
