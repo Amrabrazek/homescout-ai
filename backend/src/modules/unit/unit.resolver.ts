@@ -69,6 +69,11 @@ export class UnitResolver {
     return this.unitService.update(updateUnitInput.id, updateUnitInput);
   }
 
+  @Mutation(() => Unit)
+  async deleteUnit(@Args('id') id: string): Promise<Unit> {
+    return this.unitService.delete(id);
+  }
+
   @ResolveField(() => Project)
   async project(@Parent() unit: Unit): Promise<Project> {
     const projectId = unit.projectId || (unit as any).project_id;

@@ -19,13 +19,32 @@ export const UPDATE_UNIT = gql`
   }
 `;
 
-// Image upload mutation
+export const DELETE_UNIT = gql`
+  mutation DeleteUnit($id: String!) {
+    deleteUnit(id: $id)
+  }
+`;
+
+// Image upload mutation (legacy approach)
 export const UPLOAD_IMAGES = gql`
   mutation UploadImages($files: [Upload!]!) {
     uploadImages(files: $files) {
       id
       url
       altText
+    }
+  }
+`;
+
+// New Supabase-based image creation mutation
+export const CREATE_IMAGE = gql`
+  mutation CreateImage($createImageInput: CreateImageInput!) {
+    createImage(createImageInput: $createImageInput) {
+      id
+      url
+      altText
+      fileName
+      contentType
     }
   }
 `;

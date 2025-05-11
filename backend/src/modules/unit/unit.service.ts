@@ -280,6 +280,12 @@ export class UnitService {
     return unit.amenities || [];
   }
 
+  async delete(id: string): Promise<Unit> {
+    const unit = await this.findOne(id);
+    await this.unitRepository.remove(unit);
+    return unit;
+  }
+
   async getUnitImages(unitId: string): Promise<Image[]> {
     const unitImages = await this.unitImageRepository.find({
       where: { unitId },

@@ -1,10 +1,15 @@
 'use server';
 
 import { getServerClient } from '@/lib/apollo/client';
-import { CREATE_UNIT, UPDATE_UNIT, UPLOAD_IMAGES } from './mutations';
+import {
+  CREATE_UNIT,
+  UPDATE_UNIT,
+  CREATE_IMAGE,
+  DELETE_UNIT,
+} from './mutations';
 import { UnitFormValues } from '@/lib/graphql/units/schema';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
+
 // Action to create a unit
 export async function createUnit(data: UnitFormValues) {
   try {
@@ -57,30 +62,61 @@ export async function updateUnit(data: UnitFormValues) {
   }
 }
 
-// Note: Image uploads typically need to be handled differently
-// as they involve file uploads which don't work directly with server actions
-// This is just a placeholder to demonstrate the pattern
-export async function uploadImages(files: any[]) {
+// Action to delete a unit
+export async function deleteUnit(id: string) {
   try {
-    // This would need special handling for file uploads
-    // In a real implementation, you might use a direct API route
-    // or a third-party storage solution like Supabase Storage
     const client = getServerClient();
     const response = await client.mutate({
-      mutation: UPLOAD_IMAGES,
+      mutation: DELETE_UNIT,
       variables: {
-        files,
+        id,
+      },
+    });
+
+    // Revalidate paths to update the UI
+    revalidatePath('/dashboard/units');
+    revalidatePath('/'); // Revalidate home page to update listings
+
+    return {
+      success: true,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to delete unit',
+    };
+  }
+}
+
+// Action to create an image entity via GraphQL
+export async function createImageEntity({
+  url,
+  altText,
+}: {
+  url: string;
+  altText: string;
+}) {
+  try {
+    const client = getServerClient();
+    const response = await client.mutate({
+      mutation: CREATE_IMAGE,
+      variables: {
+        createImageInput: {
+          url,
+          alt_text: altText,
+        },
       },
     });
 
     return {
       success: true,
-      data: response.data.uploadImages,
+      data: response.data.createImage,
     };
   } catch (error: any) {
+    console.error('Failed to create image entity:', error);
     return {
       success: false,
-      error: error.message || 'Failed to upload images',
+      error: error.message || 'Failed to create image entity',
     };
   }
 }
