@@ -76,7 +76,7 @@ services:
       AWS_ACCESS_KEY_ID: supa-storage
       AWS_SECRET_ACCESS_KEY: secret1234
       AWS_DEFAULT_REGION: stub
-      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      FILE_STORAGE_BACKEND_PATH: /tmp/storage
       TENANT_ID: stub
       # TODO: https://github.com/supabase/storage-api/issues/55
       REGION: stub

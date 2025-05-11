@@ -19,8 +19,7 @@ input CreateDeveloperInput {
 }
 
 input CreateImageInput {
-  altText: String
-  order: Int
+  alt_text: String
   url: String!
 }
 
@@ -43,6 +42,11 @@ input CreateUnitInput {
   rooms: Int!
 }
 
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
 type Developer {
   id: ID!
   name: String!
@@ -62,6 +66,7 @@ type Mutation {
   createImage(createImageInput: CreateImageInput!): Image!
   createProject(createProjectInput: CreateProjectInput!): Project!
   createUnit(createUnitInput: CreateUnitInput!): Unit!
+  deleteUnit(id: String!): Unit!
   updateUnit(updateUnitInput: UpdateUnitInput!): Unit!
 }
 
@@ -83,12 +88,19 @@ type Query {
   project(id: String!): Project!
   projects(developerId: String, limit: Int, offset: Int, searchTerm: String): [Project!]!
   unit(id: String!): Unit
-  units(filter: UnitFilterInput, limit: Int, offset: Int): UnitResponse!
+  units(filter: UnitFilterInput, limit: Int, offset: Int, sort: UnitSortInput): UnitResponse!
+}
+
+"""Sort direction (ascending or descending)"""
+enum SortDirection {
+  ASC
+  DESC
 }
 
 type Unit {
   amenities: [Amenity!]
   bathrooms: Int!
+  createdAt: DateTime!
   description: String
   floor: Int!
   floorArea: Float!
@@ -101,6 +113,7 @@ type Unit {
   projectId: String!
   rooms: Int!
   unitImages: [UnitImage!]
+  updatedAt: DateTime!
 }
 
 input UnitFilterInput {
@@ -130,6 +143,20 @@ type UnitImage {
 type UnitResponse {
   items: [Unit!]!
   total: Int!
+}
+
+"""Fields that can be used to sort units"""
+enum UnitSortField {
+  CREATED_AT
+  NAME
+}
+
+input UnitSortInput {
+  """Sort direction"""
+  direction: SortDirection = DESC
+
+  """Field to sort by"""
+  field: UnitSortField = CREATED_AT
 }
 
 input UpdateUnitInput {

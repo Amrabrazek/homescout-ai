@@ -48,7 +48,36 @@ A full-stack application for listing and browsing apartment units, complete with
 - Docker and Docker Compose installed
 - Node.js 18+ (for local development)
 
+### Checking/Freeing Required Ports
+
+Before starting, ensure that the following ports are not in use:
+
+- 3000: Frontend
+- 3001: Backend
+- 5432: PostgreSQL
+- 8000: Supabase Studio
+- 9000: MinIO S3 (if using S3 storage)
+- 9001: MinIO Console (if using S3 storage)
+
+To check if ports are in use:
+
+```bash
+# macOS/Linux
+sudo lsof -i :3000,3001,5432,8000,9000,9001
+
+# Windows
+netstat -ano | findstr "3000 3001 5432 8000 9000 9001"
+```
+
+To stop all running Docker containers:
+
+```bash
+docker stop $(docker ps -q)
+```
+
 ### Setup with Docker
+
+#### Option 1: Standard Setup (Linux/Windows)
 
 1. Clone the repository
 
@@ -69,10 +98,43 @@ A full-stack application for listing and browsing apartment units, complete with
    docker compose up
    ```
 
-4. Access the application:
-   - Frontend: http://localhost:3000
-   - GraphQL Playground: http://localhost:3001/graphql
-   - Supabase Studio: http://localhost:8000
+#### Option 2: macOS Setup with S3 Storage (Recommended for Mac)
+
+Due to limitations with Docker bind mounts on macOS that can affect local file storage, it's recommended to use the S3 storage backend:
+
+1. Clone the repository
+
+   ```bash
+   git clone https://github.com/Amrabrazek/nawy-task.git
+   cd nawy-task
+   ```
+
+2. Create `.env` file with required environment variables
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Start the development environment with the S3 storage configuration:
+
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.s3.yml up
+   ```
+
+   This configuration uses MinIO as an S3-compatible storage backend instead of the local filesystem.
+
+### Access Credentials
+
+Once the application is running, you can access:
+
+- **Frontend**: http://localhost:3000
+- **GraphQL Playground**: http://localhost:3001/graphql
+- **Supabase Studio**: http://localhost:8000
+  - Username: `supabase`
+  - Password: `this_password_is_insecure_and_should_be_updated` (or your custom value from DASHBOARD_PASSWORD in .env)
+- **MinIO Console** (S3 storage option): http://localhost:9001
+  - Username: `supa-storage`
+  - Password: `secret1234`
 
 ### Local Development (without Docker)
 
@@ -85,6 +147,8 @@ A full-stack application for listing and browsing apartment units, complete with
    ```
 
 2. Access Supabase Studio at http://localhost:8000
+   - Username: `supabase`
+   - Password: `this_password_is_insecure_and_should_be_updated` (or your custom value from DASHBOARD_PASSWORD in .env)
 
 #### Backend Setup
 
@@ -100,9 +164,9 @@ A full-stack application for listing and browsing apartment units, complete with
    npm install
    ```
 
-3. Create a `.env` file with database connection and Supabase details (copy from `.env.example`)
+3. Create a `.env` file with database connection and Supabase details
 
-   ```
+   ```bash
    cp .env.example .env
    ```
 
@@ -151,7 +215,13 @@ A full-stack application for listing and browsing apartment units, complete with
    npm install
    ```
 
-3. Update the `.env` file with the necessary values:
+3. Create and update the `.env` file with the necessary values:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Then update with proper values:
 
    ```
    NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000
@@ -208,6 +278,85 @@ The application uses Supabase Storage for managing property images:
 2. The backend provides a REST API for file uploads at `/upload/image`
 3. Files are stored in the `images` bucket within Supabase Storage
 4. The application handles image preview, deletion, and public URL generation
+
+### Storage Configuration in Docker
+
+The application supports two storage backends for Supabase:
+
+#### 1. Local File Storage (default)
+
+- Uses the local filesystem for storing files
+- Default configuration in `docker-compose.yml`
+- Works well on Linux and Windows
+- May have permission issues with Docker on macOS due to file system limitations
+
+#### 2. S3-Compatible Storage
+
+- Uses MinIO as an S3-compatible storage server
+- Configured in `docker-compose.s3.yml`
+- Recommended for macOS users to avoid file system permission issues
+- Can be activated with: `docker compose -f docker-compose.yml -f docker-compose.s3.yml up`
+
+When using S3 storage:
+
+- Files are stored in a MinIO container instead of the local filesystem
+- Storage is still persistent between restarts (data is stored in volumes)
+- The MinIO console is available at http://localhost:9001 for browsing/managing files
+  - Username: `supa-storage`
+  - Password: `secret1234`
+
+### Troubleshooting Supabase Storage in Docker
+
+If you're experiencing issues with file uploads while running in Docker, especially on macOS, try these solutions:
+
+#### Issues with Local File Storage on macOS
+
+macOS has limitations with Docker bind mounts that can cause permission issues with Supabase's local storage. Common symptoms:
+
+- Files appear to upload but aren't accessible
+- Storage permission errors in logs
+- Storage works when running Supabase standalone but fails when running with the full application
+
+**Solution 1: Use S3 Storage Backend (Recommended for macOS)**
+
+```bash
+# Stop any running containers first
+docker stop $(docker ps -q)
+
+# Then start with S3 configuration
+docker compose -f docker-compose.yml -f docker-compose.s3.yml up
+```
+
+**Solution 2: Check Container Networks**
+If storage works in a standalone Supabase setup but not in the full application, ensure:
+
+1. All containers are on the same Docker network
+2. The frontend is configured with correct URLs for the Supabase API
+3. The storage service can communicate with the MinIO service (for S3 storage)
+
+**Solution 3: Check Container URLs**
+When using S3 storage, make sure the MinIO endpoint in `docker-compose.s3.yml` is set correctly:
+
+```yaml
+GLOBAL_S3_ENDPOINT: http://minio:9000 # Uses the container name
+```
+
+**Solution 4: Update Image Versions**
+Sometimes, compatibility issues can be fixed by using matching versions of all Supabase services. Check the standalone working setup for the exact versions and update your integrated setup accordingly.
+
+**Solution 5: Port Conflicts**
+If you're experiencing "port already in use" errors:
+
+```bash
+# Find processes using conflicting ports
+sudo lsof -i :3000,3001,5432,8000,9000,9001
+
+# Then kill the specific process
+kill -9 <PID>
+
+# Or stop all Docker containers
+docker stop $(docker ps -q)
+```
 
 ## 🔨 API Examples
 
