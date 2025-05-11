@@ -20,6 +20,10 @@ interface UnitSorterProps {
 }
 
 export default function UnitSorter({ sort, onSortChange }: UnitSorterProps) {
+  // Default to CREATED_AT and DESC if not provided
+  const sortField = sort.field || UnitSortField.CREATED_AT;
+  const sortDirection = sort.direction || SortDirection.DESC;
+
   const handleSortFieldChange = (value: string) => {
     onSortChange({
       ...sort,
@@ -40,7 +44,7 @@ export default function UnitSorter({ sort, onSortChange }: UnitSorterProps) {
     <div className='flex flex-col sm:flex-row gap-3 items-start sm:items-end'>
       <div className='space-y-1.5 w-full sm:w-auto'>
         <Label htmlFor='sort-field'>Sort by</Label>
-        <Select value={sort.field || ''} onValueChange={handleSortFieldChange}>
+        <Select value={sortField} onValueChange={handleSortFieldChange}>
           <SelectTrigger id='sort-field' className='min-w-[180px]'>
             <SelectValue placeholder='Sort by...' />
           </SelectTrigger>
@@ -53,23 +57,18 @@ export default function UnitSorter({ sort, onSortChange }: UnitSorterProps) {
         </Select>
       </div>
 
-      {sort.field && (
-        <div className='space-y-1.5 w-full sm:w-auto'>
-          <Label htmlFor='sort-direction'>Direction</Label>
-          <Select
-            value={sort.direction || SortDirection.ASC}
-            onValueChange={handleSortDirectionChange}
-          >
-            <SelectTrigger id='sort-direction' className='min-w-[120px]'>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={SortDirection.ASC}>Ascending</SelectItem>
-              <SelectItem value={SortDirection.DESC}>Descending</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+      <div className='space-y-1.5 w-full sm:w-auto'>
+        <Label htmlFor='sort-direction'>Direction</Label>
+        <Select value={sortDirection} onValueChange={handleSortDirectionChange}>
+          <SelectTrigger id='sort-direction' className='min-w-[120px]'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={SortDirection.ASC}>Ascending</SelectItem>
+            <SelectItem value={SortDirection.DESC}>Descending</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 }

@@ -7,47 +7,38 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Button } from '@/components/ui/button';
-import { X, Search } from 'lucide-react';
+import { X, Search, Share2 } from 'lucide-react';
 import { useFilterData } from '@/lib/graphql/units/hooks';
 import { useProjects } from '@/lib/graphql/projects/hooks';
+import { UnitFilter } from '@/lib/graphql/units/types';
+import { toast } from '@/components/ui/sonner';
 
 type FilterProps = {
-  filters: {
-    searchTerm?: string;
-    projectIds?: string[];
-    amenityIds?: string[];
-    minRooms?: number;
-    maxRooms?: number;
-    minPrice?: number;
-    maxPrice?: number;
-    minFloorArea?: number;
-    maxFloorArea?: number;
-  };
-  onChange: (filters: any) => void;
+  filters: UnitFilter;
+  onChange: (filters: UnitFilter) => void;
   totalUnits?: number;
 };
 
 export default function UnitFilters({ filters, onChange }: FilterProps) {
   const { data, loading } = useFilterData();
 
+  // Use refs for debounce timers
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const projectSearchTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Local input state - only for controlled inputs
   const [inputValues, setInputValues] = useState({
-    searchTerm: filters.searchTerm || '',
-    minPrice: filters.minPrice || '',
-    maxPrice: filters.maxPrice || '',
-    minRooms: filters.minRooms || '',
-    maxRooms: filters.maxRooms || '',
-    minFloorArea: filters.minFloorArea || '',
-    maxFloorArea: filters.maxFloorArea || '',
+    searchTerm: '',
+    minPrice: '',
+    maxPrice: '',
+    minRooms: '',
+    maxRooms: '',
+    minFloorArea: '',
+    maxFloorArea: '',
   });
-
-  // Single debounce timer for all text/number inputs
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // For project search and pagination
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
-  const [projectSearchTimer, setProjectSearchTimer] =
-    useState<NodeJS.Timeout | null>(null);
 
   const projectsPerPage = 10;
 
@@ -62,16 +53,18 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
     limit: projectsPerPage,
   });
 
-  // Update local state when props change
+  // Update input values when filters change (from URL or parent component)
   useEffect(() => {
     setInputValues({
       searchTerm: filters.searchTerm || '',
-      minPrice: filters.minPrice || '',
-      maxPrice: filters.maxPrice || '',
-      minRooms: filters.minRooms || '',
-      maxRooms: filters.maxRooms || '',
-      minFloorArea: filters.minFloorArea || '',
-      maxFloorArea: filters.maxFloorArea || '',
+      minPrice: filters.minPrice !== undefined ? String(filters.minPrice) : '',
+      maxPrice: filters.maxPrice !== undefined ? String(filters.maxPrice) : '',
+      minRooms: filters.minRooms !== undefined ? String(filters.minRooms) : '',
+      maxRooms: filters.maxRooms !== undefined ? String(filters.maxRooms) : '',
+      minFloorArea:
+        filters.minFloorArea !== undefined ? String(filters.minFloorArea) : '',
+      maxFloorArea:
+        filters.maxFloorArea !== undefined ? String(filters.maxFloorArea) : '',
     });
   }, [filters]);
 
@@ -79,9 +72,10 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      if (projectSearchTimer) clearTimeout(projectSearchTimer);
+      if (projectSearchTimerRef.current)
+        clearTimeout(projectSearchTimerRef.current);
     };
-  }, [projectSearchTimer]);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -95,37 +89,43 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
     // Clear any existing timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
     }
 
     // Set new timer to update the parent after typing stops
-    debounceTimerRef.current = setTimeout(() => {
+    const timer = setTimeout(() => {
       const processedValue =
         type === 'number' ? (value ? Number(value) : undefined) : value;
 
       onChange({
         ...filters,
-        [name]: processedValue,
+        [name]: processedValue !== '' ? processedValue : undefined,
       });
     }, 500);
+
+    debounceTimerRef.current = timer;
   };
 
   // Direct updates for multi-select/checkbox values (no debounce)
   const handleProjectsChange = (selectedIds: string[]) => {
     onChange({
       ...filters,
-      projectIds: selectedIds,
+      projectIds: selectedIds.length > 0 ? selectedIds : undefined,
     });
   };
 
   const handleProjectSearch = (searchTerm: string) => {
     // Debounce project search
-    if (projectSearchTimer) clearTimeout(projectSearchTimer);
+    if (projectSearchTimerRef.current) {
+      clearTimeout(projectSearchTimerRef.current);
+      projectSearchTimerRef.current = null;
+    }
 
     const timer = setTimeout(() => {
       setProjectSearchTerm(searchTerm);
     }, 300);
 
-    setProjectSearchTimer(timer);
+    projectSearchTimerRef.current = timer;
   };
 
   const handleAmenityChange = (amenityId: string, checked: boolean) => {
@@ -136,7 +136,7 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
 
     onChange({
       ...filters,
-      amenityIds: newAmenities,
+      amenityIds: newAmenities.length > 0 ? newAmenities : undefined,
     });
   };
 
@@ -162,9 +162,26 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
     onChange({});
   };
 
+  const handleShareFilters = () => {
+    const currentUrl = window.location.href;
+    navigator.clipboard
+      .writeText(currentUrl)
+      .then(() => {
+        toast.success('URL copied to clipboard', {
+          description: 'You can now share this link with others',
+        });
+      })
+      .catch((error) => {
+        toast.error('Failed to copy URL', {
+          description: 'Please try again',
+        });
+        console.error('Failed to copy URL:', error);
+      });
+  };
+
   return (
     <Card className='flex flex-col max-h-[calc(100vh-100px)]'>
-      <CardHeader className='flex-shrink-0'>
+      <CardHeader className='flex-shrink-0 px-3 py-2'>
         <CardTitle className='flex justify-between items-center'>
           <span>Filters</span>
           <Button
@@ -178,7 +195,18 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
           </Button>
         </CardTitle>
       </CardHeader>
-      <CardContent className='space-y-4 overflow-y-auto pb-6'>
+      <div className='sticky top-0 z-10 bg-card px-6 pt-2 pb-2 border-b border-border shadow-sm'>
+        <Button
+          variant='outline'
+          size='sm'
+          onClick={handleShareFilters}
+          className='w-full flex items-center justify-center gap-1'
+        >
+          <Share2 size={14} />
+          Share Filters
+        </Button>
+      </div>
+      <CardContent className='space-y-4 overflow-y-auto pb-6 pt-4'>
         <div className='space-y-2'>
           <Label htmlFor='searchTerm'>Search by name or number</Label>
           <Input
