@@ -155,7 +155,7 @@ export function UnitForm({ unitData }: UnitFormProps) {
               className='flex items-center'
             >
               <ExternalLink size={16} />
-              <span>View</span>
+              <span className='hidden sm:inline'>View</span>
             </Link>
           </Button>
           <Button
@@ -165,7 +165,7 @@ export function UnitForm({ unitData }: UnitFormProps) {
             className='gap-1 h-10'
           >
             <Copy size={16} />
-            Copy Link
+            <span className='hidden sm:inline'>Copy Link</span>
           </Button>
           <Button
             variant='destructive'
@@ -175,7 +175,9 @@ export function UnitForm({ unitData }: UnitFormProps) {
             disabled={isDeleting}
           >
             <Trash2 size={16} />
-            {isDeleting ? 'Deleting...' : 'Delete'}
+            <span className='hidden sm:inline'>
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </span>
           </Button>
         </>
       )}

@@ -4,6 +4,7 @@ import { IsEnum, IsOptional } from 'class-validator';
 export enum UnitSortField {
   NAME = 'name',
   CREATED_AT = 'createdAt',
+  PRICE = 'price',
 }
 
 export enum SortDirection {

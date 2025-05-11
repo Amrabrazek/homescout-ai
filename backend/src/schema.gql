@@ -149,6 +149,7 @@ type UnitResponse {
 enum UnitSortField {
   CREATED_AT
   NAME
+  PRICE
 }
 
 input UnitSortInput {

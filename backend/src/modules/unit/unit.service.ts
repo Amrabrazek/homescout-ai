@@ -113,6 +113,8 @@ export class UnitService {
       order.name = sort.direction || SortDirection.ASC;
     } else if (sort?.field === UnitSortField.CREATED_AT) {
       order.createdAt = sort.direction || SortDirection.DESC;
+    } else if (sort?.field === UnitSortField.PRICE) {
+      order.price = sort.direction || SortDirection.ASC;
     } else {
       // Default order
       order.createdAt = SortDirection.DESC;
@@ -209,6 +211,8 @@ export class UnitService {
       order.name = sort.direction || SortDirection.ASC;
     } else if (sort?.field === UnitSortField.CREATED_AT) {
       order.createdAt = sort.direction || SortDirection.DESC;
+    } else if (sort?.field === UnitSortField.PRICE) {
+      order.price = sort.direction || SortDirection.ASC;
     } else {
       // Default order
       order.createdAt = SortDirection.DESC;

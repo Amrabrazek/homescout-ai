@@ -53,6 +53,7 @@ export default function UnitSorter({ sort, onSortChange }: UnitSorterProps) {
             <SelectItem value={UnitSortField.CREATED_AT}>
               Date created
             </SelectItem>
+            <SelectItem value={UnitSortField.PRICE}>Price</SelectItem>
           </SelectContent>
         </Select>
       </div>
