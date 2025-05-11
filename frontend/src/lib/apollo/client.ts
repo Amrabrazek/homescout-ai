@@ -20,8 +20,6 @@ function getGraphQLEndpoint() {
 
 // Server-side Apollo client
 export function getServerClient() {
-  console.log('Creating server client with endpoint:', getGraphQLEndpoint());
-
   return new ApolloClient({
     cache: new InMemoryCache(),
     link: new HttpLink({
@@ -33,8 +31,6 @@ export function getServerClient() {
 
 // Client-side Apollo client
 export function getClient() {
-  console.log('Creating client with endpoint:', getGraphQLEndpoint());
-
   return new ApolloClient({
     uri: getGraphQLEndpoint(),
     cache: new InMemoryCache(),

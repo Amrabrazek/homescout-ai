@@ -187,7 +187,7 @@ export function UnitForm({ unitData }: UnitFormProps) {
     setUploadedImages(images);
 
     // Update the form with the new image IDs and mark as dirty
-    const imageIds = images.map((img) => img.id);
+    const imageIds = images.map((img: ImageData) => img.id);
     form.setValue('imageIds', imageIds, {
       shouldDirty: true,
       shouldTouch: true,
@@ -205,7 +205,7 @@ export function UnitForm({ unitData }: UnitFormProps) {
         id: unitData?.id,
         ...values,
         // Use the imageIds from our state to ensure correct order
-        imageIds: uploadedImages.map((img) => img.id),
+        imageIds: uploadedImages.map((img: ImageData) => img.id),
       };
 
       // Choose between create or update

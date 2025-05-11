@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { uploadFilesToStorage } from '@/lib/supabase/storage';
 import { createImageEntity } from '@/lib/graphql/units/actions';
-import { Button } from './button';
 import { Card } from './card';
 import { Progress } from './progress';
 import {
@@ -55,7 +54,7 @@ export function ImageUploader({
 
   const removeImage = useCallback(
     (id: string) => {
-      const updatedImages = images.filter((img) => img.id !== id);
+      const updatedImages = images.filter((img: ImageData) => img.id !== id);
       setImages(updatedImages);
       onImagesUploaded(updatedImages);
     },
@@ -95,9 +94,12 @@ export function ImageUploader({
           `Uploading ${validFiles.length} images...`
         );
         const uploadResults = await uploadFilesToStorage(validFiles);
+        console.log('uploadResults', uploadResults);
 
         // Check if any uploads failed
         const failedUploads = uploadResults.filter((result) => !result.success);
+        console.log('failedUploads', failedUploads);
+
         if (failedUploads.length > 0) {
           toast.dismiss(uploadToastId);
           toast.error(`Failed to upload ${failedUploads.length} images`);
@@ -112,6 +114,8 @@ export function ImageUploader({
         const successfulUploads = uploadResults.filter(
           (result) => result.success && result.url
         );
+
+        console.log('successfulUploads', successfulUploads);
 
         const newImages: ImageData[] = [];
         let completed = 0;
@@ -307,17 +311,21 @@ export function ImageUploader({
 
       {images.length > 0 && (
         <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4'>
-          {images.map((image) => (
+          {images.map((image: ImageData) => (
             <Card
               key={image.id}
               className={`relative group overflow-hidden transition-all ${
                 draggedImage === image.id ? 'opacity-50' : ''
               } ${dragOverImage === image.id ? 'border-primary border-2' : ''}`}
               draggable={!isDisabled}
-              onDragStart={(e) => handleImageDragStart(e, image.id)}
-              onDragOver={(e) => handleImageDragOver(e, image.id)}
+              onDragStart={(e: React.DragEvent) =>
+                handleImageDragStart(e, image.id)
+              }
+              onDragOver={(e: React.DragEvent) =>
+                handleImageDragOver(e, image.id)
+              }
               onDragEnd={handleImageDragEnd}
-              onDrop={(e) => handleImageDrop(e, image.id)}
+              onDrop={(e: React.DragEvent) => handleImageDrop(e, image.id)}
             >
               <div className='aspect-square relative'>
                 <img

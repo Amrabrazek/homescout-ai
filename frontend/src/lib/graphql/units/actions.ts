@@ -97,12 +97,15 @@ export async function createImageEntity({
   altText: string;
 }) {
   try {
+    // Make sure the URL is properly formatted
+    const formattedUrl = url.trim();
+
     const client = getServerClient();
     const response = await client.mutate({
       mutation: CREATE_IMAGE,
       variables: {
         createImageInput: {
-          url,
+          url: formattedUrl,
           alt_text: altText,
         },
       },

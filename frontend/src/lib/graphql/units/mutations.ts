@@ -46,8 +46,6 @@ export const CREATE_IMAGE = gql`
       id
       url
       altText
-      fileName
-      contentType
     }
   }
 `;
