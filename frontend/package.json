@@ -27,6 +27,7 @@
     "@radix-ui/react-tooltip": "^1.2.6",
     "@shadcn/ui": "^0.0.4",
     "@supabase/supabase-js": "^2.39.9",
+    "bufferutil": "^4.0.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -37,6 +38,7 @@
     "next": "^13.4.12",
     "next-themes": "^0.4.6",
     "quill": "^2.0.2",
+    "quill-blot-formatter": "^1.0.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.56.3",
@@ -44,6 +46,7 @@
     "sonner": "^2.0.3",
     "tailwind-merge": "^1.14.0",
     "tailwindcss-animate": "^1.0.7",
+    "utf-8-validate": "^6.0.3",
     "yet-another-react-lightbox": "^3.23.0",
     "zod": "^3.21.4"
   },
