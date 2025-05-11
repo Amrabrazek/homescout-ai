@@ -1,17 +1,5 @@
 -- We'll use the public schema directly (no schema creation needed)
 
--- Create storage bucket for images
-insert into storage.buckets
-  (id, name)
-values
-  ('images', 'images');
-
-CREATE POLICY "Public read access" ON storage.objects FOR SELECT TO anon, authenticated, service_role  USING (bucket_id = 'images');
-
--- TODO: Uncomment this when we have a way to handle the file upload
--- CREATE POLICY "Public write access" ON storage.objects FOR INSERT TO anon, authenticated, service_role USING (bucket_id = 'images'); 
-
-
 -- Create developers table
 CREATE TABLE IF NOT EXISTS public.developers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -224,3 +212,18 @@ BEGIN
   END IF;
 END;
 $$; 
+
+-------------------------------------------------------------------------------- 
+-- Storage
+--------------------------------------------------------------------------------
+-- Create storage bucket for images
+insert into storage.buckets
+  (id, name)
+values
+  ('images', 'images');
+
+
+CREATE POLICY "Public read access" ON storage.objects FOR SELECT TO anon, authenticated, service_role  USING (bucket_id = 'images');
+
+-- TODO: Uncomment this when we have a way to handle the file upload
+CREATE POLICY "Public write access" ON storage.objects FOR INSERT TO anon, authenticated, service_role WITH CHECK (bucket_id = 'images'); 
