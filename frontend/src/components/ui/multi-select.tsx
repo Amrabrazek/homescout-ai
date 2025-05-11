@@ -229,15 +229,16 @@ export function MultiSelect({
               <Badge
                 key={option.id}
                 variant='secondary'
-                className='flex items-center gap-1 animate-fadeIn'
+                className='flex items-center gap-1 animate-fadeIn max-w-full'
+                title={option.label}
               >
-                {option.label}
+                <span className='truncate max-w-[180px]'>{option.label}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRemove(option.id);
                   }}
-                  className='hover:bg-gray-200 rounded-full p-0.5 transition-colors'
+                  className='hover:bg-gray-200 rounded-full p-0.5 transition-colors flex-shrink-0'
                 >
                   <X size={12} />
                 </button>
@@ -307,7 +308,8 @@ export function MultiSelect({
                     />
                     <Label
                       htmlFor={`option-${option.id}`}
-                      className='text-sm cursor-pointer'
+                      className='text-sm cursor-pointer truncate max-w-[90%]'
+                      title={option.label}
                     >
                       {option.label}
                     </Label>
