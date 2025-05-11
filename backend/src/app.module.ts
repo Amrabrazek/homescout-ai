@@ -11,7 +11,6 @@ import { ProjectModule } from './modules/project/project.module';
 import { UnitModule } from './modules/unit/unit.module';
 import { ImageModule } from './modules/image/image.module';
 import { AmenityModule } from './modules/amenity/amenity.module';
-import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -54,7 +53,6 @@ import { StorageModule } from './storage/storage.module';
     UnitModule,
     ImageModule,
     AmenityModule,
-    StorageModule,
   ],
 })
 export class AppModule {}
