@@ -56,8 +56,6 @@ export function ProjectSelector({
     disabled,
   });
 
-  console.log("searchTerm", searchTerm);
-
   // Use the projects hook
   const {
     projects,
@@ -131,18 +129,17 @@ export function ProjectSelector({
           <FormLabel>{label}</FormLabel>
           <FormControl>
             <div className='space-y-3'>
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-                {/* Developer filter */}
-                <div className='space-y-1'>
-                  <Label htmlFor='developer-filter'>Filter by Developer</Label>
-                  {developersLoading && developers.length === 0 ? (
-                    <div className='h-10 rounded-md border border-input bg-background px-3 py-2 text-sm flex items-center opacity-70'>
-                      <Loader2 className='h-4 w-4 animate-spin mr-2' />
-                      <span className='text-muted-foreground'>
-                        Loading developers...
-                      </span>
-                    </div>
-                  ) : (
+              {/* Developer filter - Line 1 */}
+              <div>
+                {developersLoading && developers.length === 0 ? (
+                  <div className='h-10 rounded-md border border-input bg-background px-3 py-2 text-sm flex items-center opacity-70'>
+                    <Loader2 className='h-4 w-4 animate-spin mr-2' />
+                    <span className='text-muted-foreground'>
+                      Loading developers...
+                    </span>
+                  </div>
+                ) : (
+                  <>
                     <Select
                       value={selectedDeveloperId || ''}
                       onValueChange={handleDeveloperSelect}
@@ -160,7 +157,7 @@ export function ProjectSelector({
                             <span>Loading...</span>
                           </div>
                         ) : (
-                          <SelectValue placeholder='All Developers' />
+                          <SelectValue placeholder='Filter by Developer' />
                         )}
                       </SelectTrigger>
                       <SelectContent className='max-h-[300px]'>
@@ -177,86 +174,97 @@ export function ProjectSelector({
                         )}
                       </SelectContent>
                     </Select>
-                  )}
-                </div>
-
-                {/* Project search */}
-                <div className='space-y-1'>
-                  <Label htmlFor='project-search'>Search Projects</Label>
-                  <div className='relative'>
-                    <Input
-                      id='project-search'
-                      placeholder={
-                        loading ? 'Searching...' : 'Search projects...'
-                      }
-                      value={searchInput}
-                      onChange={(e) => setSearchInput(e.target.value)}
-                      className='pl-9'
-                      disabled={disabled}
-                    />
-                    {loading ? (
-                      <Loader2 className='absolute left-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground' />
-                    ) : (
-                      <Search className='absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none' />
-                    )}
-                  </div>
-                </div>
+                    <p className='text-xs text-muted-foreground mt-1'>
+                      Select a developer to filter projects by developer
+                    </p>
+                  </>
+                )}
               </div>
 
-              {/* Project selection */}
-              <Select
-                value={field.value || defaultProjectId}
-                defaultValue={defaultProjectId}
-                onValueChange={(value) => {
-                  const selectedId = handleSelect(value);
-                  field.onChange(selectedId);
-                }}
-                disabled={loading || disabled}
-              >
-                <SelectTrigger
-                  className={loading || disabled ? 'opacity-70' : ''}
+              {/* Project selection - Line 2 */}
+              <div>
+                <Select
+                  value={field.value || defaultProjectId}
+                  defaultValue={defaultProjectId}
+                  onValueChange={(value) => {
+                    const selectedId = handleSelect(value);
+                    field.onChange(selectedId);
+                  }}
+                  disabled={loading || disabled}
                 >
-                  <SelectValue placeholder={getSelectPlaceholder()} />
-                </SelectTrigger>
-                <SelectContent
-                  onScroll={handleScroll}
-                  className='max-h-[300px]'
-                >
-                  {loading && projects.length === 0 && (
-                    <div className='flex flex-col items-center justify-center py-6'>
-                      <Loader2 className='h-8 w-8 animate-spin mb-2 text-primary' />
-                      <p className='text-sm text-muted-foreground'>
-                        Loading projects...
+                  <SelectTrigger
+                    id='project-selector'
+                    className={loading || disabled ? 'opacity-70' : ''}
+                  >
+                    <SelectValue placeholder={getSelectPlaceholder()} />
+                  </SelectTrigger>
+                  <SelectContent
+                    onScroll={handleScroll}
+                    className='max-h-[300px]'
+                  >
+                    {/* Added search input inside the dropdown */}
+                    <div className='p-2 sticky top-0 bg-background z-10 border-b'>
+                      <div className='relative'>
+                        <Input
+                          placeholder={
+                            loading ? 'Searching...' : 'Search projects...'
+                          }
+                          value={searchInput}
+                          onChange={(e) => setSearchInput(e.target.value)}
+                          className='pl-9'
+                          disabled={disabled}
+                        />
+                        {loading ? (
+                          <Loader2 className='absolute left-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground' />
+                        ) : (
+                          <Search className='absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none' />
+                        )}
+                      </div>
+                      <p className='text-xs text-muted-foreground mt-1 px-1'>
+                        Type to search for projects by name
                       </p>
                     </div>
-                  )}
 
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}{' '}
-                      {project.developer ? `- ${project.developer.name}` : ''}
-                    </SelectItem>
-                  ))}
+                    {loading && projects.length === 0 && (
+                      <div className='flex flex-col items-center justify-center py-6'>
+                        <Loader2 className='h-8 w-8 animate-spin mb-2 text-primary' />
+                        <p className='text-sm text-muted-foreground'>
+                          Loading projects...
+                        </p>
+                      </div>
+                    )}
 
-                  {loading && projects.length > 0 && (
-                    <div className='flex justify-center py-2'>
-                      <Loader2 className='h-4 w-4 animate-spin' />
-                    </div>
-                  )}
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}{' '}
+                        {project.developer ? `- ${project.developer.name}` : ''}
+                      </SelectItem>
+                    ))}
 
-                  {!loading && !hasMore && projects.length > 0 && (
-                    <div className='text-center text-sm text-gray-500 py-2'>
-                      No more projects
-                    </div>
-                  )}
+                    {loading && projects.length > 0 && (
+                      <div className='flex justify-center py-2'>
+                        <Loader2 className='h-4 w-4 animate-spin' />
+                      </div>
+                    )}
 
-                  {!loading && projects.length === 0 && (
-                    <div className='text-center text-sm text-gray-500 py-4'>
-                      No projects found
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
+                    {!loading && !hasMore && projects.length > 0 && (
+                      <div className='text-center text-sm text-gray-500 py-2'>
+                        No more projects
+                      </div>
+                    )}
+
+                    {!loading && projects.length === 0 && (
+                      <div className='text-center text-sm text-gray-500 py-4'>
+                        No projects found
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className='text-xs text-muted-foreground mt-1'>
+                  Select a project to associate with this unit
+                  {selectedDeveloperId ? ' (filtered by developer)' : ''}
+                </p>
+              </div>
             </div>
           </FormControl>
           <FormMessage />

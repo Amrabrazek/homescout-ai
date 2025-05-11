@@ -16,16 +16,26 @@ import { UnitFormValues, unitSchema } from '@/lib/graphql/units/schema';
 import {
   createUnit,
   updateUnit,
-  uploadImages,
+  deleteUnit,
 } from '@/lib/graphql/units/actions';
 import { ProjectSelector } from './ProjectSelector';
 import { AmenitySelector } from './AmenitySelector';
-import { MediaUploader } from '@/components/ui/media-uploader';
-import { Copy, ExternalLink } from 'lucide-react';
+import { ImageUploader, ImageData } from '@/components/ui/image-uploader';
+import { Copy, ExternalLink, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Unit } from '@/lib/graphql/units/types';
 import { useRouter } from 'next/navigation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface UnitFormProps {
   unitData: Unit | null;
@@ -35,9 +45,16 @@ export function UnitForm({ unitData }: UnitFormProps) {
   const router = useRouter();
   const isEditing = !!unitData?.id;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
-
-  // Set loading state to false once we have initialData
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<ImageData[]>(
+    unitData?.images?.map((img) => ({
+      id: img.id,
+      url: img.url,
+      altText: img.altText || undefined,
+    })) || []
+  );
 
   // Form setup
   const form = useForm<UnitFormValues>({
@@ -58,7 +75,8 @@ export function UnitForm({ unitData }: UnitFormProps) {
   });
 
   // Handle copy link to clipboard
-  const handleCopyLink = () => {
+  const handleCopyLink = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     if (unitData?.id) {
       const url = `localhost:3000/unit/${unitData.id}`;
       navigator.clipboard.writeText(url);
@@ -74,6 +92,34 @@ export function UnitForm({ unitData }: UnitFormProps) {
       return `/unit/${unitData.id}`;
     }
     return '#';
+  };
+
+  // Handle delete unit
+  const handleDeleteClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!unitData?.id) return;
+
+    setIsDeleting(true);
+    try {
+      const result = await deleteUnit(unitData.id);
+
+      if (result.success) {
+        toast.success('Unit deleted successfully');
+        router.push('/');
+      } else {
+        toast.error(`Failed to delete unit: ${result.error}`);
+      }
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`);
+      console.error('Delete error:', error);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   // Extra buttons for header
@@ -101,46 +147,42 @@ export function UnitForm({ unitData }: UnitFormProps) {
             <Copy size={16} />
             Copy Link
           </Button>
+          <Button
+            variant='destructive'
+            size='sm'
+            onClick={handleDeleteClick}
+            className='gap-1 h-10'
+            disabled={isDeleting}
+          >
+            <Trash2 size={16} />
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </Button>
         </>
       )}
     </>
   );
 
+  // Handle images uploaded callback
+  const handleImagesUploaded = (images: ImageData[]) => {
+    setUploadedImages(images);
+    // Update the form with the new image IDs
+    form.setValue(
+      'imageIds',
+      images.map((img) => img.id)
+    );
+  };
+
   // Form submission handler
   const onSubmit = async (values: UnitFormValues) => {
     setIsSubmitting(true);
 
-    console.log('values', values);
-
     try {
-      // Upload images first if there are any
-      let newImageIds: string[] = [];
-
-      if (uploadFiles.length > 0) {
-        const uploadToastId = toast.loading('Uploading images...');
-        const uploadResult = await uploadImages(uploadFiles);
-
-        if (uploadResult.success && uploadResult.data) {
-          toast.dismiss(uploadToastId);
-          toast.success('Images uploaded successfully');
-          newImageIds = uploadResult.data.map((img: { id: string }) => img.id);
-        } else {
-          toast.dismiss(uploadToastId);
-          toast.error('Failed to upload images');
-          throw new Error(uploadResult.error || 'Failed to upload images');
-        }
-      }
-
-      // Combine existing image IDs with new ones if needed
-      const imageIds = [...(values.imageIds || []), ...newImageIds];
-
-      console.log('imageIds', imageIds);
-
-      // Create variables for the API call
+      // Create variables for the API call including image IDs from state
       const formData = {
         id: unitData?.id,
         ...values,
-        imageIds,
+        // Use the imageIds from both the form and our state
+        imageIds: uploadedImages.map((img) => img.id),
       };
 
       // Choose between create or update
@@ -148,14 +190,10 @@ export function UnitForm({ unitData }: UnitFormProps) {
         isEditing ? 'Updating unit...' : 'Creating unit...'
       );
 
-      console.log('isEditing', isEditing);
-
       const result =
         isEditing && unitData?.id
           ? await updateUnit(formData)
           : await createUnit(formData);
-
-      console.log('result', result);
 
       if (result.success) {
         toast.dismiss(saveToastId);
@@ -188,9 +226,8 @@ export function UnitForm({ unitData }: UnitFormProps) {
     }
   };
 
-  const handleImagesChange = (files: File[]) => {
-    setUploadFiles(files);
-  };
+  // We want to disable form submission when images are being uploaded
+  const isFormDisabled = isUploading || isSubmitting || isDeleting;
 
   return (
     <div className='w-full max-w-none'>
@@ -200,10 +237,10 @@ export function UnitForm({ unitData }: UnitFormProps) {
             isEditing={isEditing}
             entityName='Unit'
             title={unitData?.name}
-            redirectUrl='/dashboard/units'
+            redirectUrl='/'
             extraButtons={extraButtons}
             onSubmit={form.handleSubmit(onSubmit)}
-            loading={isSubmitting}
+            loading={isFormDisabled}
           />
 
           <div className='space-y-6 py-6 px-4 md:px-8'>
@@ -239,7 +276,7 @@ export function UnitForm({ unitData }: UnitFormProps) {
                   name='projectId'
                   label='Project'
                   selectedProject={unitData?.project}
-                  disabled={isSubmitting}
+                  disabled={isFormDisabled}
                 />
               </div>
             </FormSectionFieldsContainer>
@@ -248,7 +285,7 @@ export function UnitForm({ unitData }: UnitFormProps) {
               title='Unit Features'
               subtitle='Size and facilities'
             >
-              <div className='grid grid-cols-1 md:grid-cols-3 gap-6 p-4'>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-6 p-4'>
                 <FormInputField
                   name='floor'
                   title='Floor'
@@ -307,18 +344,39 @@ export function UnitForm({ unitData }: UnitFormProps) {
               subtitle='Upload unit images'
             >
               <div className='p-4'>
-                <MediaUploader
-                  onImagesChange={handleImagesChange}
-                  initialImages={unitData?.images?.map((img) => ({
-                    id: img.id,
-                    url: img.url,
-                  }))}
+                <ImageUploader
+                  onImagesUploaded={handleImagesUploaded}
+                  initialImages={uploadedImages}
+                  isDisabled={isSubmitting}
+                  maxFiles={10}
                 />
               </div>
             </FormSectionFieldsContainer>
           </div>
         </form>
       </Form>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the unit "{unitData?.name}". This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className='bg-destructive text-destructive-foreground'
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
