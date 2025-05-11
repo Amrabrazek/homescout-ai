@@ -41,11 +41,11 @@ export default function UnitSorter({ sort, onSortChange }: UnitSorterProps) {
   };
 
   return (
-    <div className='flex flex-col sm:flex-row gap-3 items-start sm:items-end'>
-      <div className='space-y-1.5 w-full sm:w-auto'>
+    <div className='flex flex-col sm:flex-row gap-3 items-start sm:items-end w-full'>
+      <div className='space-y-1.5 w-full'>
         <Label htmlFor='sort-field'>Sort by</Label>
         <Select value={sortField} onValueChange={handleSortFieldChange}>
-          <SelectTrigger id='sort-field' className='min-w-[180px]'>
+          <SelectTrigger id='sort-field' className='w-full'>
             <SelectValue placeholder='Sort by...' />
           </SelectTrigger>
           <SelectContent>
@@ -58,10 +58,10 @@ export default function UnitSorter({ sort, onSortChange }: UnitSorterProps) {
         </Select>
       </div>
 
-      <div className='space-y-1.5 w-full sm:w-auto'>
+      <div className='space-y-1.5 w-full'>
         <Label htmlFor='sort-direction'>Direction</Label>
         <Select value={sortDirection} onValueChange={handleSortDirectionChange}>
-          <SelectTrigger id='sort-direction' className='min-w-[120px]'>
+          <SelectTrigger id='sort-direction' className='w-full'>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
