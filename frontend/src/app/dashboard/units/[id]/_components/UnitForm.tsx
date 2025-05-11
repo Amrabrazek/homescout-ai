@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import {
   FormTextareaField,
   PriceWithCurrencyFormField,
 } from '@/components/ui/form-fields';
+import { RichTextFormFiled } from '@/components/rich-text/rich-text-form-fields';
 import { UnitFormValues, unitSchema } from '@/lib/graphql/units/schema';
 import {
   createUnit,
@@ -36,6 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
 
 interface UnitFormProps {
   unitData: Unit | null;
@@ -56,6 +58,11 @@ export function UnitForm({ unitData }: UnitFormProps) {
     })) || []
   );
 
+  // For rich text description
+  const [description, setDescription] = useState<string>(
+    unitData?.description || ''
+  );
+
   // Form setup
   const form = useForm<UnitFormValues>({
     resolver: zodResolver(unitSchema),
@@ -73,6 +80,19 @@ export function UnitForm({ unitData }: UnitFormProps) {
       imageIds: unitData?.images?.map((img) => img.id) || [],
     },
   });
+
+  // Update form when description changes from rich text
+  useEffect(() => {
+    form.setValue('description', description, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }, [description, form]);
+
+  // Handle description change
+  const handleDescriptionChange = (value: string) => {
+    setDescription(value);
+  };
 
   // Handle copy link to clipboard
   const handleCopyLink = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -165,11 +185,14 @@ export function UnitForm({ unitData }: UnitFormProps) {
   // Handle images uploaded callback
   const handleImagesUploaded = (images: ImageData[]) => {
     setUploadedImages(images);
-    // Update the form with the new image IDs
-    form.setValue(
-      'imageIds',
-      images.map((img) => img.id)
-    );
+
+    // Update the form with the new image IDs and mark as dirty
+    const imageIds = images.map((img) => img.id);
+    form.setValue('imageIds', imageIds, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
   };
 
   // Form submission handler
@@ -181,7 +204,7 @@ export function UnitForm({ unitData }: UnitFormProps) {
       const formData = {
         id: unitData?.id,
         ...values,
-        // Use the imageIds from both the form and our state
+        // Use the imageIds from our state to ensure correct order
         imageIds: uploadedImages.map((img) => img.id),
       };
 
@@ -262,7 +285,19 @@ export function UnitForm({ unitData }: UnitFormProps) {
                   placeholder='A-101'
                 />
                 <div className='col-span-1 md:col-span-2'>
-                  <FormTextareaField name='description' title='Description' />
+                  <div className='flex flex-col gap-2'>
+                    <Label>Description</Label>
+                    <div>
+                      <RichTextFormFiled
+                        description={
+                          form.getValues('description') ??
+                          unitData?.description ??
+                          undefined
+                        }
+                        changeFunc={handleDescriptionChange}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </FormSectionFieldsContainer>
@@ -341,7 +376,7 @@ export function UnitForm({ unitData }: UnitFormProps) {
 
             <FormSectionFieldsContainer
               title='Images'
-              subtitle='Upload unit images'
+              subtitle='Upload and arrange unit images'
             >
               <div className='p-4'>
                 <ImageUploader
@@ -350,6 +385,12 @@ export function UnitForm({ unitData }: UnitFormProps) {
                   isDisabled={isSubmitting}
                   maxFiles={10}
                 />
+                {uploadedImages.length > 1 && (
+                  <p className='text-xs text-muted-foreground mt-2'>
+                    Tip: Drag and drop to reorder images. The first image will
+                    be used as the unit thumbnail.
+                  </p>
+                )}
               </div>
             </FormSectionFieldsContainer>
           </div>
