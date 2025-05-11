@@ -351,8 +351,10 @@ export class UnitService {
 
   async delete(id: string): Promise<Unit> {
     const unit = await this.findOne(id);
+    // Clone the unit before removing it to return a valid object
+    const unitToReturn = { ...unit };
     await this.unitRepository.remove(unit);
-    return unit;
+    return unitToReturn;
   }
 
   async getUnitImages(unitId: string): Promise<Image[]> {

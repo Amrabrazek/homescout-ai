@@ -21,7 +21,10 @@ export const UPDATE_UNIT = gql`
 
 export const DELETE_UNIT = gql`
   mutation DeleteUnit($id: String!) {
-    deleteUnit(id: $id)
+    deleteUnit(id: $id) {
+      id
+      name
+    }
   }
 `;
 
