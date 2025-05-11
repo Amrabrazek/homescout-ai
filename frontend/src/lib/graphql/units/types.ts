@@ -39,6 +39,21 @@ export interface UnitFilter {
   maxFloorArea?: number;
 }
 
+export enum UnitSortField {
+  NAME = 'NAME',
+  CREATED_AT = 'CREATED_AT',
+}
+
+export enum SortDirection {
+  ASC = 'ASC',
+  DESC = 'DESC',
+}
+
+export interface UnitSort {
+  field?: UnitSortField;
+  direction?: SortDirection;
+}
+
 export interface UnitsResponse {
   items: Unit[];
   total: number;
@@ -51,6 +66,7 @@ export interface GetUnitsQueryResponse {
 
 export interface GetUnitsQueryVariables {
   filter?: UnitFilter;
+  sort?: UnitSort;
   limit?: number;
   offset?: number;
 }

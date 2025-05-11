@@ -7,14 +7,16 @@ import type {
   GetUnitsQueryVariables,
   UnitFilter,
   Unit,
+  UnitSort,
 } from './types';
 
 const UNITS_PER_PAGE = 20;
 
-export function useUnits(filter: UnitFilter, offset = 0) {
+export function useUnits(filter: UnitFilter, sort?: UnitSort, offset = 0) {
   return useQuery<GetUnitsQueryResponse, GetUnitsQueryVariables>(GET_UNITS, {
     variables: {
       filter,
+      sort,
       limit: UNITS_PER_PAGE,
       offset,
     },
@@ -28,19 +30,22 @@ export function useFilterData() {
 }
 
 // Helper hook for infinite scroll
-export function useInfiniteUnits(filter: UnitFilter) {
-  const { data, loading, error, fetchMore, networkStatus } = useUnits(filter);
+export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {
+  const { data, loading, error, fetchMore, networkStatus } = useUnits(
+    filter,
+    sort
+  );
   const [items, setItems] = useState<Unit[]>([]);
   const [hasMore, setHasMore] = useState(true);
 
-  // Reset items when filter changes
+  // Reset items when filter or sort changes
   useEffect(() => {
     if (data?.units.items) {
       setItems(data.units.items);
       // Check if we should allow loading more
       setHasMore(data.units.items.length < data.units.total);
     }
-  }, [data, filter]);
+  }, [data, filter, sort]);
 
   const loadMore = async () => {
     if (loading || !items.length || !hasMore) return;

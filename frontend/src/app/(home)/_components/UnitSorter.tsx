@@ -1,0 +1,75 @@
+'use client';
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import {
+  UnitSortField,
+  SortDirection,
+  UnitSort,
+} from '@/lib/graphql/units/types';
+
+interface UnitSorterProps {
+  sort: UnitSort;
+  onSortChange: (sort: UnitSort) => void;
+}
+
+export default function UnitSorter({ sort, onSortChange }: UnitSorterProps) {
+  const handleSortFieldChange = (value: string) => {
+    onSortChange({
+      ...sort,
+      field: value as UnitSortField,
+      // Set a default direction if not already set
+      direction: sort.direction || SortDirection.ASC,
+    });
+  };
+
+  const handleSortDirectionChange = (value: string) => {
+    onSortChange({
+      ...sort,
+      direction: value as SortDirection,
+    });
+  };
+
+  return (
+    <div className='flex flex-col sm:flex-row gap-3 items-start sm:items-end'>
+      <div className='space-y-1.5 w-full sm:w-auto'>
+        <Label htmlFor='sort-field'>Sort by</Label>
+        <Select value={sort.field || ''} onValueChange={handleSortFieldChange}>
+          <SelectTrigger id='sort-field' className='min-w-[180px]'>
+            <SelectValue placeholder='Sort by...' />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={UnitSortField.NAME}>Name</SelectItem>
+            <SelectItem value={UnitSortField.CREATED_AT}>
+              Date created
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {sort.field && (
+        <div className='space-y-1.5 w-full sm:w-auto'>
+          <Label htmlFor='sort-direction'>Direction</Label>
+          <Select
+            value={sort.direction || SortDirection.ASC}
+            onValueChange={handleSortDirectionChange}
+          >
+            <SelectTrigger id='sort-direction' className='min-w-[120px]'>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={SortDirection.ASC}>Ascending</SelectItem>
+              <SelectItem value={SortDirection.DESC}>Descending</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  );
+}

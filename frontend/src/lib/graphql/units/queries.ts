@@ -1,8 +1,13 @@
 import { gql } from '@apollo/client';
 
 export const GET_UNITS = gql`
-  query GetUnits($filter: UnitFilterInput, $limit: Int, $offset: Int) {
-    units(filter: $filter, limit: $limit, offset: $offset) {
+  query GetUnits(
+    $filter: UnitFilterInput
+    $sort: UnitSortInput
+    $limit: Int
+    $offset: Int
+  ) {
+    units(filter: $filter, sort: $sort, limit: $limit, offset: $offset) {
       items {
         id
         name
@@ -13,6 +18,7 @@ export const GET_UNITS = gql`
         floorArea
         price
         description
+        createdAt
         project {
           id
           name

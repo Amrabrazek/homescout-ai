@@ -3,6 +3,12 @@
 import { useState } from 'react';
 import UnitListing from './UnitListing';
 import UnitFilters from './UnitFilters';
+import UnitSorter from './UnitSorter';
+import {
+  UnitSort,
+  UnitSortField,
+  SortDirection,
+} from '@/lib/graphql/units/types';
 
 type FilterState = {
   searchTerm?: string;
@@ -16,11 +22,19 @@ type FilterState = {
   maxFloorArea?: number;
 };
 
-export default function UnitSearch() {
+export default function Home() {
   const [filters, setFilters] = useState<FilterState>({});
+  const [sort, setSort] = useState<UnitSort>({
+    field: UnitSortField.CREATED_AT,
+    direction: SortDirection.DESC,
+  });
 
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
+  };
+
+  const handleSortChange = (newSort: UnitSort) => {
+    setSort(newSort);
   };
 
   return (
@@ -31,7 +45,10 @@ export default function UnitSearch() {
         </div>
       </div>
       <div className='lg:col-span-3'>
-        <UnitListing filters={filters} />
+        <div className='mb-6 flex justify-end'>
+          <UnitSorter sort={sort} onSortChange={handleSortChange} />
+        </div>
+        <UnitListing filters={filters} sort={sort} />
       </div>
     </div>
   );

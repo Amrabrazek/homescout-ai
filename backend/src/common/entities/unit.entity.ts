@@ -8,6 +8,8 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Project } from './project.entity';
 import { Amenity } from './amenity.entity';
@@ -83,4 +85,12 @@ export class Unit {
     inverseJoinColumn: { name: 'image_id' },
   })
   images?: Image[];
+
+  @Field()
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @Field()
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }

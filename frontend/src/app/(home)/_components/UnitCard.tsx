@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice } from '@/lib/utils/formatters';
 import pathsConfig from '@config/paths.config';
 import { ImageIcon } from 'lucide-react';
+import { differenceInDays } from 'date-fns';
 
 type UnitCardProps = {
   unit: {
@@ -27,6 +28,7 @@ type UnitCardProps = {
     floorArea: number;
     price: number;
     description?: string;
+    createdAt: string;
     project: {
       name: string;
       developer: {
@@ -50,6 +52,9 @@ export default function UnitCard({ unit }: UnitCardProps) {
   // Check if the unit has any images
   const hasImages = unit.images && unit.images.length > 0;
 
+  // Check if unit is new (created within the last 2 days)
+  const isNew = differenceInDays(new Date(), new Date(unit.createdAt)) <= 2;
+
   return (
     <Link href={`${pathsConfig.units.detail.replace('[id]', unit.id)}`}>
       <Card className='h-full overflow-hidden hover:shadow-lg transition-shadow duration-300'>
@@ -67,6 +72,14 @@ export default function UnitCard({ unit }: UnitCardProps) {
                 <ImageIcon className='w-12 h-12 mb-2 opacity-20' />
                 <span className='text-sm'>No image available</span>
               </div>
+            </div>
+          )}
+
+          {isNew && (
+            <div className='absolute top-2 right-2 z-10'>
+              <Badge className='bg-green-500 hover:bg-green-600 text-white'>
+                NEW
+              </Badge>
             </div>
           )}
         </div>

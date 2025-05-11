@@ -1,6 +1,5 @@
-import UnitSearch from './_components/UnitSearch';
 import HomeHero from './_components/HomeHero';
-
+import Home from './_components/Home';
 // Page metadata for SEO
 export const metadata = {
   title: 'Find Your Dream Property | Nawy',
@@ -14,7 +13,7 @@ export const metadata = {
   },
 };
 
-export default function Home() {
+export default function HomePage() {
   return (
     <main className='min-h-screen bg-gray-50'>
       {/* Hero section with scroll functionality */}
@@ -24,7 +23,7 @@ export default function Home() {
         <h1 className='text-3xl font-bold mb-6'>Find Your Dream Property</h1>
 
         {/* UnitSearch is a client component, while the page itself is server-rendered */}
-        <UnitSearch />
+        <Home />
       </div>
     </main>
   );

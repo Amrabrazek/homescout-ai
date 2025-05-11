@@ -19,6 +19,7 @@ import { CreateUnitInput } from './dto/create-unit.input';
 import { UpdateUnitInput } from './dto/update-unit.input';
 import { UnitFilterInput } from './dto/unit-filter.input';
 import { UnitService } from './unit.service';
+import { UnitSortInput } from './dto/unit-sort.input';
 
 @ObjectType()
 export class UnitResponse {
@@ -39,11 +40,13 @@ export class UnitResolver {
   @Query(() => UnitResponse)
   async units(
     @Args('filter', { nullable: true }) filter?: UnitFilterInput,
+    @Args('sort', { nullable: true }) sort?: UnitSortInput,
     @Args('limit', { type: () => Int, nullable: true }) limit?: number,
     @Args('offset', { type: () => Int, nullable: true }) offset?: number
   ): Promise<UnitResponse> {
     const [items, total] = await this.unitService.findAllWithCount(
       filter,
+      sort,
       limit,
       offset
     );

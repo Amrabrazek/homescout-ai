@@ -4,10 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import UnitCard, { UnitCardSkeleton } from '@/app/(home)/_components/UnitCard';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useInfiniteUnits } from '@/lib/graphql/units/hooks';
-import type { UnitFilter } from '@/lib/graphql/units/types';
+import type { UnitFilter, UnitSort } from '@/lib/graphql/units/types';
 
 type UnitListingProps = {
   filters: UnitFilter;
+  sort?: UnitSort;
   onCountsUpdate?: (total: number, displayed: number) => void;
 };
 
@@ -15,13 +16,14 @@ const SKELETON_COUNT = 9;
 
 export default function UnitListing({
   filters,
+  sort = {},
   onCountsUpdate,
 }: UnitListingProps) {
   const observer = useRef<IntersectionObserver | null>(null);
   const lastUnitElementRef = useRef<HTMLDivElement | null>(null);
 
   const { units, total, loading, error, loadMore, isFetchingMore, hasMore } =
-    useInfiniteUnits(filters);
+    useInfiniteUnits(filters, sort);
 
   // Setup the intersection observer to detect when user scrolls to the bottom
   useEffect(() => {

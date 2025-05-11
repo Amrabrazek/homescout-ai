@@ -20,6 +20,11 @@ import { ProjectService } from '../project/project.service';
 import { CreateUnitInput } from './dto/create-unit.input';
 import { UpdateUnitInput } from './dto/update-unit.input';
 import { UnitFilterInput } from './dto/unit-filter.input';
+import {
+  UnitSortInput,
+  UnitSortField,
+  SortDirection,
+} from './dto/unit-sort.input';
 
 @Injectable()
 export class UnitService {
@@ -35,12 +40,14 @@ export class UnitService {
 
   async findAll(
     filter?: UnitFilterInput,
+    sort?: UnitSortInput,
     limit?: number,
     offset?: number
   ): Promise<Unit[]> {
     const where: any = {};
 
     console.log('filter', filter);
+    console.log('sort', sort);
 
     if (filter) {
       if (filter.searchTerm) {
@@ -102,19 +109,37 @@ export class UnitService {
       }
     }
 
-    return this.unitRepository.find({
+    // Define order based on sort input
+    const order: any = {};
+
+    if (sort?.field === UnitSortField.NAME) {
+      order.name = sort.direction || SortDirection.ASC;
+    } else if (sort?.field === UnitSortField.CREATED_AT) {
+      order.createdAt = sort.direction || SortDirection.DESC;
+    } else {
+      // Default order
+      order.createdAt = SortDirection.DESC;
+    }
+
+    const units = await this.unitRepository.find({
       where,
-      relations: ['project', 'project.developer', 'amenities', 'images'],
+      relations: ['project', 'project.developer', 'amenities'],
       take: limit,
       skip: offset,
-      order: {
-        id: 'DESC',
-      },
+      order,
     });
+
+    // Load ordered images for each unit
+    for (const unit of units) {
+      unit.images = await this.getUnitImages(unit.id);
+    }
+
+    return units;
   }
 
   async findAllWithCount(
     filter?: UnitFilterInput,
+    sort?: UnitSortInput,
     limit?: number,
     offset?: number
   ): Promise<[Unit[], number]> {
@@ -180,15 +205,32 @@ export class UnitService {
       }
     }
 
-    return this.unitRepository.findAndCount({
+    // Define order based on sort input
+    const order: any = {};
+
+    if (sort?.field === UnitSortField.NAME) {
+      order.name = sort.direction || SortDirection.ASC;
+    } else if (sort?.field === UnitSortField.CREATED_AT) {
+      order.createdAt = sort.direction || SortDirection.DESC;
+    } else {
+      // Default order
+      order.createdAt = SortDirection.DESC;
+    }
+
+    const [units, count] = await this.unitRepository.findAndCount({
       where,
-      relations: ['project', 'project.developer', 'amenities', 'images'],
+      relations: ['project', 'project.developer', 'amenities'],
       take: limit,
       skip: offset,
-      order: {
-        id: 'DESC',
-      },
+      order,
     });
+
+    // Load ordered images for each unit
+    for (const unit of units) {
+      unit.images = await this.getUnitImages(unit.id);
+    }
+
+    return [units, count];
   }
 
   async findOne(id: string): Promise<Unit> {
@@ -200,6 +242,9 @@ export class UnitService {
     if (!unit) {
       throw new NotFoundException(`Unit with ID ${id} not found`);
     }
+
+    // Load images with ordering
+    unit.images = await this.getUnitImages(id);
 
     return unit;
   }
@@ -221,11 +266,24 @@ export class UnitService {
       await this.unitRepository.save(savedUnit);
     }
 
-    // Add images if provided
+    // Add images if provided with order
     if (imageIds && imageIds.length > 0) {
       const images = await this.imageService.findByIds(imageIds);
-      savedUnit.images = images;
-      await this.unitRepository.save(savedUnit);
+
+      // Clear any existing unit_images entries
+      await this.unitImageRepository.delete({ unitId: savedUnit.id });
+
+      // Create new unit_images entries with order
+      const unitImages = imageIds.map((imageId, index) => {
+        const unitImage = new UnitImage();
+        unitImage.unitId = savedUnit.id;
+        unitImage.imageId = imageId;
+        unitImage.order = index + 1; // Order starts from 1
+        return unitImage;
+      });
+
+      // Save all unit_images entries
+      await this.unitImageRepository.save(unitImages);
     }
 
     return this.findOne(savedUnit.id);
@@ -257,11 +315,22 @@ export class UnitService {
       await this.unitRepository.save(updatedUnit);
     }
 
-    // Update images if provided
+    // Update images if provided with order
     if (imageIds && imageIds.length > 0) {
-      const images = await this.imageService.findByIds(imageIds);
-      updatedUnit.images = images;
-      await this.unitRepository.save(updatedUnit);
+      // Clear any existing unit_images entries
+      await this.unitImageRepository.delete({ unitId: updatedUnit.id });
+
+      // Create new unit_images entries with order
+      const unitImages = imageIds.map((imageId, index) => {
+        const unitImage = new UnitImage();
+        unitImage.unitId = updatedUnit.id;
+        unitImage.imageId = imageId;
+        unitImage.order = index + 1; // Order starts from 1
+        return unitImage;
+      });
+
+      // Save all unit_images entries
+      await this.unitImageRepository.save(unitImages);
     }
 
     return this.findOne(updatedUnit.id);

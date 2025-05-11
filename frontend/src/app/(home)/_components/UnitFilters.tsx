@@ -191,7 +191,6 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
         </div>
 
         <div className='space-y-2'>
-          <Label htmlFor='projects'>Projects</Label>
           <div className='space-y-1'>
             <MultiSelect
               label='Projects'
