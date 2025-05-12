@@ -313,10 +313,7 @@ Tests use an in-memory data store that:
 ### Running Tests
 
 ```bash
-# Run all tests with setup
-npm run test:e2e:full
 
-# Run tests without setup
 npm run test:e2e
 ```
 

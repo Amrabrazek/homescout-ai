@@ -12,7 +12,7 @@ export default function NotFound() {
         The unit you are looking for doesn't exist or has been removed.
       </p>
       <Button asChild>
-        <Link href='/dashboard/units'>Return to Units Dashboard</Link>
+        <Link href='/dashboard/units/new'>Create New Unit</Link>
       </Button>
     </div>
   );

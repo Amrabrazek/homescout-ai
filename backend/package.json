@@ -15,9 +15,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:e2e": "NODE_ENV=test jest --config ./test/jest-e2e.json",
-    "test:e2e:setup": "NODE_ENV=test ts-node -r tsconfig-paths/register test/setup-e2e.ts",
-    "test:e2e:full": "npm run test:e2e:setup && npm run test:e2e",
+    "test:e2e": "cross-env NODE_ENV=test jest --config ./test/jest-e2e.json",
+    "test:e2e:setup": "cross-env NODE_ENV=test ts-node -r tsconfig-paths/register test/setup-e2e.ts",
     "seed": "ts-node -r tsconfig-paths/register src/seed.ts"
   },
   "keywords": [
@@ -47,6 +46,7 @@
     "pg": "^8.11.3",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^5.0.0",
+    "cross-env": "^7.0.3",
     "rxjs": "^7.8.1",
     "typeorm": "^0.3.17",
     "zod": "^3.21.4"

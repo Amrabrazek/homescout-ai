@@ -27,7 +27,7 @@ export default function Error({
           Try again
         </Button>
         <Button asChild>
-          <Link href='/dashboard/units'>Return to Units Dashboard</Link>
+          <Link href='/dashboard/units/new'>Create New Unit</Link>
         </Button>
       </div>
     </div>
