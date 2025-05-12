@@ -68,34 +68,55 @@ Nawy Apartment Listing App is a modern real estate platform that lets users brow
 
 - Docker and Docker Compose
 - Node.js 18+ (for local development)
-- OpenAI API Key (for similarity features)
+- OpenAI API Key (optional, for AI-powered similarity features)
 
 ### Quick Start
 
+1. Clone the repository:
+
 ```bash
-# Clone the repository
+# Using HTTPS
 git clone https://github.com/Amrabrazek/nawy-task.git
 cd nawy-task
-```
 
-or
-
-```bash
-# Clone with SSH
+# Or using SSH
 git clone git@github.com:Amrabrazek/nawy-task.git
 cd nawy-task
 ```
 
+2. Create environment variables:
+
 ```bash
-# Create environment variables
 cp .env.example .env
+```
 
-# Add your OpenAI API key to .env file
-# Edit OPENAI_API_KEY=your-openai-api-key in both root .env and backend/.env
+3. (Optional) Add your OpenAI API key if you want AI-powered unit recommendations:
 
-# Start with Docker Compose
+```bash
+# Edit both .env files to add your OpenAI API key
+# In root .env and backend/.env:
+OPENAI_API_KEY=your-openai-api-key
+```
+
+4. Start the application based on your operating system:
+
+#### For Linux/Windows:
+
+```bash
+# Start with standard Docker Compose setup
 docker compose up
 ```
+
+#### For macOS:
+
+```bash
+# Start with S3 storage configuration to avoid filesystem issues
+docker compose -f docker-compose.yml -f docker-compose.s3.yml up
+```
+
+5. Access the application:
+   - Frontend: http://localhost:3000
+   - GraphQL Playground: http://localhost:3001/graphql
 
 ### Access Points
 
