@@ -279,6 +279,33 @@ To enable AI-powered recommendations:
 
 This fallback ensures the application remains functional even without AI capabilities, but recommendation quality will be significantly reduced.
 
+### Troubleshooting Embedding Issues
+
+If you encounter errors related to the embedding field such as "column Unit.embedding does not exist":
+
+1. First, check if the vector extension is enabled in PostgreSQL:
+
+```bash
+docker compose exec db psql -U supabase_admin -d postgres -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```
+
+2. Make sure the embedding column exists in the units table:
+
+```bash
+docker compose exec db psql -U supabase_admin -d postgres -c "ALTER TABLE units ADD COLUMN IF NOT EXISTS embedding vector;"
+```
+
+3. Rebuild and restart the backend to update GraphQL schema:
+
+```bash
+cd backend
+npm run build
+cd ..
+docker compose restart backend
+```
+
+4. If issues persist, you may need to reset the database completely (see [Resetting the Database](#resetting-the-database)).
+
 ## API Documentation
 
 The backend GraphQL API is comprehensively documented to facilitate integration and development:
@@ -349,10 +376,6 @@ Planned improvements for the application:
 2. **Advanced Search with Typesense**: Implement Typesense for ultra-fast, typo-tolerant search functionality with faceted filtering
 3. **Enhanced AI Features**: More sophisticated recommendation algorithms and personalized suggestions based on user behavior
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 <!-- Detailed Sections -->
 
 ## Setup Options
@@ -409,3 +432,30 @@ sudo lsof -i :3000,3001,5432,8000,9000,9001
 # Kill a specific process
 kill -9 <PID>
 ```
+
+### Resetting the Database
+
+If you need to completely reset the database and start fresh:
+
+```bash
+# Navigate to the supabase directory
+cd supabase
+
+# Run the reset script (requires bash)
+./reset.sh
+
+# Start everything again from the project root
+cd ..
+docker compose up
+# OR for macOS
+docker compose -f docker-compose.yml -f docker-compose.s3.yml up
+```
+
+This will:
+
+- Remove all containers and their data
+- Clean up bind-mounted directories
+- Reset the `.env` file to the example defaults
+- Allow you to start with a fresh database
+
+**Note:** This action cannot be undone and will remove all data. Make sure to back up any important information first.
