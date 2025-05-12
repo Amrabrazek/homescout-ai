@@ -64,6 +64,7 @@ export default function UnitCard({ unit }: UnitCardProps) {
               src={unit.images[0].url}
               alt={unit.images[0].altText || unit.name}
               fill
+              unoptimized
               className='object-cover'
             />
           ) : (

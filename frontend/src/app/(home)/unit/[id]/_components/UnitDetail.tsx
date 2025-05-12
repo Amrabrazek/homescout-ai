@@ -97,13 +97,13 @@ export default function UnitDetails({ unit }: UnitDetailsProps) {
             <div className='flex justify-between items-start'>
               <h1 className='text-2xl font-bold mb-1'>{unit.name}</h1>
               <Button
-                variant='ghost'
-                size='sm'
-                className='rounded-full p-2 hover:bg-gray-100'
+                variant='outline'
+                size='default'
+                className='rounded-full p-2 bg-primary text-white hover:bg-primary/90 flex items-center gap-1'
                 asChild
               >
                 <Link href={`/dashboard/units/${unit.id}`}>
-                  <Pencil size={18} />
+                  <Pencil size={20} className='mr-1' /> Edit
                 </Link>
               </Button>
             </div>
