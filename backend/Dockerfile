@@ -13,6 +13,8 @@ COPY . .
 RUN npm run build
 
 # Make sure the output exists and is accessible
+# This fix ensures the entry point is always where the container expects it to be.
+# This is a common issue when dockerizing NestJS applications, especially when building inside the container rather than using pre-built files.
 RUN ls -la dist/ && \
     if [ ! -f dist/main.js ]; then \
         if [ -f dist/src/main.js ]; then \

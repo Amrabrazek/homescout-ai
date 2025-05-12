@@ -86,3 +86,31 @@ export const GET_UNIT = gql`
     }
   }
 `;
+
+export const SIMILAR_UNITS_QUERY = gql`
+  query SimilarUnits($unitId: String!, $limit: Int) {
+    similarUnits(unitId: $unitId, limit: $limit) {
+      id
+      name
+      number
+      floor
+      rooms
+      bathrooms
+      floorArea
+      price
+      images {
+        id
+        url
+        altText
+      }
+      project {
+        id
+        name
+        developer {
+          id
+          name
+        }
+      }
+    }
+  }
+`;

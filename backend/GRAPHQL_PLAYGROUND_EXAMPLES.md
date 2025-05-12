@@ -349,6 +349,95 @@ query GetImages {
 }
 ```
 
+### Get All Units
+
+```graphql
+query GetAllUnits {
+  units {
+    id
+    name
+    number
+    price
+    floorArea
+    rooms
+    bathrooms
+    floor
+    projectId
+    project {
+      name
+      developer {
+        name
+      }
+    }
+    amenities {
+      id
+      name
+      icon
+    }
+    images {
+      id
+      url
+      altText
+    }
+  }
+}
+```
+
+### Get Similar Units
+
+```graphql
+query GetSimilarUnits {
+  similarUnits(unitId: "3870adee-8fa9-4a03-abad-1f5079f3418d", limit: 5) {
+    id
+    name
+    price
+    rooms
+    bathrooms
+    floorArea
+    project {
+      name
+    }
+    images {
+      url
+    }
+  }
+}
+```
+
+### Get Unit with ID
+
+```graphql
+query GetUnitById {
+  unit(id: "3870adee-8fa9-4a03-abad-1f5079f3418d") {
+    id
+    name
+    number
+    price
+    floorArea
+    rooms
+    bathrooms
+    floor
+    projectId
+    project {
+      name
+      developer {
+        name
+      }
+    }
+    amenities {
+      id
+      name
+      icon
+    }
+    images {
+      id
+      url
+      altText
+    }
+  }
+}
+```
+
 ## Mutations
 
 ### Create a Unit

@@ -7,6 +7,7 @@ import { AmenityModule } from '../amenity/amenity.module';
 import { ImageModule } from '../image/image.module';
 import { UnitResolver } from './unit.resolver';
 import { UnitService } from './unit.service';
+import { UnitEmbeddingListener } from './unit-embedding.listener';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { UnitService } from './unit.service';
     AmenityModule,
     ImageModule,
   ],
-  providers: [UnitResolver, UnitService],
+  providers: [UnitResolver, UnitService, UnitEmbeddingListener],
   exports: [UnitService],
 })
 export class UnitModule {}

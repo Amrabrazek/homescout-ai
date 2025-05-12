@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   Repository,
   Like,
@@ -25,6 +26,14 @@ import {
   UnitSortField,
   SortDirection,
 } from './dto/unit-sort.input';
+import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
+import {
+  UnitCreatedEvent,
+  UnitUpdatedEvent,
+  UnitDeletedEvent,
+} from '../../common/events/unit.events';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class UnitService {
@@ -35,7 +44,10 @@ export class UnitService {
     private unitImageRepository: Repository<UnitImage>,
     private projectService: ProjectService,
     private amenityService: AmenityService,
-    private imageService: ImageService
+    private imageService: ImageService,
+    private configService: ConfigService,
+    private eventEmitter: EventEmitter2,
+    private dataSource: DataSource
   ) {}
 
   async findAll(
@@ -250,6 +262,112 @@ export class UnitService {
     return unit;
   }
 
+  // Generate embedding for a unit based on its properties
+  private async generateUnitEmbedding(unit: Unit): Promise<number[] | null> {
+    try {
+      // Get OpenAI API key from environment variables
+      const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+
+      if (!apiKey) {
+        console.warn(
+          'OpenAI API key not configured. Skipping embedding generation.'
+        );
+        return null;
+      }
+
+      // Create a text representation of the unit for embedding
+      const unitText = this.getUnitTextForEmbedding(unit);
+
+      // Call OpenAI API to generate embedding
+      const response = await axios.post(
+        'https://api.openai.com/v1/embeddings',
+        {
+          model: 'text-embedding-ada-002',
+          input: unitText,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      // Extract embedding from response
+      const embedding = response.data.data[0].embedding;
+      return embedding;
+    } catch (error) {
+      console.error('Error generating embedding:', error.message);
+      return null;
+    }
+  }
+
+  // Create a text representation of the unit for embedding
+  private getUnitTextForEmbedding(unit: Unit): string {
+    const parts = [
+      `Name: ${unit.name}`,
+      `Number: ${unit.number}`,
+      `Floor: ${unit.floor}`,
+      `Rooms: ${unit.rooms}`,
+      `Bathrooms: ${unit.bathrooms}`,
+      `Floor Area: ${unit.floorArea} square meters`,
+      `Price: ${unit.price}`,
+    ];
+
+    if (unit.description) {
+      parts.push(`Description: ${unit.description}`);
+    }
+
+    if (unit.project?.name) {
+      parts.push(`Project: ${unit.project.name}`);
+    }
+
+    if (unit.amenities && unit.amenities.length > 0) {
+      const amenitiesText = unit.amenities
+        .map((amenity) => amenity.name)
+        .join(', ');
+      parts.push(`Amenities: ${amenitiesText}`);
+    }
+
+    return parts.join(' ');
+  }
+
+  // Find similar units based on vector similarity
+  async findSimilarUnits(unitId: string, limit = 5): Promise<Unit[]> {
+    // Use vector similarity search with our SQL function
+    const similarUnits = await this.unitRepository.query(
+      `
+        SELECT u.* 
+        FROM units u
+        WHERE u.id IN (
+          SELECT id FROM match_similar_units($1)
+        )
+        ORDER BY (
+          SELECT similarity 
+          FROM match_similar_units($1) m 
+          WHERE m.id = u.id
+        ) DESC
+    `,
+      [unitId]
+    );
+
+    // Load relations data for each similar unit
+    const detailedUnits = [];
+    for (const similarUnit of similarUnits) {
+      const detailedUnit = await this.unitRepository.findOne({
+        where: { id: similarUnit.id },
+        relations: ['project', 'project.developer', 'amenities'],
+      });
+
+      if (detailedUnit) {
+        detailedUnit.images = await this.getUnitImages(detailedUnit.id);
+        detailedUnits.push(detailedUnit);
+      }
+    }
+
+    return detailedUnits;
+  }
+
   async create(createUnitInput: CreateUnitInput): Promise<Unit> {
     const { amenityIds, imageIds, ...unitData } = createUnitInput;
 
@@ -269,8 +387,6 @@ export class UnitService {
 
     // Add images if provided with order
     if (imageIds && imageIds.length > 0) {
-      const images = await this.imageService.findByIds(imageIds);
-
       // Clear any existing unit_images entries
       await this.unitImageRepository.delete({ unitId: savedUnit.id });
 
@@ -287,7 +403,12 @@ export class UnitService {
       await this.unitImageRepository.save(unitImages);
     }
 
-    return this.findOne(savedUnit.id);
+    // Emit event for embedding generation
+    const completeUnit = await this.findOne(savedUnit.id);
+    console.log('completeUnit', completeUnit);
+    this.eventEmitter.emit('unit.created', new UnitCreatedEvent(completeUnit));
+
+    return completeUnit;
   }
 
   async update(id: string, updateUnitInput: UpdateUnitInput): Promise<Unit> {
@@ -334,7 +455,23 @@ export class UnitService {
       await this.unitImageRepository.save(unitImages);
     }
 
-    return this.findOne(updatedUnit.id);
+    // Emit event for embedding update
+    const completeUnit = await this.findOne(updatedUnit.id);
+    this.eventEmitter.emit('unit.updated', new UnitUpdatedEvent(completeUnit));
+
+    return completeUnit;
+  }
+
+  async delete(id: string): Promise<Unit> {
+    const unit = await this.findOne(id);
+    // Clone the unit before removing it to return a valid object
+    const unitToReturn = { ...unit };
+    await this.unitRepository.remove(unit);
+
+    // Emit delete event
+    this.eventEmitter.emit('unit.deleted', new UnitDeletedEvent(unitToReturn));
+
+    return unitToReturn;
   }
 
   async getUnitAmenities(unitId: string): Promise<Amenity[]> {
@@ -350,14 +487,6 @@ export class UnitService {
     return unit.amenities || [];
   }
 
-  async delete(id: string): Promise<Unit> {
-    const unit = await this.findOne(id);
-    // Clone the unit before removing it to return a valid object
-    const unitToReturn = { ...unit };
-    await this.unitRepository.remove(unit);
-    return unitToReturn;
-  }
-
   async getUnitImages(unitId: string): Promise<Image[]> {
     const unitImages = await this.unitImageRepository.find({
       where: { unitId },
@@ -370,5 +499,45 @@ export class UnitService {
     }
 
     return unitImages.map((ui) => ui.image);
+  }
+
+  // New method to update unit embedding directly
+  async updateUnitEmbedding(unitId: string): Promise<Unit> {
+    const unit = await this.findOne(unitId);
+
+    // Load related entities for embedding generation
+    unit.project = await this.projectService.findOne(unit.projectId);
+    unit.amenities = await this.getUnitAmenities(unitId);
+
+    console.log('unit', unit);
+
+    // Generate embedding
+    unit.embedding = await this.generateUnitEmbedding(unit);
+
+    // Save the unit with updated embedding
+    if (unit.embedding) {
+      try {
+        // Format the embedding as a proper PostgreSQL array
+        // PostgreSQL vector type expects format: [0.1,0.2,0.3]
+        const formattedEmbedding = `[${unit.embedding.join(',')}]`;
+
+        // Update directly via query to ensure proper vector format
+        await this.dataSource.query(
+          `UPDATE units SET embedding = $1::vector WHERE id = $2`,
+          [formattedEmbedding, unitId]
+        );
+
+        // Refresh the unit object
+        return this.findOne(unitId);
+      } catch (error) {
+        console.error(
+          `Error updating embedding for unit ${unitId}:`,
+          error.message
+        );
+        return unit;
+      }
+    }
+
+    return this.unitRepository.save(unit);
   }
 }

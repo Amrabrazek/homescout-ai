@@ -98,4 +98,12 @@ export class UnitResolver {
   async images(@Parent() unit: Unit): Promise<Image[]> {
     return this.unitService.getUnitImages(unit.id);
   }
+
+  @Query(() => [Unit])
+  async similarUnits(
+    @Args('unitId') unitId: string,
+    @Args('limit', { type: () => Int, nullable: true }) limit?: number
+  ): Promise<Unit[]> {
+    return this.unitService.findSimilarUnits(unitId);
+  }
 }

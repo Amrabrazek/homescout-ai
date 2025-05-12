@@ -87,6 +87,7 @@ type Query {
   images: [Image!]!
   project(id: String!): Project!
   projects(developerId: String, limit: Int, offset: Int, searchTerm: String): [Project!]!
+  similarUnits(limit: Int, unitId: String!): [Unit!]!
   unit(id: String!): Unit
   units(filter: UnitFilterInput, limit: Int, offset: Int, sort: UnitSortInput): UnitResponse!
 }

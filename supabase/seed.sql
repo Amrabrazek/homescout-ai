@@ -247,6 +247,89 @@ FROM (VALUES
 ) as i(url, alt_text)
 WHERE NOT EXISTS (SELECT 1 FROM public.images LIMIT 1);
 
+-- Function to generate a random embedding vector for seeding
+-- This simulates real embeddings by correlating them with unit properties
+CREATE OR REPLACE FUNCTION generate_unit_embedding(
+  unit_name TEXT, 
+  rooms INT, 
+  floor_area NUMERIC, 
+  price NUMERIC, 
+  project_factor FLOAT
+) RETURNS FLOAT[] AS $$
+DECLARE
+  result FLOAT[];
+  base_value FLOAT;
+  i INT;
+  room_factor FLOAT;
+  size_factor FLOAT;
+  price_factor FLOAT;
+  name_factor FLOAT;
+  random_factor FLOAT;
+  embedding_dimension INT := 1536;  -- OpenAI embedding dimension
+  magnitude FLOAT;
+BEGIN
+  -- Create factors for meaningful correlations
+  room_factor := rooms / 5.0; -- Normalize to 0-1 range
+  size_factor := floor_area / 500.0; -- Normalize to 0-1 range
+  price_factor := price / 10000000.0; -- Normalize to 0-1 range
+  
+  -- Factor based on unit name type
+  name_factor := 0;
+  IF unit_name ILIKE '%studio%' THEN name_factor := 0.1;
+  ELSIF unit_name ILIKE '%one%bedroom%' THEN name_factor := 0.2;
+  ELSIF unit_name ILIKE '%two%bedroom%' THEN name_factor := 0.3;
+  ELSIF unit_name ILIKE '%three%bedroom%' THEN name_factor := 0.4;
+  ELSIF unit_name ILIKE '%four%bedroom%' THEN name_factor := 0.5;
+  ELSIF unit_name ILIKE '%penthouse%' THEN name_factor := 0.6;
+  ELSIF unit_name ILIKE '%duplex%' OR unit_name ILIKE '%triplex%' THEN name_factor := 0.7;
+  ELSIF unit_name ILIKE '%loft%' THEN name_factor := 0.8;
+  ELSIF unit_name ILIKE '%garden%' THEN name_factor := 0.9;
+  ELSIF unit_name ILIKE '%villa%' THEN name_factor := 1.0;
+  END IF;
+  
+  -- Initialize the result array
+  result := array_fill(0.0, ARRAY[embedding_dimension]);
+  
+  -- Fill the array with values correlated with unit properties
+  FOR i IN 1..embedding_dimension LOOP
+    -- Base value influenced by unit properties
+    base_value := (
+      (room_factor * 0.2) + 
+      (size_factor * 0.2) + 
+      (price_factor * 0.2) + 
+      (name_factor * 0.2) + 
+      (project_factor * 0.2)
+    );
+    
+    -- Add randomness but keep correlation
+    random_factor := random() * 0.6 - 0.3; -- Random value between -0.3 and 0.3
+    result[i] := base_value + random_factor;
+    
+    -- Ensure values are within reasonable range (-1 to 1)
+    IF result[i] > 1.0 THEN result[i] := 1.0; END IF;
+    IF result[i] < -1.0 THEN result[i] := -1.0; END IF;
+  END LOOP;
+  
+  -- Normalize to unit length (important for cosine similarity)
+  magnitude := 0;
+  
+  -- Calculate magnitude
+  FOR i IN 1..embedding_dimension LOOP
+    magnitude := magnitude + (result[i] * result[i]);
+  END LOOP;
+  magnitude := sqrt(magnitude);
+  
+  -- Normalize each component
+  IF magnitude > 0 THEN  -- Avoid division by zero
+    FOR i IN 1..embedding_dimension LOOP
+      result[i] := result[i] / magnitude;
+    END LOOP;
+  END IF;
+  
+  RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Insert example units with random project assignments (only if table is empty)
 DO $$
 DECLARE
@@ -375,6 +458,14 @@ DECLARE
   random_created_at TIMESTAMP;
   current_time_var TIMESTAMP;
   one_month_ago TIMESTAMP;
+  
+  -- Variables for vector embedding
+  embedding_vector FLOAT[];
+  current_unit_name TEXT;
+  current_unit_rooms INT;
+  current_unit_floor_area NUMERIC;
+  current_unit_price NUMERIC;
+  project_embedding_factor FLOAT;
 BEGIN
   -- Only proceed if units table is empty
   IF NOT EXISTS (SELECT 1 FROM public.units LIMIT 1) THEN
@@ -397,6 +488,9 @@ BEGIN
     FOR i IN 1..num_projects LOOP
       current_project_id := project_ids[i];
       
+      -- Generate a random project embedding factor that will influence all units in this project
+      project_embedding_factor := random();
+      
       -- Cap the total number of units at approximately 400
       -- Calculate units per project to distribute evenly across all projects
       units_per_project := ceil(400.0 / num_projects);
@@ -415,6 +509,21 @@ BEGIN
         -- Generate random created_at timestamp in the last month
         random_created_at := one_month_ago + (random() * (current_time_var - one_month_ago));
         
+        -- Select current unit properties
+        current_unit_name := unit_names[floor(random() * array_length(unit_names, 1) + 1)];
+        current_unit_rooms := floor(random() * 5 + 1);
+        current_unit_floor_area := floor_area_options[floor(random() * array_length(floor_area_options, 1) + 1)];
+        current_unit_price := price_options[floor(random() * array_length(price_options, 1) + 1)];
+        
+        -- Generate embedding vector for this unit
+        embedding_vector := generate_unit_embedding(
+          current_unit_name,
+          current_unit_rooms,
+          current_unit_floor_area,
+          current_unit_price,
+          project_embedding_factor
+        );
+        
         -- Insert a unit
         INSERT INTO public.units (
           name, 
@@ -426,9 +535,10 @@ BEGIN
           description, 
           price, 
           project_id,
-          created_at
+          created_at,
+          embedding
         ) VALUES (
-          unit_names[floor(random() * array_length(unit_names, 1) + 1)], 
+          current_unit_name, 
           CONCAT(
             unit_prefixes[floor(random() * array_length(unit_prefixes, 1) + 1)],
             floor(random() * 9 + 1)::text, 
@@ -437,13 +547,14 @@ BEGIN
             CASE WHEN random() < 0.3 THEN CONCAT('-', unit_suffixes[floor(random() * array_length(unit_suffixes, 1) + 1)]) ELSE '' END
           ),
           current_floor, 
-          floor(random() * 5 + 1), 
+          current_unit_rooms, 
           floor(random() * 4 + 1), 
-          floor_area_options[floor(random() * array_length(floor_area_options, 1) + 1)], 
+          current_unit_floor_area, 
           descriptions[floor(random() * array_length(descriptions, 1) + 1)],
-          price_options[floor(random() * array_length(price_options, 1) + 1)], 
+          current_unit_price, 
           current_project_id,
-          random_created_at
+          random_created_at,
+          embedding_vector
         ) RETURNING id INTO unit_id;
         
         -- Assign random images to unit (between 3 and 8 images)

@@ -15,6 +15,7 @@ import {
   Home,
   Info,
   MessageSquare,
+  ImageIcon,
   Pencil,
 } from 'lucide-react';
 import { CardDescription } from '@/components/ui/card';
@@ -22,6 +23,7 @@ import { Unit } from '@/lib/graphql/units/types';
 import pathsConfig from '@config/paths.config';
 import ImagesGallery from '@/components/ui/images-gallery';
 import ContactModal from './ContactModal';
+import { SimilarUnits } from './SimilarUnits';
 
 type UnitDetailsProps = {
   unit: Unit;
@@ -48,8 +50,11 @@ export default function UnitDetails({ unit }: UnitDetailsProps) {
               images={unit.images.map((image: any) => image.url)}
             />
           ) : (
-            <div className='relative w-full h-[400px] rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center'>
-              <Info size={48} className='text-gray-400' />
+            <div className='w-full h-full bg-gray-100 flex items-center justify-center'>
+              <div className='flex flex-col items-center justify-center text-muted-foreground'>
+                <ImageIcon className='w-12 h-12 mb-2 opacity-20' />
+                <span className='text-sm'>No image available</span>
+              </div>
             </div>
           )}
 
@@ -164,6 +169,9 @@ export default function UnitDetails({ unit }: UnitDetailsProps) {
         unitId={unit.id}
         unitName={unit.name}
       />
+
+      {/* Similar Units Section */}
+      <SimilarUnits unitId={unit.id} limit={4} />
     </div>
   );
 }

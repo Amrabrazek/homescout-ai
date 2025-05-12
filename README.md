@@ -1,6 +1,6 @@
 # Nawy Apartment Listing App
 
-A full-stack application for listing and browsing apartment units, complete with filtering capabilities and a detailed view of each property.
+A full-stack application for listing and browsing apartment units, complete with filtering capabilities, a detailed view of each property, and AI-powered similar unit recommendations.
 
 ## Table of Contents
 
@@ -12,6 +12,7 @@ A full-stack application for listing and browsing apartment units, complete with
 - [API Documentation](#api-documentation)
 - [Testing](#testing)
 - [File Storage](#file-storage)
+- [AI Features](#ai-features)
 - [Future Enhancements](#future-enhancements)
 - [License](#license)
 
@@ -28,6 +29,7 @@ Nawy Apartment Listing App is a modern real estate platform that lets users brow
 - **CRUD Operations**: Create, read, update, and delete units, projects, and developers
 - **Image Management**: Upload and manage property images via Supabase Storage
 - **Responsive Design**: Optimized for both desktop and mobile devices
+- **AI-Powered Recommendations**: Get similar unit recommendations based on property features using OpenAI embeddings
 
 ### User Flows
 
@@ -36,6 +38,7 @@ Nawy Apartment Listing App is a modern real estate platform that lets users brow
 3. **Content Management**: Add new units, projects, or developers to the system
 4. **Content Updates**: Modify existing property information and images
 5. **Content Removal**: Remove properties or related data from the system
+6. **Similar Units**: View AI-generated similar unit recommendations based on property features
 
 ## Tech Stack
 
@@ -52,6 +55,7 @@ Nawy Apartment Listing App is a modern real estate platform that lets users brow
 - **Language**: TypeScript
 - **Database**: PostgreSQL
 - **Storage**: Supabase Object Storage
+- **AI**: OpenAI Embeddings for similar unit recommendations
 
 ### DevOps
 
@@ -64,6 +68,7 @@ Nawy Apartment Listing App is a modern real estate platform that lets users brow
 
 - Docker and Docker Compose
 - Node.js 18+ (for local development)
+- OpenAI API Key (for similarity features)
 
 ### Quick Start
 
@@ -84,6 +89,9 @@ cd nawy-task
 ```bash
 # Create environment variables
 cp .env.example .env
+
+# Add your OpenAI API key to .env file
+# Edit OPENAI_API_KEY=your-openai-api-key in both root .env and backend/.env
 
 # Start with Docker Compose
 docker compose up
@@ -162,6 +170,10 @@ docker compose -f docker-compose.yml -f docker-compose.s3.yml up
    cd backend
    npm install
    cp .env.example .env  # Make sure to use the same DB_PASSWORD as in root .env
+
+   # Add your OpenAI API key to the .env file
+   # OPENAI_API_KEY=your-api-key-here
+
    npm run start:dev
    ```
 
@@ -182,7 +194,10 @@ For detailed setup instructions, including troubleshooting and port configuratio
 ├─ backend/                 # NestJS GraphQL API
 │  ├─ src/
 │  │  ├─ common/            # Shared resources (entities, interfaces, utilities)
+│  │  │  ├─ events/         # Event definitions for event-driven architecture
 │  │  ├─ modules/           # Feature modules (developer, project, unit, etc.)
+│  │  │  ├─ unit/           # Unit module with embedding functionality
+│  │  │  │  ├─ unit-embedding.listener.ts  # Event listener for embedding generation
 │  │  ├─ storage/           # Storage module for Supabase integration
 │  │  ├─ app.module.ts      # Root module
 │  │  ├─ main.ts            # Application entry point
@@ -196,8 +211,52 @@ For detailed setup instructions, including troubleshooting and port configuratio
 │  │  ├─ lib/               # Library code and providers
 │  │  └─ utils/             # Utility functions
 ├─ supabase/                # Supabase local development
+│  ├─ migrations/           # Database migrations including vector storage
 ├─ docker-compose.yml       # Docker composition
 ```
+
+## AI Features
+
+The application uses OpenAI's embedding models to provide intelligent unit recommendations:
+
+### Vector Embeddings
+
+- Units are automatically converted to vector embeddings when created or updated
+- Each property's features (rooms, size, price, amenities, etc.) are encoded into a high-dimensional vector
+- PostgreSQL's vector extension enables efficient similarity searches
+
+### Similar Unit Recommendations
+
+- The system can find similar units based on property characteristics, not just simple filters
+- Units with similar features are displayed in the "Similar Units" section
+- The recommendation quality depends on the embedding model and available property data
+
+### Setting Up OpenAI Integration
+
+To enable AI-powered recommendations:
+
+1. Obtain an OpenAI API key from [OpenAI Platform](https://platform.openai.com)
+2. Add your key to both `.env` files:
+
+   ```
+   # In root .env
+   OPENAI_API_KEY=your-api-key-here
+
+   # In backend/.env
+   OPENAI_API_KEY=your-api-key-here
+   ```
+
+3. Restart the application if it's already running
+
+### Fallback Behavior
+
+**Important**: Without a valid OpenAI API key, the application will not be able to generate meaningful embeddings. In this case:
+
+- New units will have null embedding values
+- The `similarUnits` query will fall back to returning random units from the same project
+- You will see console warnings about missing API keys or embedding generation failures
+
+This fallback ensures the application remains functional even without AI capabilities, but recommendation quality will be significantly reduced.
 
 ## API Documentation
 
@@ -270,6 +329,7 @@ Planned improvements for the application:
 
 1. **Redis Caching**: Add Redis to cache frequently accessed data, reducing database load and improving response times
 2. **Advanced Search with Typesense**: Implement Typesense for ultra-fast, typo-tolerant search functionality with faceted filtering
+3. **Enhanced AI Features**: More sophisticated recommendation algorithms and personalized suggestions based on user behavior
 
 ## License
 

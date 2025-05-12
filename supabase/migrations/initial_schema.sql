@@ -1,5 +1,9 @@
 -- We'll use the public schema directly (no schema creation needed)
 
+-- Create vector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+
 -- Create developers table
 CREATE TABLE IF NOT EXISTS public.developers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -46,6 +50,7 @@ CREATE TABLE IF NOT EXISTS public.units (
     floor_area NUMERIC(10, 2),
     description TEXT,
     price NUMERIC(14, 2),
+    embedding vector,
     project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -227,3 +232,59 @@ CREATE POLICY "Public read access" ON storage.objects FOR SELECT TO anon, authen
 
 -- TODO: Uncomment this when we have a way to handle the file upload
 CREATE POLICY "Public write access" ON storage.objects FOR INSERT TO anon, authenticated, service_role WITH CHECK (bucket_id = 'images'); 
+
+
+-- Create function to match similar units
+CREATE OR REPLACE FUNCTION match_similar_units(
+  unit_id UUID,
+  match_threshold FLOAT DEFAULT 0.7,
+  match_count INT DEFAULT 5
+)
+RETURNS TABLE (
+  id UUID,
+  similarity FLOAT
+)
+LANGUAGE SQL STABLE
+AS $$
+  WITH target_unit AS (
+    SELECT embedding, project_id FROM units WHERE id = unit_id
+  ),
+  similar_units AS (
+    SELECT
+      units.id,
+      1 - (units.embedding <=> (SELECT embedding FROM target_unit)) AS similarity
+    FROM units, target_unit
+    WHERE 
+      units.id != unit_id
+      AND units.embedding IS NOT NULL
+      AND (SELECT embedding FROM target_unit) IS NOT NULL
+      AND 1 - (units.embedding <=> (SELECT embedding FROM target_unit)) > match_threshold
+    ORDER BY units.embedding <=> (SELECT embedding FROM target_unit)
+    LIMIT match_count
+  ),
+  similar_count AS (
+    SELECT COUNT(*) as count FROM similar_units
+  ),
+  random_units AS (
+    SELECT
+      units.id,
+      0 AS similarity
+    FROM units, target_unit
+    WHERE 
+      units.id != unit_id
+      AND units.id NOT IN (SELECT id FROM similar_units)
+      AND units.project_id = (SELECT project_id FROM target_unit)
+    ORDER BY RANDOM()
+    LIMIT (
+      SELECT 
+        CASE 
+          WHEN count < match_count THEN match_count - count
+          ELSE 0
+        END
+      FROM similar_count
+    )
+  )
+  SELECT id, similarity FROM similar_units
+  UNION ALL
+  SELECT id, similarity FROM random_units;
+$$;

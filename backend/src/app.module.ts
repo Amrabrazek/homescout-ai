@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { join } from 'path';
 
 // Modules
@@ -19,6 +20,9 @@ import { AmenityModule } from './modules/amenity/amenity.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+
+    // Event Emitter
+    EventEmitterModule.forRoot(),
 
     // Database
     TypeOrmModule.forRootAsync({

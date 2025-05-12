@@ -1,5 +1,66 @@
 # Nawy GraphQL API Quick Reference
 
+This document provides a quick reference of all available queries and mutations in the Nawy GraphQL API.
+
+## Queries
+
+### Units
+
+- `units(filter, sort, limit, offset)`: Get units with optional filtering, sorting, and pagination
+- `unit(id)`: Get a single unit by ID
+- `similarUnits(unitId, limit)`: Get similar units based on AI-powered embeddings
+
+### Projects
+
+- `projects(developerId, searchTerm, limit, offset)`: Get projects with optional filtering
+- `project(id)`: Get a single project by ID
+
+### Developers
+
+- `developers`: Get all developers
+- `developer(id)`: Get a single developer by ID
+
+### Amenities
+
+- `amenities`: Get all amenities
+- `amenity(id)`: Get a single amenity by ID
+
+## Mutations
+
+### Units
+
+- `createUnit(input)`: Create a new unit
+- `updateUnit(id, input)`: Update an existing unit
+- `deleteUnit(id)`: Delete a unit
+- `addAmenityToUnit(unitId, amenityId)`: Add an amenity to a unit
+- `removeAmenityFromUnit(unitId, amenityId)`: Remove an amenity from a unit
+- `addImageToUnit(unitId, imageId, order)`: Add an image to a unit
+- `removeImageFromUnit(unitId, imageId)`: Remove an image from a unit
+
+### Projects
+
+- `createProject(input)`: Create a new project
+- `updateProject(id, input)`: Update an existing project
+- `deleteProject(id)`: Delete a project
+
+### Developers
+
+- `createDeveloper(input)`: Create a new developer
+- `updateDeveloper(id, input)`: Update an existing developer
+- `deleteDeveloper(id)`: Delete a developer
+
+### Amenities
+
+- `createAmenity(input)`: Create a new amenity
+- `updateAmenity(id, input)`: Update an existing amenity
+- `deleteAmenity(id)`: Delete an amenity
+
+### Images
+
+- `createImage(input)`: Create a new image
+- `updateImage(id, input)`: Update an existing image
+- `deleteImage(id)`: Delete an image
+
 ## Endpoint
 
 ```

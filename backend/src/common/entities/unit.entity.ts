@@ -55,6 +55,10 @@ export class Unit {
   @Column('decimal', { precision: 14, scale: 2 })
   price: number;
 
+  // Vector embedding for similarity search
+  @Column('simple-array', { nullable: true })
+  embedding?: number[];
+
   @Field()
   @Column({ name: 'project_id' })
   projectId: string;
