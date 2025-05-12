@@ -104,6 +104,6 @@ export class UnitResolver {
     @Args('unitId') unitId: string,
     @Args('limit', { type: () => Int, nullable: true }) limit?: number
   ): Promise<Unit[]> {
-    return this.unitService.findSimilarUnits(unitId);
+    return this.unitService.findSimilarUnits(unitId, limit);
   }
 }
