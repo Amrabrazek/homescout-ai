@@ -11,7 +11,8 @@ const nextConfig = {
     ],
   },
   env: {
-    GRAPHQL_ENDPOINT: 'http://localhost:3001/graphql',
+    GRAPHQL_ENDPOINT:
+      process.env.GRAPHQL_ENDPOINT || 'http://localhost:3001/graphql',
   },
   experimental: {
     serverActions: true,
