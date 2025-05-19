@@ -8,7 +8,7 @@ function getGraphQLEndpoint() {
   // For server-side in Docker, use the backend service name
   const serverSideUrl = inDocker
     ? 'http://backend:3001/graphql'
-    : 'http://localhost:3001/graphql';
+    : process.env.GRAPHQL_ENDPOINT || 'http://localhost:3001/graphql';
 
   // For client-side, use the public URL that's accessible from browser
   const clientSideUrl =
