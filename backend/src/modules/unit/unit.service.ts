@@ -60,7 +60,6 @@ export class UnitService {
   ): Promise<Unit[]> {
     // Use Typesense for search if config flag is enabled
     const useTypesense = this.configService.get<string>('USE_TYPESENSE') === 'true';
-    console.log('useTypesense', useTypesense);
     
     if (useTypesense) {
       return this.findAllWithTypesense(filter, sort, limit, offset);
@@ -235,9 +234,7 @@ export class UnitService {
     }
 
     try {
-      console.log('Typesense search params:', JSON.stringify(searchParams));
       const searchResults = await this.typesenseService.searchUnits(searchParams);
-      console.log(`Typesense results: ${searchResults.found} units found`);
       
       // Map Typesense results to Unit entities
       if (searchResults.hits && searchResults.hits.length > 0) {
@@ -350,9 +347,7 @@ export class UnitService {
           searchParams.sort_by = 'createdAt:desc';
         }
         
-        console.log('Typesense search params (with count):', JSON.stringify(searchParams));
         const searchResults = await this.typesenseService.searchUnits(searchParams);
-        console.log(`Typesense results (with count): ${searchResults.found} units found`);
         
         // Total found from Typesense
         const total = searchResults.found;
@@ -796,8 +791,6 @@ export class UnitService {
     // Load related entities for embedding generation
     unit.project = await this.projectService.findOne(unit.projectId);
     unit.amenities = await this.getUnitAmenities(unitId);
-
-    console.log('unit', unit);
 
     // Generate embedding
     unit.embedding = await this.generateUnitEmbedding(unit);

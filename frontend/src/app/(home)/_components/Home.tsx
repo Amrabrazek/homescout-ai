@@ -173,11 +173,7 @@ export default function Home() {
     <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
       <div className='lg:col-span-1'>
         <div className='sticky top-20'>
-          <UnitFilters
-            filters={filters}
-            onChange={handleFilterChange}
-            totalUnits={totalUnits}
-          />
+          <UnitFilters filters={filters} onChange={handleFilterChange} />
         </div>
       </div>
       <div className='lg:col-span-3'>

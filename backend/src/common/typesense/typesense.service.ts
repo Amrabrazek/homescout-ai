@@ -26,9 +26,6 @@ export class TypesenseService implements OnModuleInit {
       // Check if we can connect to Typesense
       const health = await this.client.health.retrieve();
         this.logger.log(`Connected to Typesense: ${JSON.stringify(health)}`);
-        console.log(`Connected to Typesense: ${JSON.stringify(health)}`);
-        console.log('health', health);
-      
       // Initialize collections
       await this.initializeCollections();
     } catch (error) {
