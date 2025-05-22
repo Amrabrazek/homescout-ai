@@ -8,6 +8,8 @@ import type {
   UnitFilter,
   Unit,
   UnitSort,
+  FacetCount,
+  FacetCountValue,
 } from './types';
 
 const UNITS_PER_PAGE = 20;
@@ -29,6 +31,76 @@ export function useFilterData() {
   return useQuery(GET_FILTER_DATA);
 }
 
+// Helper hook to get facet counts from Typesense
+export function useFacetCounts(filter: UnitFilter, sort?: UnitSort) {
+  const { data, loading, error } = useUnits(filter, sort);
+  const [cachedFacets, setCachedFacets] = useState<FacetCount[]>([]);
+
+  // Update cached facets only when we have new data and it's not loading
+  useEffect(() => {
+    if (!loading && data?.units.facets) {
+      setCachedFacets(data.units.facets);
+    }
+  }, [data, loading]);
+
+  // Use cached facets or new facets, but never empty facets during loading
+  const facets = loading ? cachedFacets : data?.units.facets || cachedFacets;
+
+  // Create helper methods to get specific facet counts
+  const getProjectCounts = (): { id: string; count: number }[] => {
+    const projectFacet = facets.find((f) => f.field_name === 'projectId');
+    if (!projectFacet) return [];
+
+    return projectFacet.counts.map((c) => ({
+      id: c.value,
+      count: c.count,
+    }));
+  };
+
+  const getAmenityCounts = (): { id: string; count: number }[] => {
+    const amenityFacet = facets.find((f) => f.field_name === 'amenityIds');
+    if (!amenityFacet) return [];
+
+    return amenityFacet.counts.map((c) => ({
+      id: c.value,
+      count: c.count,
+    }));
+  };
+
+  const getRoomCounts = (): { value: number; count: number }[] => {
+    const roomsFacet = facets.find((f) => f.field_name === 'rooms');
+    if (!roomsFacet) return [];
+
+    return roomsFacet.counts
+      .map((c) => ({
+        value: parseInt(c.value),
+        count: c.count,
+      }))
+      .sort((a, b) => a.value - b.value);
+  };
+
+  const getPriceStats = () => {
+    const priceFacet = facets.find((f) => f.field_name === 'price');
+    return priceFacet?.stats;
+  };
+
+  const getFloorAreaStats = () => {
+    const floorAreaFacet = facets.find((f) => f.field_name === 'floorArea');
+    return floorAreaFacet?.stats;
+  };
+
+  return {
+    facets,
+    loading,
+    error,
+    getProjectCounts,
+    getAmenityCounts,
+    getRoomCounts,
+    getPriceStats,
+    getFloorAreaStats,
+  };
+}
+
 // Helper hook for infinite scroll
 export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {
   const { data, loading, error, fetchMore, networkStatus } = useUnits(
@@ -37,6 +109,16 @@ export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {
   );
   const [items, setItems] = useState<Unit[]>([]);
   const [hasMore, setHasMore] = useState(true);
+
+  // Get facet counts
+  const {
+    facets,
+    getProjectCounts,
+    getAmenityCounts,
+    getRoomCounts,
+    getPriceStats,
+    getFloorAreaStats,
+  } = useFacetCounts(filter, sort);
 
   // Reset items when filter or sort changes
   useEffect(() => {
@@ -68,6 +150,7 @@ export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {
             units: {
               items: updatedItems,
               total: fetchMoreResult.units.total,
+              facets: fetchMoreResult.units.facets,
               __typename: prev.units.__typename,
             },
           };
@@ -87,6 +170,12 @@ export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {
   return {
     units: items,
     total: data?.units.total || 0,
+    facets: data?.units.facets || [],
+    getProjectCounts,
+    getAmenityCounts,
+    getRoomCounts,
+    getPriceStats,
+    getFloorAreaStats,
     loading,
     error,
     loadMore,

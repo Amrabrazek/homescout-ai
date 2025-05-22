@@ -9,24 +9,24 @@ export enum UnitEventType {
 export class UnitEvent {
   constructor(
     public readonly type: UnitEventType,
-    public readonly unit: Unit
+    public readonly unitId: string
   ) {}
 }
 
 export class UnitCreatedEvent extends UnitEvent {
-  constructor(unit: Unit) {
-    super(UnitEventType.CREATED, unit);
+  constructor(unitId: string) {
+    super(UnitEventType.CREATED, unitId);
   }
 }
 
 export class UnitUpdatedEvent extends UnitEvent {
-  constructor(unit: Unit) {
-    super(UnitEventType.UPDATED, unit);
+  constructor(unitId: string) {
+    super(UnitEventType.UPDATED, unitId);
   }
 }
 
 export class UnitDeletedEvent extends UnitEvent {
-  constructor(unit: Unit) {
-    super(UnitEventType.DELETED, unit);
+  constructor(unitId: string) {
+    super(UnitEventType.DELETED, unitId);
   }
 }

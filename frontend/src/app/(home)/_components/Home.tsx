@@ -1,135 +1,150 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import UnitListing from './UnitListing';
-import UnitFilters from './UnitFilters';
-import UnitSorter from './UnitSorter';
-import {
-  UnitSort,
-  UnitSortField,
-  SortDirection,
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import UnitFilters from '@/app/(home)/_components/UnitFilters';
+import UnitListing from '@/app/(home)/_components/UnitListing';
+import UnitSorter from '@/app/(home)/_components/UnitSorter';
+import type {
   UnitFilter,
+  UnitSort,
+  SortDirection,
+  UnitSortField,
 } from '@/lib/graphql/units/types';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useFacetCounts } from '@/lib/graphql/units/hooks';
 
 export default function Home() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Initialize filter and sort states
+  const searchParams = useSearchParams();
   const [filters, setFilters] = useState<UnitFilter>({});
-  const [sort, setSort] = useState<UnitSort>({
-    field: UnitSortField.CREATED_AT,
-    direction: SortDirection.DESC,
-  });
+  const [sort, setSort] = useState<UnitSort>({});
+  const [totalUnits, setTotalUnits] = useState(0);
 
-  // Read URL parameters and initialize state
+  // Initialize from URL on first load
   useEffect(() => {
-    if (!searchParams) return;
+    const initialFilters = parseFiltersFromUrl();
+    const initialSort = parseSortFromUrl();
 
-    const newFilters: UnitFilter = {};
-    const newSort: UnitSort = { ...sort };
-
-    // Helper to get a parameter value, checking different prefixes
-    const getParam = (key: string) => {
-      // Check with prefix first
-      if (searchParams.has(`filters_${key}`)) {
-        return searchParams.get(`filters_${key}`);
-      }
-      // Then check without prefix
-      if (searchParams.has(key)) {
-        return searchParams.get(key);
-      }
-      return null;
-    };
-
-    // Process string parameters
-    const searchTerm = getParam('searchTerm');
-    if (searchTerm) newFilters.searchTerm = searchTerm;
-
-    // Process numeric parameters
-    const numericParams = [
-      'minPrice',
-      'maxPrice',
-      'minRooms',
-      'maxRooms',
-      'minFloorArea',
-      'maxFloorArea',
-    ] as const;
-
-    numericParams.forEach((param) => {
-      const value = getParam(param);
-      if (value) newFilters[param] = Number(value);
-    });
-
-    // Process array parameters
-    const projectIds = getParam('projectIds');
-    if (projectIds) newFilters.projectIds = projectIds.split(',');
-
-    const amenityIds = getParam('amenityIds');
-    if (amenityIds) newFilters.amenityIds = amenityIds.split(',');
-
-    // Process sort parameters
-    const sortField =
-      searchParams.get('sort_field') || searchParams.get('field');
-    if (
-      sortField &&
-      Object.values(UnitSortField).includes(sortField as UnitSortField)
-    ) {
-      newSort.field = sortField as UnitSortField;
-    }
-
-    const sortDirection =
-      searchParams.get('sort_direction') || searchParams.get('direction');
-    if (
-      sortDirection &&
-      Object.values(SortDirection).includes(sortDirection as SortDirection)
-    ) {
-      newSort.direction = sortDirection as SortDirection;
-    }
-
-    // Update state
-    setFilters(newFilters);
-    setSort(newSort);
-    setIsLoading(false);
+    setFilters(initialFilters);
+    setSort(initialSort);
   }, [searchParams]);
 
-  // Update URL when filters change
+  // Custom handler to get the total count from UnitListing
+  const handleCountsUpdate = (total: number) => {
+    setTotalUnits(total);
+  };
+
+  // Parse filter values from URL search params
+  const parseFiltersFromUrl = (): UnitFilter => {
+    const filters: UnitFilter = {};
+
+    // Helper to get array of values for a param
+    const getParam = (key: string) => {
+      const value = searchParams.get(key);
+      return value ? value : undefined;
+    };
+
+    const getArrayParam = (key: string) => {
+      const value = searchParams.getAll(key);
+      return value.length > 0 ? value : undefined;
+    };
+
+    const getNumberParam = (key: string) => {
+      const value = searchParams.get(key);
+      return value ? Number(value) : undefined;
+    };
+
+    // Extract filter values
+    filters.searchTerm = getParam('searchTerm');
+    filters.projectIds = getArrayParam('projectId');
+    filters.amenityIds = getArrayParam('amenityId');
+    filters.minRooms = getNumberParam('minRooms');
+    filters.maxRooms = getNumberParam('maxRooms');
+    filters.minPrice = getNumberParam('minPrice');
+    filters.maxPrice = getNumberParam('maxPrice');
+    filters.minFloorArea = getNumberParam('minFloorArea');
+    filters.maxFloorArea = getNumberParam('maxFloorArea');
+
+    return filters;
+  };
+
+  // Parse sort values from URL
+  const parseSortFromUrl = (): UnitSort => {
+    const sortField = searchParams.get('sortField') as UnitSortField | null;
+    const sortDirection = searchParams.get(
+      'sortDirection'
+    ) as SortDirection | null;
+
+    const sort: UnitSort = {};
+
+    if (sortField) {
+      sort.field = sortField;
+    }
+
+    if (sortDirection) {
+      sort.direction = sortDirection;
+    }
+
+    return sort;
+  };
+
+  // Update URL with new filters and sort
   const updateUrl = (newFilters: UnitFilter, newSort: UnitSort) => {
+    // Create a new URLSearchParams object
     const params = new URLSearchParams();
 
-    // Add filter parameters
-    if (newFilters.searchTerm) params.set('searchTerm', newFilters.searchTerm);
-    if (newFilters.minPrice)
-      params.set('minPrice', String(newFilters.minPrice));
-    if (newFilters.maxPrice)
-      params.set('maxPrice', String(newFilters.maxPrice));
-    if (newFilters.minRooms)
-      params.set('minRooms', String(newFilters.minRooms));
-    if (newFilters.maxRooms)
-      params.set('maxRooms', String(newFilters.maxRooms));
-    if (newFilters.minFloorArea)
-      params.set('minFloorArea', String(newFilters.minFloorArea));
-    if (newFilters.maxFloorArea)
-      params.set('maxFloorArea', String(newFilters.maxFloorArea));
+    // Add filter params
+    if (newFilters.searchTerm) {
+      params.set('searchTerm', newFilters.searchTerm);
+    }
 
-    // Add array parameters
-    if (newFilters.projectIds?.length)
-      params.set('projectIds', newFilters.projectIds.join(','));
-    if (newFilters.amenityIds?.length)
-      params.set('amenityIds', newFilters.amenityIds.join(','));
+    if (newFilters.projectIds && newFilters.projectIds.length > 0) {
+      newFilters.projectIds.forEach((id) => {
+        params.append('projectId', id);
+      });
+    }
 
-    // Add sort parameters
-    if (newSort.field) params.set('field', newSort.field);
-    if (newSort.direction) params.set('direction', newSort.direction);
+    if (newFilters.amenityIds && newFilters.amenityIds.length > 0) {
+      newFilters.amenityIds.forEach((id) => {
+        params.append('amenityId', id);
+      });
+    }
 
-    // Update URL without reloading the page
-    const url = params.toString()
-      ? `${window.location.pathname}?${params.toString()}`
-      : window.location.pathname;
+    if (newFilters.minRooms !== undefined) {
+      params.set('minRooms', newFilters.minRooms.toString());
+    }
 
-    window.history.pushState({}, '', url);
+    if (newFilters.maxRooms !== undefined) {
+      params.set('maxRooms', newFilters.maxRooms.toString());
+    }
+
+    if (newFilters.minPrice !== undefined) {
+      params.set('minPrice', newFilters.minPrice.toString());
+    }
+
+    if (newFilters.maxPrice !== undefined) {
+      params.set('maxPrice', newFilters.maxPrice.toString());
+    }
+
+    if (newFilters.minFloorArea !== undefined) {
+      params.set('minFloorArea', newFilters.minFloorArea.toString());
+    }
+
+    if (newFilters.maxFloorArea !== undefined) {
+      params.set('maxFloorArea', newFilters.maxFloorArea.toString());
+    }
+
+    // Add sort params
+    if (newSort.field) {
+      params.set('sortField', newSort.field);
+    }
+
+    if (newSort.direction) {
+      params.set('sortDirection', newSort.direction);
+    }
+
+    // Update the URL without reloading the page
+    router.push('?' + params.toString(), { scroll: false });
   };
 
   // Handle filter changes
@@ -144,8 +159,8 @@ export default function Home() {
     updateUrl(filters, newSort);
   };
 
-  // Show loading state while initializing
-  if (isLoading) {
+  // Show skeleton during initial load
+  if (Object.keys(filters).length === 0 && searchParams.toString().length > 0) {
     return (
       <div className='grid grid-cols-1 lg:grid-cols-4 gap-6 animate-pulse'>
         <div className='lg:col-span-1 bg-gray-200 h-[600px] rounded-md'></div>
@@ -158,14 +173,22 @@ export default function Home() {
     <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
       <div className='lg:col-span-1'>
         <div className='sticky top-20'>
-          <UnitFilters filters={filters} onChange={handleFilterChange} />
+          <UnitFilters
+            filters={filters}
+            onChange={handleFilterChange}
+            totalUnits={totalUnits}
+          />
         </div>
       </div>
       <div className='lg:col-span-3'>
         <div className='mb-6 flex justify-end'>
           <UnitSorter sort={sort} onSortChange={handleSortChange} />
         </div>
-        <UnitListing filters={filters} sort={sort} />
+        <UnitListing
+          filters={filters}
+          sort={sort}
+          onCountsUpdate={handleCountsUpdate}
+        />
       </div>
     </div>
   );

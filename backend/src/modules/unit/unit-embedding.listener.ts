@@ -14,10 +14,10 @@ export class UnitEmbeddingListener {
   @OnEvent(UnitEventType.CREATED)
   async handleUnitCreatedEvent(event: UnitCreatedEvent) {
     try {
-      await this.unitService.updateUnitEmbedding(event.unit.id);
+      await this.unitService.updateUnitEmbedding(event.unitId);
     } catch (error) {
       console.error(
-        `Error generating embedding for unit ${event.unit.id}:`,
+        `Error generating embedding for unit ${event.unitId}:`,
         error.message
       );
     }
@@ -26,10 +26,10 @@ export class UnitEmbeddingListener {
   @OnEvent(UnitEventType.UPDATED)
   async handleUnitUpdatedEvent(event: UnitUpdatedEvent) {
     try {
-      await this.unitService.updateUnitEmbedding(event.unit.id);
+      await this.unitService.updateUnitEmbedding(event.unitId);
     } catch (error) {
       console.error(
-        `Error updating embedding for unit ${event.unit.id}:`,
+        `Error updating embedding for unit ${event.unitId}:`,
         error.message
       );
     }

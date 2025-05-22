@@ -28,6 +28,24 @@ export interface Unit {
   images: Image[];
 }
 
+export interface FacetCountValue {
+  value: string;
+  count: number;
+}
+
+export interface FacetStatsValue {
+  min?: number;
+  max?: number;
+  avg?: number;
+  sum?: number;
+}
+
+export interface FacetCount {
+  field_name: string;
+  counts: FacetCountValue[];
+  stats?: FacetStatsValue;
+}
+
 export interface UnitFilter {
   searchTerm?: string;
   projectIds?: string[];
@@ -59,6 +77,7 @@ export interface UnitSort {
 export interface UnitsResponse {
   items: Unit[];
   total: number;
+  facets?: FacetCount[];
   __typename?: string;
 }
 

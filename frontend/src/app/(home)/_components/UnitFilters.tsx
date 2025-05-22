@@ -12,15 +12,18 @@ import { useFilterData } from '@/lib/graphql/units/hooks';
 import { useProjects } from '@/lib/graphql/projects/hooks';
 import { UnitFilter } from '@/lib/graphql/units/types';
 import { toast } from '@/components/ui/sonner';
+import { useFacetCounts } from '@/lib/graphql/units/hooks';
+import { Badge } from '@/components/ui/badge';
 
 type FilterProps = {
   filters: UnitFilter;
   onChange: (filters: UnitFilter) => void;
-  totalUnits?: number;
 };
 
 export default function UnitFilters({ filters, onChange }: FilterProps) {
   const { data, loading } = useFilterData();
+  const { getAmenityCounts, getRoomCounts, getPriceStats, getFloorAreaStats } =
+    useFacetCounts(filters);
 
   // Use refs for debounce timers
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -41,6 +44,12 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
 
   const projectsPerPage = 10;
+
+  // Get facet counts
+  const amenityCounts = getAmenityCounts();
+  const roomCounts = getRoomCounts();
+  const priceStats = getPriceStats();
+  const floorAreaStats = getFloorAreaStats();
 
   // Use the project options hook
   const {
@@ -179,6 +188,16 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
       });
   };
 
+  // Format price or area ranges nicely
+  const formatRange = (min?: number | null, max?: number | null) => {
+    if (min !== undefined && min !== null && max !== undefined && max !== null)
+      return `${min.toLocaleString()} - ${max.toLocaleString()}`;
+    if (min !== undefined && min !== null) return `${min.toLocaleString()}+`;
+    if (max !== undefined && max !== null)
+      return `Up to ${max.toLocaleString()}`;
+    return 'Any';
+  };
+
   return (
     <Card className='flex flex-col max-h-[calc(100vh-100px)]'>
       <CardHeader className='flex-shrink-0 px-3 py-2'>
@@ -224,7 +243,7 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
               label='Projects'
               options={projectOptions.map((project) => ({
                 id: project.id,
-                label: `${project.name} | ${project.developer.name}`,
+                label: `${project.name} | ${project.developer.name} `,
                 value: project.id,
               }))}
               selectedIds={filters.projectIds || []}
@@ -246,6 +265,11 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
 
         <div className='space-y-2'>
           <Label>Price Range</Label>
+          {priceStats && (
+            <div className='text-xs text-muted-foreground mb-2'>
+              Range: {formatRange(priceStats.min, priceStats.max)}
+            </div>
+          )}
           <div className='flex gap-2'>
             <Input
               type='number'
@@ -270,6 +294,29 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
 
         <div className='space-y-2'>
           <Label>Rooms</Label>
+          <div className='flex flex-wrap gap-2 mb-2'>
+            {roomCounts.map((room) => (
+              <Badge
+                key={room.value}
+                variant={
+                  filters.minRooms === room.value &&
+                  filters.maxRooms === room.value
+                    ? 'default'
+                    : 'outline'
+                }
+                className='cursor-pointer'
+                onClick={() => {
+                  onChange({
+                    ...filters,
+                    minRooms: room.value,
+                    maxRooms: room.value,
+                  });
+                }}
+              >
+                {room.value} ({room.count})
+              </Badge>
+            ))}
+          </div>
           <div className='flex gap-2'>
             <Input
               type='number'
@@ -294,6 +341,11 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
 
         <div className='space-y-2'>
           <Label>Area (sqm)</Label>
+          {floorAreaStats && (
+            <div className='text-xs text-muted-foreground mb-2'>
+              Range: {formatRange(floorAreaStats.min, floorAreaStats.max)}
+            </div>
+          )}
           <div className='flex gap-2'>
             <Input
               type='number'
@@ -319,18 +371,30 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
         <div className='space-y-2'>
           <Label>Amenities</Label>
           <div className='grid grid-cols-1 gap-2'>
-            {data?.amenities?.map((amenity: any) => (
-              <div key={amenity.id} className='flex items-center space-x-2'>
-                <Checkbox
-                  id={`amenity-${amenity.id}`}
-                  checked={(filters.amenityIds || []).includes(amenity.id)}
-                  onCheckedChange={(checked) =>
-                    handleAmenityChange(amenity.id, checked as boolean)
-                  }
-                />
-                <Label htmlFor={`amenity-${amenity.id}`}>{amenity.name}</Label>
-              </div>
-            ))}
+            {data?.amenities?.map((amenity: any) => {
+              const amenityCount =
+                amenityCounts.find((ac) => ac.id === amenity.id)?.count || 0;
+              return (
+                <div key={amenity.id} className='flex items-center space-x-2'>
+                  <Checkbox
+                    id={`amenity-${amenity.id}`}
+                    checked={(filters.amenityIds || []).includes(amenity.id)}
+                    onCheckedChange={(checked) =>
+                      handleAmenityChange(amenity.id, checked as boolean)
+                    }
+                  />
+                  <Label
+                    htmlFor={`amenity-${amenity.id}`}
+                    className='flex justify-between w-full'
+                  >
+                    <span>{amenity.name}</span>
+                    <span className='text-xs text-muted-foreground'>
+                      ({amenityCount})
+                    </span>
+                  </Label>
+                </div>
+              );
+            })}
           </div>
         </div>
       </CardContent>

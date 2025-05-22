@@ -39,6 +39,9 @@ docker-volumes/
 **/*-service-account-keys.json
 **/supabase/.env
 
+# Typesense data
+supabase/volumes/typesense-data/
+
 # Cache
 .eslintcache
 .cache/

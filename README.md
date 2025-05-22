@@ -13,6 +13,7 @@ A full-stack application for listing and browsing apartment units, complete with
 - [Testing](#testing)
 - [File Storage](#file-storage)
 - [AI Features](#ai-features)
+- [Typesense Integration](#typesense-integration)
 - [Future Enhancements](#future-enhancements)
 - [License](#license)
 
@@ -56,6 +57,7 @@ Nawy Apartment Listing App is a modern real estate platform that lets users brow
 - **Database**: PostgreSQL
 - **Storage**: Supabase Object Storage
 - **AI**: OpenAI Embeddings for similar unit recommendations
+- **Search**: Typesense for fast and typo-tolerant search
 
 ### DevOps
 
@@ -367,6 +369,51 @@ Two storage backends are supported:
 - Direct upload from the frontend using the `FileUpload` component
 - REST API for file uploads at `/upload/image`
 - Automatic preview generation and URL handling
+
+## Typesense Integration
+
+This project includes integration with Typesense for fast and typo-tolerant search of unit listings. Typesense provides several advantages over direct database queries:
+
+- Extremely fast search results
+- Typo-tolerance for better user experience
+- Advanced filtering and faceting capabilities
+- Reduced database load for listing queries
+
+### Setup
+
+1. Make sure to add the following environment variables to your `.env` file:
+
+```
+TYPESENSE_API_KEY=your-api-key
+TYPESENSE_HOST=typesense
+TYPESENSE_PORT=8108
+TYPESENSE_PROTOCOL=http
+USE_TYPESENSE=true
+```
+
+2. Start the application with Docker Compose:
+
+```
+docker-compose up -d
+```
+
+3. After the application is running, populate Typesense with existing units:
+
+```
+docker compose exec backend npm run typesense:populate
+```
+
+### How It Works
+
+The integration works as follows:
+
+1. When units are created, updated, or deleted, the changes are automatically synchronized to Typesense.
+2. The unit listings API uses Typesense for searching, filtering, and sorting units.
+3. If Typesense is unavailable, the system falls back to direct database queries.
+
+### Disabling Typesense
+
+If you want to disable Typesense and use only database queries, set `USE_TYPESENSE=false` in your environment variables.
 
 ## Future Enhancements
 

@@ -39,6 +39,19 @@ export const GET_UNITS = gql`
         }
       }
       total
+      facets {
+        field_name
+        counts {
+          value
+          count
+        }
+        stats {
+          min
+          max
+          avg
+          sum
+        }
+      }
     }
   }
 `;
