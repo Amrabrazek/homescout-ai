@@ -9,16 +9,11 @@ import type { UnitFilter, UnitSort } from '@/lib/graphql/units/types';
 type UnitListingProps = {
   filters: UnitFilter;
   sort?: UnitSort;
-  onCountsUpdate?: (total: number, displayed: number) => void;
 };
 
 const SKELETON_COUNT = 9;
 
-export default function UnitListing({
-  filters,
-  sort = {},
-  onCountsUpdate,
-}: UnitListingProps) {
+export default function UnitListing({ filters, sort = {} }: UnitListingProps) {
   const observer = useRef<IntersectionObserver | null>(null);
   const lastUnitElementRef = useRef<HTMLDivElement | null>(null);
   const [prevTotal, setPrevTotal] = useState(0);
@@ -60,13 +55,6 @@ export default function UnitListing({
       }
     };
   }, [loading, hasMore, loadMore, isFetchingMore]);
-
-  // Update counts when units change or loading changes
-  useEffect(() => {
-    if (onCountsUpdate) {
-      onCountsUpdate(currentTotal, loading ? 0 : units.length);
-    }
-  }, [currentTotal, units.length, onCountsUpdate, loading]);
 
   if (error) {
     return (

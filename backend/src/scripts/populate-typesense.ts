@@ -32,7 +32,6 @@ async function bootstrap() {
     await typesenseService.initializeCollections();
     
     // Temporarily disable Typesense for the database queries
-    // This is needed because there appears to be an issue with the Typesense query path
     const originalTypesenseSetting = process.env.USE_TYPESENSE;
     process.env.USE_TYPESENSE = 'false';
     logger.log('Temporarily disabled Typesense for database queries');

@@ -17,7 +17,7 @@ export class TypesenseService implements OnModuleInit {
         },
       ],
       apiKey: this.configService.get<string>('TYPESENSE_API_KEY', 'xyz'),
-      connectionTimeoutSeconds: 2,
+      connectionTimeoutSeconds: 60,
     });
   }
 
@@ -60,12 +60,44 @@ export class TypesenseService implements OnModuleInit {
               { name: 'amenityIds', type: 'string[]', optional: true, facet: true },
               { name: 'amenityNames', type: 'string[]', optional: true, facet: true },
               { name: 'imageUrls', type: 'string[]', optional: true },
-              { name: 'createdAt', type: 'int64' }
+              { name: 'createdAt', type: 'int64' },
+              // Add text representation fields
+              { name: 'roomsText', type: 'string', optional: true },
+              { name: 'bathroomsText', type: 'string', optional: true },
+              { name: 'floorText', type: 'string', optional: true },
+              { name: 'floorAreaText', type: 'string', optional: true },
+              { name: 'priceText', type: 'string', optional: true },
+              { 
+                name: 'embedding', 
+                type: 'float[]', 
+                optional: true,
+                embed: {
+                  from: [
+                    'name', 
+                    'number', 
+                    'description', 
+                    'projectName', 
+                    'developerName', 
+                    'amenityNames',
+                    'roomsText',
+                    'bathroomsText',
+                    'floorText',
+                    'floorAreaText',
+                    'priceText'
+                  ],
+                  model_config: {
+                    model_name: 'ts/e5-small',
+                    // model_name: 'openai/text-embedding-3-small',
+                    // api_key: this.configService.get<string>('OPENAI_API_KEY')
+                  }
+                }
+              }
             ],
             default_sorting_field: 'createdAt'
           };
+          
           await this.client.collections().create(schema);
-          this.logger.log('Units collection created');
+          this.logger.log('Units collection created with embedding field');
         } else {
           throw error;
         }
@@ -115,7 +147,16 @@ export class TypesenseService implements OnModuleInit {
     }
   }
 
+  // Drop and recreate the units collectio
+
   private mapUnitToTypesenseDocument(unit: any): any {
+    // Convert numeric values to string representations for embedding
+    const roomsText = unit.rooms ? `${unit.rooms} room${unit.rooms !== 1 ? 's' : ''}` : '';
+    const bathroomsText = unit.bathrooms ? `${unit.bathrooms} bathroom${unit.bathrooms !== 1 ? 's' : ''}` : '';
+    const floorText = unit.floor ? `floor ${unit.floor}` : '';
+    const floorAreaText = unit.floorArea ? `${unit.floorArea} square meters` : '';
+    const priceText = unit.price ? `${unit.price} price` : '';
+
     return {
       id: unit.id,
       name: unit.name,
@@ -132,7 +173,13 @@ export class TypesenseService implements OnModuleInit {
       amenityIds: unit.amenities?.map(a => a.id) || [],
       amenityNames: unit.amenities?.map(a => a.name) || [],
       imageUrls: unit.images?.map(img => img.url) || [],
-      createdAt: new Date(unit.createdAt).getTime()
+      createdAt: new Date(unit.createdAt).getTime(),
+      // Add string representations for embedding
+      roomsText,
+      bathroomsText,
+      floorText,
+      floorAreaText,
+      priceText
     };
   }
 

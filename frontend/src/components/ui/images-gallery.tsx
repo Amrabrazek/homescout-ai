@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import { cn } from '@/lib/utils/ui';
 import ImageLightbox from './image-lightbox';
+import { ImageIcon } from 'lucide-react';
 
 export default function ImagesGallery({ images }: { images: string[] }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -38,10 +39,16 @@ export default function ImagesGallery({ images }: { images: string[] }) {
 
   if (!images || images.length === 0) {
     return (
-      <div className='flex h-[450px] items-center justify-center rounded-md bg-gray-100' />
+      <div className='flex h-[450px] items-center justify-center rounded-md bg-gray-100'>
+        <div className='w-full h-full bg-gray-100 flex items-center justify-center'>
+          <div className='flex flex-col items-center justify-center text-muted-foreground'>
+            <ImageIcon className='w-12 h-12 mb-2 opacity-20' />
+            <span className='text-sm'>No image available</span>
+          </div>
+        </div>
+      </div>
     );
   }
-
   return (
     <div className='col-span-12 w-full lg:col-span-7'>
       <div className='sticky top-10 lg:block'>

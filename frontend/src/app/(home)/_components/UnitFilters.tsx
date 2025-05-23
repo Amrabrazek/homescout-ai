@@ -227,14 +227,23 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
       </div>
       <CardContent className='space-y-4 overflow-y-auto pb-6 pt-4'>
         <div className='space-y-2'>
-          <Label htmlFor='searchTerm'>Search by name or number</Label>
-          <Input
-            id='searchTerm'
-            name='searchTerm'
-            placeholder='Search units...'
-            value={inputValues.searchTerm}
-            onChange={handleInputChange}
-          />
+          <Label htmlFor='searchTerm' className='flex items-center gap-2'>
+            <Search size={14} />
+            Search anything
+          </Label>
+          <div className='relative'>
+            <Input
+              id='searchTerm'
+              name='searchTerm'
+              placeholder='Try "TMG Villa Swimming Pool"...'
+              value={inputValues.searchTerm}
+              onChange={handleInputChange}
+              className='pr-4 bg-background/50 border-muted-foreground/20 focus:border-primary'
+            />
+          </div>
+          <p className='text-xs text-muted-foreground'>
+            Search by name, number, features or describe what you're looking for
+          </p>
         </div>
 
         <div className='space-y-2'>

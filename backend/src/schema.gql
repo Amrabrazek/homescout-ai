@@ -168,6 +168,7 @@ type UnitResponse {
 """Fields that can be used to sort units"""
 enum UnitSortField {
   CREATED_AT
+  DEFAULT
   NAME
   PRICE
 }

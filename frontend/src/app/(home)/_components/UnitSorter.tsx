@@ -21,7 +21,7 @@ interface UnitSorterProps {
 
 export default function UnitSorter({ sort, onSortChange }: UnitSorterProps) {
   // Default to CREATED_AT and DESC if not provided
-  const sortField = sort.field || UnitSortField.CREATED_AT;
+  const sortField = sort.field || UnitSortField.DEFAULT;
   const sortDirection = sort.direction || SortDirection.DESC;
 
   const handleSortFieldChange = (value: string) => {
@@ -49,6 +49,7 @@ export default function UnitSorter({ sort, onSortChange }: UnitSorterProps) {
             <SelectValue placeholder='Sort by...' />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={UnitSortField.DEFAULT}>Most relevant</SelectItem>
             <SelectItem value={UnitSortField.NAME}>Name</SelectItem>
             <SelectItem value={UnitSortField.CREATED_AT}>
               Date created

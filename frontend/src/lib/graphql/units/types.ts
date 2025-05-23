@@ -59,6 +59,7 @@ export interface UnitFilter {
 }
 
 export enum UnitSortField {
+  DEFAULT = 'DEFAULT',
   NAME = 'NAME',
   CREATED_AT = 'CREATED_AT',
   PRICE = 'PRICE',

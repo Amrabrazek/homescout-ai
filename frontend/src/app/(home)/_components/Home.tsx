@@ -18,7 +18,6 @@ export default function Home() {
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<UnitFilter>({});
   const [sort, setSort] = useState<UnitSort>({});
-  const [totalUnits, setTotalUnits] = useState(0);
 
   // Initialize from URL on first load
   useEffect(() => {
@@ -28,11 +27,6 @@ export default function Home() {
     setFilters(initialFilters);
     setSort(initialSort);
   }, [searchParams]);
-
-  // Custom handler to get the total count from UnitListing
-  const handleCountsUpdate = (total: number) => {
-    setTotalUnits(total);
-  };
 
   // Parse filter values from URL search params
   const parseFiltersFromUrl = (): UnitFilter => {
@@ -180,11 +174,7 @@ export default function Home() {
         <div className='mb-6 flex justify-end'>
           <UnitSorter sort={sort} onSortChange={handleSortChange} />
         </div>
-        <UnitListing
-          filters={filters}
-          sort={sort}
-          onCountsUpdate={handleCountsUpdate}
-        />
+        <UnitListing filters={filters} sort={sort} />
       </div>
     </div>
   );
