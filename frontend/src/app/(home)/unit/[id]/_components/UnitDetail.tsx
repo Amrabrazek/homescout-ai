@@ -161,7 +161,7 @@ export default function UnitDetails({ unit }: UnitDetailsProps) {
       />
 
       {/* Similar Units Section */}
-      <SimilarUnits unitId={unit.id} limit={4} />
+      <SimilarUnits unitId={unit.id} limit={5} />
     </div>
   );
 }
