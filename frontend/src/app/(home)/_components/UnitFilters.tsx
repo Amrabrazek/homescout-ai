@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Button } from '@/components/ui/button';
-import { X, Search, Share2 } from 'lucide-react';
+import { X, Search, Share2, Sparkles } from 'lucide-react';
 import { useFilterData } from '@/lib/graphql/units/hooks';
 import { useProjects } from '@/lib/graphql/projects/hooks';
 import { UnitFilter } from '@/lib/graphql/units/types';
@@ -238,7 +238,11 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
               placeholder='Try "TMG Villa Swimming Pool"...'
               value={inputValues.searchTerm}
               onChange={handleInputChange}
-              className='pr-4 bg-background/50 border-muted-foreground/20 focus:border-primary'
+              className='pr-10 bg-background/50 border-muted-foreground/20 focus:border-primary'
+            />
+            <Sparkles
+              size={16}
+              className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary cursor-pointer'
             />
           </div>
           <p className='text-xs text-muted-foreground'>
