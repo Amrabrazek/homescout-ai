@@ -64,8 +64,8 @@ export default function UnitCard({ unit }: UnitCardProps) {
               src={unit.images[0].url}
               alt={unit.images[0].altText || unit.name}
               fill
-              unoptimized
               className='object-cover'
+              sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' // Crucial for responsive image loading
             />
           ) : (
             <div className='w-full h-full bg-gray-100 flex items-center justify-center'>

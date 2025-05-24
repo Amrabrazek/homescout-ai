@@ -4,7 +4,8 @@ const nextConfig = {
   images: {
     domains: [
       'picsum.photos',
-      'eztjeqhcgupkxfmczgfw.supabase.co',
+      // 'eztjeqhcgupkxfmczgfw.supabase.co',
+      'zpwjwbwlpsbzrstdkrsg.supabase.co',
       'localhost',
       '127.0.0.1',
       'images.unsplash.com',

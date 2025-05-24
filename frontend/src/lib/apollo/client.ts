@@ -18,10 +18,68 @@ function getGraphQLEndpoint() {
   return typeof window === 'undefined' ? serverSideUrl : clientSideUrl;
 }
 
+// Create a properly configured cache with type policies
+function createCache() {
+  return new InMemoryCache({
+    typePolicies: {
+      UnitResponse: {
+        // Configure merging strategy for UnitResponse
+        fields: {
+          items: {
+            // Merge strategy for items field in UnitResponse
+            merge(existing = [], incoming) {
+              return incoming; // Replace with incoming when filters/sort changes
+            },
+          },
+          facets: {
+            // Merge strategy for facets
+            merge(existing = [], incoming) {
+              return incoming;
+            },
+          },
+        },
+      },
+      Query: {
+        fields: {
+          units: {
+            // Use the query arguments to build a cache key
+            keyArgs: ['filter', 'sort'],
+            // This merge function handles pagination for infinite scroll
+            merge(existing, incoming, { args }) {
+              const offset = args?.offset || 0;
+
+              // If it's a fresh query (offset is 0), just return incoming
+              if (offset === 0 || !existing) {
+                return incoming;
+              }
+
+              // For pagination, merge the items
+              return {
+                ...incoming,
+                items: [...existing.items, ...incoming.items],
+              };
+            },
+          },
+        },
+      },
+      // TypeScript-friendly type identifiers for cache objects
+      Unit: {
+        keyFields: ['id'],
+      },
+      Project: {
+        keyFields: ['id'],
+      },
+      Amenity: {
+        keyFields: ['id'],
+      },
+    },
+  });
+}
+
 // Server-side Apollo client
 export function getServerClient() {
   return new ApolloClient({
-    cache: new InMemoryCache(),
+    cache: createCache(),
     link: new HttpLink({
       uri: getGraphQLEndpoint(),
     }),
@@ -33,6 +91,6 @@ export function getServerClient() {
 export function getClient() {
   return new ApolloClient({
     uri: getGraphQLEndpoint(),
-    cache: new InMemoryCache(),
+    cache: createCache(),
   });
 }
