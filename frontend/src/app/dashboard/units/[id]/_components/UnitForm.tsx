@@ -129,7 +129,8 @@ export function UnitForm({ unitData }: UnitFormProps) {
 
       if (result.success) {
         toast.success('Unit deleted successfully');
-        router.push('/');
+        // Use window.location.href to refresh the page
+        window.location.href = '/';
       } else {
         toast.error(`Failed to delete unit: ${result.error}`);
       }
