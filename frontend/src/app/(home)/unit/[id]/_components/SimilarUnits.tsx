@@ -69,7 +69,6 @@ function SimilarUnitCard({ unit }: { unit: Unit }) {
             fill
             className='object-cover'
             sizes='280px'
-            unoptimized
           />
         ) : (
           <div className='w-full h-full bg-gray-100 flex items-center justify-center'>

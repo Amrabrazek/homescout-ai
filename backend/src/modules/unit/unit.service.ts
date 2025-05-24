@@ -52,8 +52,6 @@ export class UnitService {
     private typesenseService: TypesenseService
   ) {}
 
-
-
   async findAllWithCount(
     filter?: UnitFilterInput,
     sort?: UnitSortInput,
@@ -78,10 +76,11 @@ export class UnitService {
           prefix: true,
           cache: true,
           prioritize_exact_match: true,
-          prioritize_token_position: true
+          prioritize_token_position: true,
+          include_fields: '*', // Include all fields to avoid additional DB queries
         };
-        
-        // Add filtering (same logic as in findAllWithTypesense)
+
+        // Add filtering (same logic as before)
         const filterConditions = [];
 
         if (filter?.projectIds && filter.projectIds.length > 0) {
@@ -132,46 +131,85 @@ export class UnitService {
           // Default order is by createdAt desc
           searchParams.sort_by = 'createdAt:desc';
         }
-        
-        const searchResults = await this.typesenseService.searchUnits(searchParams);
-        
+
+        this.logger.debug(
+          `Typesense search params: ${JSON.stringify(searchParams)}`
+        );
+        const searchResults =
+          await this.typesenseService.searchUnits(searchParams);
+
         // Total found from Typesense
         const total = searchResults.found;
-        
+
         // Extract facet counts from the search results
         const facetCounts = searchResults.facet_counts || [];
-        
-        // Map Typesense results to Unit entities
+
+        // Map Typesense results directly to Unit entities
         if (searchResults.hits && searchResults.hits.length > 0) {
-          const unitIds = searchResults.hits.map(hit => hit.document.id);
-          
-          // Fetch full unit data from database for consistent data structure
-          const units = await this.unitRepository.find({
-            where: { id: In(unitIds) },
-            relations: ['project', 'project.developer', 'amenities'],
-          });
-          
-          // Sort units in the same order as Typesense results
-          const sortedUnits = [];
-          for (const hit of searchResults.hits) {
-            const unit = units.find(u => u.id === hit.document.id);
-            if (unit) {
-              // Load unit images
-              unit.images = await this.getUnitImages(unit.id);
-              sortedUnits.push(unit);
+          // Convert Typesense documents directly to Unit entities
+          const units = searchResults.hits.map((hit) => {
+            const doc = hit.document;
+            const unit = new Unit();
+
+            // Map basic properties
+            unit.id = doc.id;
+            unit.name = doc.name;
+            unit.number = doc.number;
+            unit.description = doc.description;
+            unit.floor = doc.floor;
+            unit.rooms = doc.rooms;
+            unit.bathrooms = doc.bathrooms;
+            unit.floorArea = doc.floorArea;
+            unit.price = doc.price;
+            unit.createdAt = new Date(doc.createdAt);
+
+            // Map project
+            unit.project = {
+              id: doc.projectId,
+              name: doc.projectName,
+              developer: {
+                id: '', // Will be populated via GraphQL resolver if needed
+                name: doc.developerName,
+              },
+            } as any;
+
+            // Map amenities
+            if (doc.amenityIds && doc.amenityNames) {
+              unit.amenities = doc.amenityIds.map((id, index) => ({
+                id,
+                name: doc.amenityNames[index] || '',
+              })) as any[];
+            } else {
+              unit.amenities = [];
             }
-          }
-          
-          return [sortedUnits, total, facetCounts];
+
+            // Map images
+            if (doc.imageUrls) {
+              unit.images = doc.imageUrls.map((url, index) => ({
+                id: `${unit.id}-image-${index}`,
+                url,
+                altText: unit.name,
+              })) as any[];
+            } else {
+              unit.images = [];
+            }
+
+            return unit;
+          });
+
+          return [units, total, facetCounts];
         }
-        
+
         return [[], total, facetCounts];
       } catch (error) {
-        console.error('Typesense search error:', error);
+        this.logger.error(
+          `Typesense search error: ${error.message}`,
+          error.stack
+        );
         // Fall back to database search on error
       }
     }
-    
+
     // Database search (fallback)
     const where: any = {};
 
@@ -550,8 +588,6 @@ export class UnitService {
       // Get full updated unit
       const updatedUnit = await this.findOne(id);
       
-
-
       // Emit event for unit update
       this.eventEmitter.emit('unit.updated', new UnitUpdatedEvent(id));
 
@@ -578,7 +614,6 @@ export class UnitService {
 
     // Delete from the database
     await this.unitRepository.delete(id);
-    
 
     // Emit event for unit deletion
     this.eventEmitter.emit('unit.deleted', new UnitDeletedEvent(id));

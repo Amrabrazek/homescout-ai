@@ -1,6 +1,6 @@
 import { useQuery } from '@apollo/client';
 import { GET_UNITS, GET_FILTER_DATA } from './queries';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 import type {
   GetUnitsQueryResponse,
@@ -23,7 +23,7 @@ export function useUnits(filter: UnitFilter, sort?: UnitSort, offset = 0) {
       offset,
     },
     notifyOnNetworkStatusChange: true,
-    fetchPolicy: 'network-only',
+    fetchPolicy: 'cache-first',
   });
 }
 
@@ -47,7 +47,7 @@ export function useFacetCounts(filter: UnitFilter, sort?: UnitSort) {
   const facets = loading ? cachedFacets : data?.units.facets || cachedFacets;
 
   // Create helper methods to get specific facet counts
-  const getProjectCounts = (): { id: string; count: number }[] => {
+  const getProjectCounts = useCallback((): { id: string; count: number }[] => {
     const projectFacet = facets.find((f) => f.field_name === 'projectId');
     if (!projectFacet) return [];
 
@@ -55,9 +55,9 @@ export function useFacetCounts(filter: UnitFilter, sort?: UnitSort) {
       id: c.value,
       count: c.count,
     }));
-  };
+  }, [facets]);
 
-  const getAmenityCounts = (): { id: string; count: number }[] => {
+  const getAmenityCounts = useCallback((): { id: string; count: number }[] => {
     const amenityFacet = facets.find((f) => f.field_name === 'amenityIds');
     if (!amenityFacet) return [];
 
@@ -65,9 +65,9 @@ export function useFacetCounts(filter: UnitFilter, sort?: UnitSort) {
       id: c.value,
       count: c.count,
     }));
-  };
+  }, [facets]);
 
-  const getRoomCounts = (): { value: number; count: number }[] => {
+  const getRoomCounts = useCallback((): { value: number; count: number }[] => {
     const roomsFacet = facets.find((f) => f.field_name === 'rooms');
     if (!roomsFacet) return [];
 
@@ -77,17 +77,17 @@ export function useFacetCounts(filter: UnitFilter, sort?: UnitSort) {
         count: c.count,
       }))
       .sort((a, b) => a.value - b.value);
-  };
+  }, [facets]);
 
-  const getPriceStats = () => {
+  const getPriceStats = useCallback(() => {
     const priceFacet = facets.find((f) => f.field_name === 'price');
     return priceFacet?.stats;
-  };
+  }, [facets]);
 
-  const getFloorAreaStats = () => {
+  const getFloorAreaStats = useCallback(() => {
     const floorAreaFacet = facets.find((f) => f.field_name === 'floorArea');
     return floorAreaFacet?.stats;
-  };
+  }, [facets]);
 
   return {
     facets,
@@ -109,6 +109,8 @@ export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {
   );
   const [items, setItems] = useState<Unit[]>([]);
   const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const isFetchingMore = networkStatus === 3 || loadingMore;
 
   // Get facet counts
   const {
@@ -129,31 +131,17 @@ export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {
     }
   }, [data, filter, sort]);
 
-  const loadMore = async () => {
-    if (loading || !items.length || !hasMore) return;
+  const loadMore = useCallback(async () => {
+    if (loading || !items.length || !hasMore || isFetchingMore) return;
 
     try {
+      setLoadingMore(true);
+
+      // Use the current items length as the offset for the next page
       const result = await fetchMore({
         variables: {
           offset: items.length,
-        },
-        updateQuery: (prev, { fetchMoreResult }) => {
-          if (!fetchMoreResult) return prev;
-
-          const newItems = fetchMoreResult.units.items;
-          const updatedItems = [...prev.units.items, ...newItems];
-
-          // Update hasMore flag based on total vs current items
-          setHasMore(updatedItems.length < fetchMoreResult.units.total);
-
-          return {
-            units: {
-              items: updatedItems,
-              total: fetchMoreResult.units.total,
-              facets: fetchMoreResult.units.facets,
-              __typename: prev.units.__typename,
-            },
-          };
+          limit: UNITS_PER_PAGE,
         },
       });
 
@@ -161,11 +149,29 @@ export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {
       if (result.data.units.items.length === 0) {
         setHasMore(false);
       }
+
+      // Get the combined items from the cache after Apollo merges them
+      // This is more reliable than manually merging
+      if (result.data.units.items) {
+        // For safety, make sure we don't have duplicates
+        const allItems = [...items];
+
+        result.data.units.items.forEach((newItem: Unit) => {
+          if (!allItems.some((item) => item.id === newItem.id)) {
+            allItems.push(newItem);
+          }
+        });
+
+        setItems(allItems);
+        setHasMore(allItems.length < result.data.units.total);
+      }
     } catch (err) {
       console.error('Error loading more units:', err);
       // Don't disable infinite scroll on error to allow retrying
+    } finally {
+      setLoadingMore(false);
     }
-  };
+  }, [loading, items, hasMore, isFetchingMore, fetchMore]);
 
   return {
     units: items,
@@ -176,10 +182,10 @@ export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {
     getRoomCounts,
     getPriceStats,
     getFloorAreaStats,
-    loading,
+    loading: loading && !isFetchingMore,
     error,
     loadMore,
     hasMore,
-    isFetchingMore: networkStatus === 3,
+    isFetchingMore,
   };
 }
