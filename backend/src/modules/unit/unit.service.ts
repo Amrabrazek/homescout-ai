@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
@@ -16,7 +16,6 @@ import { UnitImage } from '../../common/entities/unit-image.entity';
 import { Amenity } from '../../common/entities/amenity.entity';
 import { Image } from '../../common/entities/image.entity';
 import { AmenityService } from '../amenity/amenity.service';
-import { ImageService } from '../image/image.service';
 import { ProjectService } from '../project/project.service';
 import { CreateUnitInput } from './dto/create-unit.input';
 import { UpdateUnitInput } from './dto/update-unit.input';
@@ -34,9 +33,12 @@ import {
   UnitDeletedEvent,
 } from '../../common/events/unit.events';
 import { DataSource } from 'typeorm';
+import { TypesenseService } from '../../common/typesense/typesense.service';
 
 @Injectable()
 export class UnitService {
+  private readonly logger = new Logger(UnitService.name);
+
   constructor(
     @InjectRepository(Unit)
     private unitRepository: Repository<Unit>,
@@ -44,116 +46,133 @@ export class UnitService {
     private unitImageRepository: Repository<UnitImage>,
     private projectService: ProjectService,
     private amenityService: AmenityService,
-    private imageService: ImageService,
     private configService: ConfigService,
     private eventEmitter: EventEmitter2,
-    private dataSource: DataSource
+    private dataSource: DataSource,
+    private typesenseService: TypesenseService
   ) {}
 
-  async findAll(
-    filter?: UnitFilterInput,
-    sort?: UnitSortInput,
-    limit?: number,
-    offset?: number
-  ): Promise<Unit[]> {
-    const where: any = {};
 
-    if (filter) {
-      if (filter.searchTerm) {
-        // Search in both name and number fields with OR condition
-        where.name = Raw(
-          (alias) => `${alias} ILIKE :searchTerm OR number ILIKE :searchTerm`,
-          { searchTerm: `%${filter.searchTerm}%` }
-        );
-      }
-
-      // Handle multiple project IDs or single project ID
-      if (filter.projectIds && filter.projectIds.length > 0) {
-        where.projectId = In(filter.projectIds);
-      }
-
-      // Handle amenity IDs filter
-      if (filter.amenityIds && filter.amenityIds.length > 0) {
-        where.id = Raw(
-          (alias) => {
-            return `${alias} IN (
-            SELECT unit_id FROM unit_amenities
-            WHERE amenity_id IN (:...amenityIds)
-            GROUP BY unit_id
-            HAVING COUNT(DISTINCT amenity_id) = :amenityCount
-          )`;
-          },
-          {
-            amenityIds: filter.amenityIds,
-            amenityCount: filter.amenityIds.length, // Require ALL selected amenities
-          }
-        );
-      }
-
-      if (filter.minRooms !== undefined && filter.maxRooms !== undefined) {
-        where.rooms = Between(filter.minRooms, filter.maxRooms);
-      } else if (filter.minRooms !== undefined) {
-        where.rooms = MoreThanOrEqual(filter.minRooms);
-      } else if (filter.maxRooms !== undefined) {
-        where.rooms = LessThanOrEqual(filter.maxRooms);
-      }
-
-      if (filter.minPrice !== undefined && filter.maxPrice !== undefined) {
-        where.price = Between(filter.minPrice, filter.maxPrice);
-      } else if (filter.minPrice !== undefined) {
-        where.price = MoreThanOrEqual(filter.minPrice);
-      } else if (filter.maxPrice !== undefined) {
-        where.price = LessThanOrEqual(filter.maxPrice);
-      }
-
-      if (
-        filter.minFloorArea !== undefined &&
-        filter.maxFloorArea !== undefined
-      ) {
-        where.floorArea = Between(filter.minFloorArea, filter.maxFloorArea);
-      } else if (filter.minFloorArea !== undefined) {
-        where.floorArea = MoreThanOrEqual(filter.minFloorArea);
-      } else if (filter.maxFloorArea !== undefined) {
-        where.floorArea = LessThanOrEqual(filter.maxFloorArea);
-      }
-    }
-
-    // Define order based on sort input
-    const order: any = {};
-
-    if (sort?.field === UnitSortField.NAME) {
-      order.name = sort.direction || SortDirection.ASC;
-    } else if (sort?.field === UnitSortField.CREATED_AT) {
-      order.createdAt = sort.direction || SortDirection.DESC;
-    } else if (sort?.field === UnitSortField.PRICE) {
-      order.price = sort.direction || SortDirection.ASC;
-    } else {
-      // Default order
-      order.createdAt = SortDirection.DESC;
-    }
-
-    const units = await this.unitRepository.find({
-      where,
-      relations: ['project', 'project.developer', 'amenities'],
-      take: limit,
-      skip: offset,
-      order,
-    });
-
-    // Load ordered images for each unit
-    for (const unit of units) {
-      unit.images = await this.getUnitImages(unit.id);
-    }
-
-    return units;
-  }
 
   async findAllWithCount(
     filter?: UnitFilterInput,
     sort?: UnitSortInput,
     limit?: number,
     offset?: number
-  ): Promise<[Unit[], number]> {
+  ): Promise<[Unit[], number, any?]> {
+    // Use Typesense for search if config flag is enabled
+    const useTypesense = this.configService.get<string>('USE_TYPESENSE') === 'true';
+    
+    if (useTypesense) {
+      try {
+        // Build search parameters for Typesense
+        const searchParams: any = {
+          q: filter?.searchTerm || '*',
+          query_by: 'name,number,description,projectName,developerName,amenityNames',
+          filter_by: '',
+          sort_by: '',
+          page: offset ? Math.floor(offset / (limit || 20)) + 1 : 1,
+          per_page: limit || 20,
+          facet_by: 'projectId,rooms,floor,price,floorArea,amenityNames,amenityIds,projectName,developerName',
+          num_typos: 1,
+          prefix: true,
+          cache: true,
+          prioritize_exact_match: true,
+          prioritize_token_position: true
+        };
+        
+        // Add filtering (same logic as in findAllWithTypesense)
+        const filterConditions = [];
+
+        if (filter?.projectIds && filter.projectIds.length > 0) {
+          const projectFilter = filter.projectIds.map(id => `projectId:=${id}`).join(' || ');
+          filterConditions.push(`(${projectFilter})`);
+        }
+
+        if (filter?.amenityIds && filter.amenityIds.length > 0) {
+          // Use the amenityIds directly with Typesense filtering
+          const amenityFilter = filter.amenityIds.map(id => `amenityIds:=${id}`).join(' && ');
+          filterConditions.push(`(${amenityFilter})`);
+        }
+
+        if (filter?.minRooms !== undefined) {
+          filterConditions.push(`rooms:>=${filter.minRooms}`);
+        }
+        if (filter?.maxRooms !== undefined) {
+          filterConditions.push(`rooms:<=${filter.maxRooms}`);
+        }
+
+        if (filter?.minPrice !== undefined) {
+          filterConditions.push(`price:>=${filter.minPrice}`);
+        }
+        if (filter?.maxPrice !== undefined) {
+          filterConditions.push(`price:<=${filter.maxPrice}`);
+        }
+
+        if (filter?.minFloorArea !== undefined) {
+          filterConditions.push(`floorArea:>=${filter.minFloorArea}`);
+        }
+        if (filter?.maxFloorArea !== undefined) {
+          filterConditions.push(`floorArea:<=${filter.maxFloorArea}`);
+        }
+
+        // Combine all filter conditions
+        if (filterConditions.length > 0) {
+          searchParams.filter_by = filterConditions.join(' && ');
+        }
+
+        // Set sort options
+        if (sort?.field === UnitSortField.NAME) {
+          searchParams.sort_by = `name:${sort.direction === SortDirection.DESC ? 'desc' : 'asc'}`;
+        } else if (sort?.field === UnitSortField.PRICE) {
+          searchParams.sort_by = `price:${sort.direction === SortDirection.DESC ? 'desc' : 'asc'}`;
+        } else if (sort?.field === UnitSortField.CREATED_AT) {
+          searchParams.sort_by = `createdAt:${sort.direction === SortDirection.DESC ? 'desc' : 'asc'}`;
+        } else {
+          // Default order is by createdAt desc
+          searchParams.sort_by = 'createdAt:desc';
+        }
+        
+        const searchResults = await this.typesenseService.searchUnits(searchParams);
+        
+        // Total found from Typesense
+        const total = searchResults.found;
+        
+        // Extract facet counts from the search results
+        const facetCounts = searchResults.facet_counts || [];
+        
+        // Map Typesense results to Unit entities
+        if (searchResults.hits && searchResults.hits.length > 0) {
+          const unitIds = searchResults.hits.map(hit => hit.document.id);
+          
+          // Fetch full unit data from database for consistent data structure
+          const units = await this.unitRepository.find({
+            where: { id: In(unitIds) },
+            relations: ['project', 'project.developer', 'amenities'],
+          });
+          
+          // Sort units in the same order as Typesense results
+          const sortedUnits = [];
+          for (const hit of searchResults.hits) {
+            const unit = units.find(u => u.id === hit.document.id);
+            if (unit) {
+              // Load unit images
+              unit.images = await this.getUnitImages(unit.id);
+              sortedUnits.push(unit);
+            }
+          }
+          
+          return [sortedUnits, total, facetCounts];
+        }
+        
+        return [[], total, facetCounts];
+      } catch (error) {
+        console.error('Typesense search error:', error);
+        // Fall back to database search on error
+      }
+    }
+    
+    // Database search (fallback)
     const where: any = {};
 
     if (filter) {
@@ -249,7 +268,7 @@ export class UnitService {
   async findOne(id: string): Promise<Unit> {
     const unit = await this.unitRepository.findOne({
       where: { id },
-      relations: ['project', 'amenities', 'images'],
+      relations: ['project', 'project.developer', 'amenities', 'images'],
     });
 
     if (!unit) {
@@ -282,7 +301,7 @@ export class UnitService {
       const response = await axios.post(
         'https://api.openai.com/v1/embeddings',
         {
-          model: 'text-embedding-ada-002',
+          model: 'text-embedding-3-small',
           input: unitText,
         },
         {
@@ -334,6 +353,69 @@ export class UnitService {
 
   // Find similar units based on vector similarity
   async findSimilarUnits(unitId: string, limit = 5): Promise<Unit[]> {
+    // Check if Typesense is enabled
+    const useTypesense = this.configService.get<string>('USE_TYPESENSE') === 'true';
+    
+    if (useTypesense) {
+      try {
+        // First check if the units collection has an embedding field
+        const collectionInfo = await this.typesenseService.getClient().collections('units').retrieve();
+        const hasEmbeddingField = collectionInfo.fields.some(field => field.name === 'embedding');
+        
+        if (!hasEmbeddingField) {
+          this.logger.warn('No embedding field found in Typesense collection, falling back to database similarity');
+          return this.findSimilarUnitsFromDatabase(unitId, limit);
+        }
+        
+        // Use Typesense vector search to find similar units
+        const searchParams = {
+          q: '*',
+          vector_query: `embedding:([], id: ${unitId})`,
+          per_page: limit,
+          exclude_fields: 'embedding'
+        };
+        
+        const searchResults = await this.typesenseService.searchUnits(searchParams);
+        
+        // Extract unit IDs from search results
+        const unitIds = searchResults.hits.map(hit => hit.document.id);
+        
+        if (unitIds.length === 0) {
+          // Fall back to database similarity if no results
+          return this.findSimilarUnitsFromDatabase(unitId, limit);
+        }
+        
+        // Fetch full unit data with relations
+        const units = await this.unitRepository.find({
+          where: { id: In(unitIds) },
+          relations: ['project', 'project.developer', 'amenities'],
+        });
+        
+        // Sort units in the same order as search results
+        const unitMap = new Map(units.map(unit => [unit.id, unit]));
+        const sortedUnits = unitIds
+          .map(id => unitMap.get(id))
+          .filter((unit): unit is Unit => unit !== undefined);
+        
+        // Load images for each unit
+        for (const unit of sortedUnits) {
+          unit.images = await this.getUnitImages(unit.id);
+        }
+        
+        return sortedUnits;
+      } catch (error) {
+        this.logger.error(`Error finding similar units with Typesense: ${error.message}`);
+        // Fall back to database similarity
+        return this.findSimilarUnitsFromDatabase(unitId, limit);
+      }
+    }
+    
+    // Use database similarity if Typesense is disabled
+    return this.findSimilarUnitsFromDatabase(unitId, limit);
+  }
+  
+  // Database fallback for finding similar units
+  private async findSimilarUnitsFromDatabase(unitId: string, limit = 5): Promise<Unit[]> {
     // Use vector similarity search with our SQL function
     const similarUnits = await this.unitRepository.query(
       `
@@ -369,109 +451,139 @@ export class UnitService {
   }
 
   async create(createUnitInput: CreateUnitInput): Promise<Unit> {
-    const { amenityIds, imageIds, ...unitData } = createUnitInput;
+    // Get a transaction for consistent DB operations
+    const queryRunner = this.dataSource.createQueryRunner();
+    
+    try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+      
+      // Create the unit
+      const unit = this.unitRepository.create(createUnitInput);
 
-    // Verify project exists
-    await this.projectService.findOne(unitData.projectId);
+      // Check if project exists
+      const project = await this.projectService.findOne(createUnitInput.projectId);
+      if (!project) {
+        throw new NotFoundException(
+          `Project with ID ${createUnitInput.projectId} not found`
+        );
+      }
 
-    // Create the unit first
-    const unit = this.unitRepository.create(unitData);
-    const savedUnit = await this.unitRepository.save(unit);
+      // Save the new unit
+      const savedUnit = await queryRunner.manager.save(unit);
 
-    // Add amenities if provided
-    if (amenityIds && amenityIds.length > 0) {
-      const amenities = await this.amenityService.findByIds(amenityIds);
-      savedUnit.amenities = amenities;
-      await this.unitRepository.save(savedUnit);
+      // Handle amenities
+      if (createUnitInput.amenityIds && createUnitInput.amenityIds.length > 0) {
+        // Get amenities
+        const amenities = await this.amenityService.findByIds(
+          createUnitInput.amenityIds
+        );
+
+        // Assign amenities to unit
+        savedUnit.amenities = amenities;
+        await queryRunner.manager.save(savedUnit);
+      }
+
+      await queryRunner.commitTransaction();
+
+      // Get full unit details
+      const fullUnit = await this.findOne(savedUnit.id);
+      
+
+      // Emit event for unit creation
+      this.eventEmitter.emit(
+        'unit.created',
+        new UnitCreatedEvent(savedUnit.id)
+      );
+
+      return fullUnit;
+    } catch (error) {
+      // Rollback transaction on error
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
+      throw error;
+    } finally {
+      // Release the query runner
+      await queryRunner.release();
     }
-
-    // Add images if provided with order
-    if (imageIds && imageIds.length > 0) {
-      // Clear any existing unit_images entries
-      await this.unitImageRepository.delete({ unitId: savedUnit.id });
-
-      // Create new unit_images entries with order
-      const unitImages = imageIds.map((imageId, index) => {
-        const unitImage = new UnitImage();
-        unitImage.unitId = savedUnit.id;
-        unitImage.imageId = imageId;
-        unitImage.order = index + 1; // Order starts from 1
-        return unitImage;
-      });
-
-      // Save all unit_images entries
-      await this.unitImageRepository.save(unitImages);
-    }
-
-    // Emit event for embedding generation
-    const completeUnit = await this.findOne(savedUnit.id);
-    console.log('completeUnit', completeUnit);
-    this.eventEmitter.emit('unit.created', new UnitCreatedEvent(completeUnit));
-
-    return completeUnit;
   }
 
   async update(id: string, updateUnitInput: UpdateUnitInput): Promise<Unit> {
-    // First, check if unit exists
-    const existingUnit = await this.findOne(id);
+    // Get a transaction for consistent DB operations
+    const queryRunner = this.dataSource.createQueryRunner();
+    
+    try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
 
-    if (!existingUnit) {
-      throw new NotFoundException(`Unit with ID ${id} not found`);
-    }
-
-    const { amenityIds, imageIds, ...unitData } = updateUnitInput;
-
-    // If projectId is being updated, verify the new project exists
-    if (unitData.projectId) {
-      await this.projectService.findOne(unitData.projectId);
-    }
-
-    // Update the unit properties
-    this.unitRepository.merge(existingUnit, unitData);
-    const updatedUnit = await this.unitRepository.save(existingUnit);
-
-    // Update amenities if provided
-    if (amenityIds && amenityIds.length > 0) {
-      const amenities = await this.amenityService.findByIds(amenityIds);
-      updatedUnit.amenities = amenities;
-      await this.unitRepository.save(updatedUnit);
-    }
-
-    // Update images if provided with order
-    if (imageIds && imageIds.length > 0) {
-      // Clear any existing unit_images entries
-      await this.unitImageRepository.delete({ unitId: updatedUnit.id });
-
-      // Create new unit_images entries with order
-      const unitImages = imageIds.map((imageId, index) => {
-        const unitImage = new UnitImage();
-        unitImage.unitId = updatedUnit.id;
-        unitImage.imageId = imageId;
-        unitImage.order = index + 1; // Order starts from 1
-        return unitImage;
+      // Find the unit
+      const unit = await this.unitRepository.findOne({
+        where: { id },
+        relations: ['amenities'],
       });
 
-      // Save all unit_images entries
-      await this.unitImageRepository.save(unitImages);
+      if (!unit) {
+        throw new NotFoundException(`Unit with ID ${id} not found`);
+      }
+
+      // Update unit properties
+      for (const key in updateUnitInput) {
+        if (key !== 'id' && key !== 'amenityIds' && key !== 'images') {
+          unit[key] = updateUnitInput[key];
+        }
+      }
+
+      // Handle amenities if provided
+      if (updateUnitInput.amenityIds) {
+        // Get amenities
+        const amenities = await this.amenityService.findByIds(
+          updateUnitInput.amenityIds
+        );
+        unit.amenities = amenities;
+      }
+
+      // Save updates
+      await queryRunner.manager.save(unit);
+      await queryRunner.commitTransaction();
+
+      // Get full updated unit
+      const updatedUnit = await this.findOne(id);
+      
+
+
+      // Emit event for unit update
+      this.eventEmitter.emit('unit.updated', new UnitUpdatedEvent(id));
+
+      return updatedUnit;
+    } catch (error) {
+      // Rollback transaction on error
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
+      throw error;
+    } finally {
+      // Release the query runner
+      await queryRunner.release();
     }
-
-    // Emit event for embedding update
-    const completeUnit = await this.findOne(updatedUnit.id);
-    this.eventEmitter.emit('unit.updated', new UnitUpdatedEvent(completeUnit));
-
-    return completeUnit;
   }
 
   async delete(id: string): Promise<Unit> {
+    // Find the unit first to return it later
     const unit = await this.findOne(id);
-    // Clone the unit before removing it to return a valid object
-    const unitToReturn = { ...unit };
-    await this.unitRepository.remove(unit);
+    
+    if (!unit) {
+      throw new NotFoundException(`Unit with ID ${id} not found`);
+    }
 
-    // Emit delete event
-    this.eventEmitter.emit('unit.deleted', new UnitDeletedEvent(unitToReturn));
+    // Delete from the database
+    await this.unitRepository.delete(id);
+    
 
-    return unitToReturn;
+    // Emit event for unit deletion
+    this.eventEmitter.emit('unit.deleted', new UnitDeletedEvent(id));
+
+    return unit;
   }
 
   async getUnitAmenities(unitId: string): Promise<Amenity[]> {
@@ -508,8 +620,6 @@ export class UnitService {
     // Load related entities for embedding generation
     unit.project = await this.projectService.findOne(unit.projectId);
     unit.amenities = await this.getUnitAmenities(unitId);
-
-    console.log('unit', unit);
 
     // Generate embedding
     unit.embedding = await this.generateUnitEmbedding(unit);

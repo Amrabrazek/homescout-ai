@@ -2,6 +2,7 @@ import { Field, InputType, registerEnumType } from '@nestjs/graphql';
 import { IsEnum, IsOptional } from 'class-validator';
 
 export enum UnitSortField {
+  DEFAULT = 'DEFAULT',
   NAME = 'name',
   CREATED_AT = 'createdAt',
   PRICE = 'price',

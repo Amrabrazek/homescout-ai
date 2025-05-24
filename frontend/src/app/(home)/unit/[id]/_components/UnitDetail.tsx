@@ -45,18 +45,8 @@ export default function UnitDetails({ unit }: UnitDetailsProps) {
         {/* Left: Images and Details */}
         <div className='md:col-span-2 space-y-6'>
           {/* Main Image */}
-          {unit.images && unit.images.length > 0 ? (
-            <ImagesGallery
-              images={unit.images.map((image: any) => image.url)}
-            />
-          ) : (
-            <div className='w-full h-full bg-gray-100 flex items-center justify-center'>
-              <div className='flex flex-col items-center justify-center text-muted-foreground'>
-                <ImageIcon className='w-12 h-12 mb-2 opacity-20' />
-                <span className='text-sm'>No image available</span>
-              </div>
-            </div>
-          )}
+
+          <ImagesGallery images={unit.images.map((image: any) => image.url)} />
 
           {/* Description */}
           <div className='bg-white p-6 rounded-lg shadow-sm'>
@@ -171,7 +161,7 @@ export default function UnitDetails({ unit }: UnitDetailsProps) {
       />
 
       {/* Similar Units Section */}
-      <SimilarUnits unitId={unit.id} limit={4} />
+      <SimilarUnits unitId={unit.id} limit={5} />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   Int,
   ObjectType,
   Field,
+  Float,
 } from '@nestjs/graphql';
 import { Project } from '../../common/entities/project.entity';
 import { Unit } from '../../common/entities/unit.entity';
@@ -22,12 +23,51 @@ import { UnitService } from './unit.service';
 import { UnitSortInput } from './dto/unit-sort.input';
 
 @ObjectType()
+export class FacetCountValue {
+  @Field()
+  value: string;
+
+  @Field(() => Int)
+  count: number;
+}
+
+@ObjectType()
+export class FacetStatsValue {
+  @Field(() => Float, { nullable: true })
+  min?: number;
+
+  @Field(() => Float, { nullable: true })
+  max?: number;
+
+  @Field(() => Float, { nullable: true })
+  avg?: number;
+
+  @Field(() => Float, { nullable: true })
+  sum?: number;
+}
+
+@ObjectType()
+export class FacetCount {
+  @Field()
+  field_name: string;
+
+  @Field(() => [FacetCountValue])
+  counts: FacetCountValue[];
+
+  @Field(() => FacetStatsValue, { nullable: true })
+  stats?: FacetStatsValue;
+}
+
+@ObjectType()
 export class UnitResponse {
   @Field(() => [Unit])
   items: Unit[];
 
   @Field(() => Int)
   total: number;
+
+  @Field(() => [FacetCount], { nullable: true })
+  facets?: FacetCount[];
 }
 
 @Resolver(() => Unit)
@@ -44,13 +84,13 @@ export class UnitResolver {
     @Args('limit', { type: () => Int, nullable: true }) limit?: number,
     @Args('offset', { type: () => Int, nullable: true }) offset?: number
   ): Promise<UnitResponse> {
-    const [items, total] = await this.unitService.findAllWithCount(
+    const [items, total, facetCounts] = await this.unitService.findAllWithCount(
       filter,
       sort,
       limit,
       offset
     );
-    return { items, total };
+    return { items, total, facets: facetCounts };
   }
 
   @Query(() => Unit, { nullable: true })

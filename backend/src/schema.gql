@@ -53,6 +53,24 @@ type Developer {
   projects: [Project!]
 }
 
+type FacetCount {
+  counts: [FacetCountValue!]!
+  field_name: String!
+  stats: FacetStatsValue
+}
+
+type FacetCountValue {
+  count: Int!
+  value: String!
+}
+
+type FacetStatsValue {
+  avg: Float
+  max: Float
+  min: Float
+  sum: Float
+}
+
 type Image {
   altText: String
   id: ID!
@@ -142,6 +160,7 @@ type UnitImage {
 }
 
 type UnitResponse {
+  facets: [FacetCount!]
   items: [Unit!]!
   total: Int!
 }
@@ -149,6 +168,7 @@ type UnitResponse {
 """Fields that can be used to sort units"""
 enum UnitSortField {
   CREATED_AT
+  DEFAULT
   NAME
   PRICE
 }

@@ -8,6 +8,7 @@ import { ImageModule } from '../image/image.module';
 import { UnitResolver } from './unit.resolver';
 import { UnitService } from './unit.service';
 import { UnitEmbeddingListener } from './unit-embedding.listener';
+import { TypesenseModule } from '../../common/typesense/typesense.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { UnitEmbeddingListener } from './unit-embedding.listener';
     ProjectModule,
     AmenityModule,
     ImageModule,
+    TypesenseModule,
   ],
   providers: [UnitResolver, UnitService, UnitEmbeddingListener],
   exports: [UnitService],
