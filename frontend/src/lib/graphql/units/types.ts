@@ -86,6 +86,10 @@ export interface GetUnitsQueryResponse {
   units: UnitsResponse;
 }
 
+export interface SearchUnitsQueryResponse {
+  searchUnits: UnitsResponse;
+}
+
 export interface GetUnitsQueryVariables {
   filter?: UnitFilter;
   sort?: UnitSort;
@@ -99,4 +103,68 @@ export interface GetUnitQueryResponse {
 
 export interface GetUnitQueryVariables {
   id: string;
+}
+
+export interface GetSimilarUnitsQueryResponse {
+  similarUnits: Unit[];
+}
+
+export interface SearchSimilarUnitsQueryResponse {
+  searchSimilarUnits: Unit[];
+}
+
+export interface SimilarUnitsQueryVariables {
+  unitId: string;
+  limit?: number;
+}
+
+// Add interfaces for facet counts query
+export interface SearchFacetsResponse {
+  searchFacets: {
+    facets: FacetCount[];
+    total: number;
+  };
+}
+
+export interface SearchFacetsQueryVariables {
+  filter?: UnitFilter;
+}
+
+// SearchUnit types that match our backend SearchUnitDocument
+export interface SearchUnit {
+  id: string;
+  name: string;
+  number: string;
+  floor: number;
+  rooms: number;
+  bathrooms: number;
+  floorArea: number;
+  price: number;
+  description?: string;
+  createdAt: string;
+  project: {
+    id: string;
+    name: string;
+    developer: {
+      name: string;
+    };
+  };
+  amenities: Amenity[];
+  images: Image[];
+}
+
+// Update the SearchUnitsResponse to use SearchUnit
+export interface SearchUnitsResponse {
+  items: SearchUnit[];
+  total: number;
+  facets?: FacetCount[];
+  __typename?: string;
+}
+
+export interface TypesenseSearchResponse {
+  searchUnits: SearchUnitsResponse;
+}
+
+export interface TypesenseSimilarUnitsResponse {
+  searchSimilarUnits: SearchUnit[];
 }

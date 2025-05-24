@@ -7,4 +7,4 @@ import { TypesenseService } from './typesense.service';
   providers: [TypesenseService],
   exports: [TypesenseService],
 })
-export class TypesenseModule {} 
+export class TypesenseModule {}

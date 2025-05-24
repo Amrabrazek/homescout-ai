@@ -13,6 +13,7 @@ import { UnitModule } from './modules/unit/unit.module';
 import { ImageModule } from './modules/image/image.module';
 import { AmenityModule } from './modules/amenity/amenity.module';
 import { TypesenseModule } from './common/typesense/typesense.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { TypesenseModule } from './common/typesense/typesense.module';
     ImageModule,
     AmenityModule,
     TypesenseModule,
+    SearchModule,
   ],
 })
 export class AppModule {}

@@ -11,7 +11,6 @@ import type {
   SortDirection,
   UnitSortField,
 } from '@/lib/graphql/units/types';
-import { useFacetCounts } from '@/lib/graphql/units/hooks';
 
 export default function Home() {
   const router = useRouter();

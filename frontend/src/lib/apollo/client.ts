@@ -39,6 +39,21 @@ function createCache() {
           },
         },
       },
+      // Add policy for our new SearchUnitsResponse type
+      SearchUnitsResponse: {
+        fields: {
+          items: {
+            merge(existing = [], incoming) {
+              return incoming;
+            },
+          },
+          facets: {
+            merge(existing = [], incoming) {
+              return incoming;
+            },
+          },
+        },
+      },
       Query: {
         fields: {
           units: {
@@ -60,6 +75,26 @@ function createCache() {
               };
             },
           },
+          // Add similar policy for searchUnits query
+          searchUnits: {
+            keyArgs: ['filter', 'sort'],
+            merge(existing, incoming, { args }) {
+              const offset = args?.offset || 0;
+
+              // If it's a fresh query (offset is 0), just return incoming
+              if (offset === 0 || !existing) {
+                return incoming;
+              }
+
+              // For pagination, merge the items
+              const result = {
+                ...incoming,
+                items: [...existing.items, ...incoming.items],
+              };
+
+              return result;
+            },
+          },
         },
       },
       // TypeScript-friendly type identifiers for cache objects
@@ -70,6 +105,16 @@ function createCache() {
         keyFields: ['id'],
       },
       Amenity: {
+        keyFields: ['id'],
+      },
+      // Add type identifiers for our search types
+      SearchUnitDocument: {
+        keyFields: ['id'],
+      },
+      SearchProject: {
+        keyFields: ['id'],
+      },
+      SearchAmenity: {
         keyFields: ['id'],
       },
     },

@@ -59,6 +59,11 @@ type FacetCount {
   stats: FacetStatsValue
 }
 
+type FacetCountResponse {
+  facets: [FacetCount!]
+  total: Int!
+}
+
 type FacetCountValue {
   count: Int!
   value: String!
@@ -105,9 +110,53 @@ type Query {
   images: [Image!]!
   project(id: String!): Project!
   projects(developerId: String, limit: Int, offset: Int, searchTerm: String): [Project!]!
+  searchFacets(filter: UnitFilterInput): FacetCountResponse!
+  searchSimilarUnits(limit: Int = 5, unitId: String!): [SearchUnitDocument!]!
+  searchUnits(filter: UnitFilterInput, limit: Int, offset: Int, sort: UnitSortInput): SearchUnitsResponse!
   similarUnits(limit: Int, unitId: String!): [Unit!]!
   unit(id: String!): Unit
   units(filter: UnitFilterInput, limit: Int, offset: Int, sort: UnitSortInput): UnitResponse!
+}
+
+type SearchAmenity {
+  id: ID!
+  name: String!
+}
+
+type SearchDeveloper {
+  name: String!
+}
+
+type SearchImage {
+  url: String!
+}
+
+type SearchProject {
+  developer: SearchDeveloper!
+  id: ID!
+  name: String!
+}
+
+type SearchUnitDocument {
+  amenities: [SearchAmenity!]!
+  bathrooms: Int!
+  createdAt: DateTime!
+  description: String
+  floor: Int!
+  floorArea: Float!
+  id: ID!
+  images: [SearchImage!]!
+  name: String!
+  number: String!
+  price: Float!
+  project: SearchProject!
+  rooms: Int!
+}
+
+type SearchUnitsResponse {
+  facets: [FacetCount!]
+  items: [SearchUnitDocument!]!
+  total: Int!
 }
 
 """Sort direction (ascending or descending)"""

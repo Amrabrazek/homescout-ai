@@ -1,7 +1,9 @@
 'use client';
 
-import { useQuery } from '@apollo/client';
-import { SIMILAR_UNITS_QUERY } from '@/lib/graphql/units/queries';
+import {
+  useSimilarUnits,
+  getSimilarUnitsData,
+} from '@/lib/graphql/units/hooks';
 import { Unit } from '@/lib/graphql/units/types';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -14,9 +16,8 @@ interface SimilarUnitsProps {
 }
 
 export function SimilarUnits({ unitId, limit = 4 }: SimilarUnitsProps) {
-  const { data, loading, error } = useQuery(SIMILAR_UNITS_QUERY, {
-    variables: { unitId, limit },
-  });
+  const { data, loading, error } = useSimilarUnits(unitId, limit);
+  const similarUnits = getSimilarUnitsData(data);
 
   if (error) {
     console.error('Error loading similar units:', error);
@@ -36,7 +37,7 @@ export function SimilarUnits({ unitId, limit = 4 }: SimilarUnitsProps) {
     );
   }
 
-  if (!data?.similarUnits || data.similarUnits.length === 0) {
+  if (!similarUnits || similarUnits.length === 0) {
     return null;
   }
 
@@ -44,7 +45,7 @@ export function SimilarUnits({ unitId, limit = 4 }: SimilarUnitsProps) {
     <div className='mt-12'>
       <h2 className='text-2xl font-bold mb-6'>Similar Units</h2>
       <div className='flex overflow-x-auto pb-4 gap-4 hide-scrollbar'>
-        {data.similarUnits.map((unit: Unit) => (
+        {similarUnits.map((unit: Unit) => (
           <SimilarUnitCard key={unit.id} unit={unit} />
         ))}
       </div>
