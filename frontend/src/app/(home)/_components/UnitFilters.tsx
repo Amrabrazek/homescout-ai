@@ -8,11 +8,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Button } from '@/components/ui/button';
 import { X, Search, Share2, Sparkles } from 'lucide-react';
-import { useFilterData } from '@/lib/graphql/units/hooks';
+import { useFilterData, useSearchFacets } from '@/lib/graphql/units/hooks';
 import { useProjects } from '@/lib/graphql/projects/hooks';
 import { UnitFilter } from '@/lib/graphql/units/types';
 import { toast } from '@/components/ui/sonner';
-import { useFacetCounts } from '@/lib/graphql/units/hooks';
 import { Badge } from '@/components/ui/badge';
 
 type FilterProps = {
@@ -23,7 +22,7 @@ type FilterProps = {
 export default function UnitFilters({ filters, onChange }: FilterProps) {
   const { data, loading } = useFilterData();
   const { getAmenityCounts, getRoomCounts, getPriceStats, getFloorAreaStats } =
-    useFacetCounts(filters);
+    useSearchFacets(filters);
 
   // Use refs for debounce timers
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);

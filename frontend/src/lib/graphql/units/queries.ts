@@ -56,6 +56,59 @@ export const GET_UNITS = gql`
   }
 `;
 
+// New dedicated Typesense search query
+export const SEARCH_UNITS = gql`
+  query SearchUnits(
+    $filter: UnitFilterInput
+    $sort: UnitSortInput
+    $limit: Int
+    $offset: Int
+  ) {
+    searchUnits(filter: $filter, sort: $sort, limit: $limit, offset: $offset) {
+      items {
+        id
+        name
+        number
+        floor
+        rooms
+        bathrooms
+        floorArea
+        price
+        description
+        createdAt
+        project {
+          id
+          name
+          developer {
+            name
+          }
+        }
+        amenities {
+          id
+          name
+        }
+        images {
+          url
+        }
+      }
+      total
+      facets {
+        field_name
+        counts {
+          value
+          count
+        }
+        stats {
+          min
+          max
+          avg
+          sum
+        }
+      }
+    }
+  }
+`;
+
 export const GET_FILTER_DATA = gql`
   query GetFilterData {
     amenities {
@@ -124,6 +177,60 @@ export const SIMILAR_UNITS_QUERY = gql`
           name
         }
       }
+    }
+  }
+`;
+
+// Add this new query for similar units through the Search module
+export const SEARCH_SIMILAR_UNITS = gql`
+  query SearchSimilarUnits($unitId: String!, $limit: Int) {
+    searchSimilarUnits(unitId: $unitId, limit: $limit) {
+      id
+      name
+      number
+      floor
+      rooms
+      bathrooms
+      floorArea
+      price
+      description
+      createdAt
+      project {
+        id
+        name
+        developer {
+          name
+        }
+      }
+      amenities {
+        id
+        name
+      }
+      images {
+        url
+      }
+    }
+  }
+`;
+
+// Add query for efficient facet counts
+export const SEARCH_FACETS = gql`
+  query SearchFacets($filter: UnitFilterInput) {
+    searchFacets(filter: $filter) {
+      facets {
+        field_name
+        counts {
+          value
+          count
+        }
+        stats {
+          min
+          max
+          avg
+          sum
+        }
+      }
+      total
     }
   }
 `;

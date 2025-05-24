@@ -1,20 +1,36 @@
 import { useQuery } from '@apollo/client';
-import { GET_UNITS, GET_FILTER_DATA } from './queries';
+import {
+  GET_UNITS,
+  GET_FILTER_DATA,
+  SEARCH_UNITS,
+  SIMILAR_UNITS_QUERY,
+  SEARCH_SIMILAR_UNITS,
+  SEARCH_FACETS,
+} from './queries';
 import { useState, useEffect, useCallback } from 'react';
 
 import type {
   GetUnitsQueryResponse,
   GetUnitsQueryVariables,
+  TypesenseSearchResponse,
   UnitFilter,
   Unit,
   UnitSort,
   FacetCount,
   FacetCountValue,
+  UnitsResponse,
+  GetSimilarUnitsQueryResponse,
+  TypesenseSimilarUnitsResponse,
+  SimilarUnitsQueryVariables,
 } from './types';
 
 const UNITS_PER_PAGE = 20;
 
-export function useUnits(filter: UnitFilter, sort?: UnitSort, offset = 0) {
+// Read USE_TYPESENSE from environment variables with a fallback
+const USE_TYPESENSE = process.env.NEXT_PUBLIC_USE_TYPESENSE === 'true';
+
+// Database-specific query functions
+function useDbUnits(filter: UnitFilter, sort?: UnitSort, offset = 0) {
   return useQuery<GetUnitsQueryResponse, GetUnitsQueryVariables>(GET_UNITS, {
     variables: {
       filter,
@@ -27,78 +43,113 @@ export function useUnits(filter: UnitFilter, sort?: UnitSort, offset = 0) {
   });
 }
 
+// Typesense-specific query functions
+function useTypesenseUnits(filter: UnitFilter, sort?: UnitSort, offset = 0) {
+  return useQuery<TypesenseSearchResponse, GetUnitsQueryVariables>(
+    SEARCH_UNITS,
+    {
+      variables: {
+        filter,
+        sort,
+        limit: UNITS_PER_PAGE,
+        offset,
+      },
+      notifyOnNetworkStatusChange: true,
+      fetchPolicy: 'cache-and-network',
+    }
+  );
+}
+
+// Database-specific similar units query
+function useDbSimilarUnits(unitId: string, limit = 5) {
+  return useQuery<GetSimilarUnitsQueryResponse, SimilarUnitsQueryVariables>(
+    SIMILAR_UNITS_QUERY,
+    {
+      variables: {
+        unitId,
+        limit,
+      },
+      fetchPolicy: 'cache-and-network',
+    }
+  );
+}
+
+// Typesense-specific similar units query
+function useTypesenseSimilarUnits(unitId: string, limit = 5) {
+  return useQuery<TypesenseSimilarUnitsResponse, SimilarUnitsQueryVariables>(
+    SEARCH_SIMILAR_UNITS,
+    {
+      variables: {
+        unitId,
+        limit,
+      },
+      fetchPolicy: 'cache-and-network',
+    }
+  );
+}
+
+// Helper function to get units data from either query response
+function getUnitsData(
+  data: GetUnitsQueryResponse | TypesenseSearchResponse | undefined
+): UnitsResponse | undefined {
+  if (!data) return undefined;
+
+  if ('units' in data) {
+    return data.units;
+  } else if ('searchUnits' in data) {
+    // Handle string facets from Typesense search
+    const searchUnits = data.searchUnits;
+
+    // Convert SearchUnit to Unit if needed for compatibility
+    const compatUnits: UnitsResponse = {
+      ...searchUnits,
+      items: searchUnits.items.map((item) => {
+        // Cast SearchUnit as Unit - they have the same structure
+        return item as any as Unit;
+      }),
+    };
+
+    return compatUnits;
+  }
+
+  return undefined;
+}
+
+// Public API: Main hook for units data
+export function useUnits(filter: UnitFilter, sort?: UnitSort, offset = 0) {
+  return USE_TYPESENSE
+    ? useTypesenseUnits(filter, sort, offset)
+    : useDbUnits(filter, sort, offset);
+}
+
 export function useFilterData() {
   return useQuery(GET_FILTER_DATA);
 }
 
-// Helper hook to get facet counts from Typesense
-export function useFacetCounts(filter: UnitFilter, sort?: UnitSort) {
-  const { data, loading, error } = useUnits(filter, sort);
-  const [cachedFacets, setCachedFacets] = useState<FacetCount[]>([]);
+// Helper function to get similar units data from either query response
+export function getSimilarUnitsData(
+  data: GetSimilarUnitsQueryResponse | TypesenseSimilarUnitsResponse | undefined
+): Unit[] | undefined {
+  if (!data) return undefined;
 
-  // Update cached facets only when we have new data and it's not loading
-  useEffect(() => {
-    if (!loading && data?.units.facets) {
-      setCachedFacets(data.units.facets);
-    }
-  }, [data, loading]);
+  if ('similarUnits' in data) {
+    return data.similarUnits;
+  } else if ('searchSimilarUnits' in data) {
+    // Convert SearchUnit to Unit if needed for compatibility
+    return data.searchSimilarUnits.map((item) => {
+      // Cast SearchUnit as Unit - they have the same structure
+      return item as any as Unit;
+    });
+  }
 
-  // Use cached facets or new facets, but never empty facets during loading
-  const facets = loading ? cachedFacets : data?.units.facets || cachedFacets;
+  return undefined;
+}
 
-  // Create helper methods to get specific facet counts
-  const getProjectCounts = useCallback((): { id: string; count: number }[] => {
-    const projectFacet = facets.find((f) => f.field_name === 'projectId');
-    if (!projectFacet) return [];
-
-    return projectFacet.counts.map((c) => ({
-      id: c.value,
-      count: c.count,
-    }));
-  }, [facets]);
-
-  const getAmenityCounts = useCallback((): { id: string; count: number }[] => {
-    const amenityFacet = facets.find((f) => f.field_name === 'amenityIds');
-    if (!amenityFacet) return [];
-
-    return amenityFacet.counts.map((c) => ({
-      id: c.value,
-      count: c.count,
-    }));
-  }, [facets]);
-
-  const getRoomCounts = useCallback((): { value: number; count: number }[] => {
-    const roomsFacet = facets.find((f) => f.field_name === 'rooms');
-    if (!roomsFacet) return [];
-
-    return roomsFacet.counts
-      .map((c) => ({
-        value: parseInt(c.value),
-        count: c.count,
-      }))
-      .sort((a, b) => a.value - b.value);
-  }, [facets]);
-
-  const getPriceStats = useCallback(() => {
-    const priceFacet = facets.find((f) => f.field_name === 'price');
-    return priceFacet?.stats;
-  }, [facets]);
-
-  const getFloorAreaStats = useCallback(() => {
-    const floorAreaFacet = facets.find((f) => f.field_name === 'floorArea');
-    return floorAreaFacet?.stats;
-  }, [facets]);
-
-  return {
-    facets,
-    loading,
-    error,
-    getProjectCounts,
-    getAmenityCounts,
-    getRoomCounts,
-    getPriceStats,
-    getFloorAreaStats,
-  };
+// Public API: Main hook for similar units
+export function useSimilarUnits(unitId: string, limit = 5) {
+  return USE_TYPESENSE
+    ? useTypesenseSimilarUnits(unitId, limit)
+    : useDbSimilarUnits(unitId, limit);
 }
 
 // Helper hook for infinite scroll
@@ -112,22 +163,15 @@ export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {
   const [loadingMore, setLoadingMore] = useState(false);
   const isFetchingMore = networkStatus === 3 || loadingMore;
 
-  // Get facet counts
-  const {
-    facets,
-    getProjectCounts,
-    getAmenityCounts,
-    getRoomCounts,
-    getPriceStats,
-    getFloorAreaStats,
-  } = useFacetCounts(filter, sort);
+  // Get the units response from either query
+  const unitsData = getUnitsData(data);
 
   // Reset items when filter or sort changes
   useEffect(() => {
-    if (data?.units.items) {
-      setItems(data.units.items);
+    if (unitsData?.items) {
+      setItems(unitsData.items);
       // Check if we should allow loading more
-      setHasMore(data.units.items.length < data.units.total);
+      setHasMore(unitsData.items.length < unitsData.total);
     }
   }, [data, filter, sort]);
 
@@ -145,25 +189,28 @@ export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {
         },
       });
 
+      // Get the units response from the result
+      const resultData = getUnitsData(result.data);
+
       // If no new items were returned, we've reached the end
-      if (result.data.units.items.length === 0) {
+      if (!resultData?.items || resultData.items.length === 0) {
         setHasMore(false);
       }
 
       // Get the combined items from the cache after Apollo merges them
       // This is more reliable than manually merging
-      if (result.data.units.items) {
+      if (resultData?.items) {
         // For safety, make sure we don't have duplicates
         const allItems = [...items];
 
-        result.data.units.items.forEach((newItem: Unit) => {
+        resultData.items.forEach((newItem: Unit) => {
           if (!allItems.some((item) => item.id === newItem.id)) {
             allItems.push(newItem);
           }
         });
 
         setItems(allItems);
-        setHasMore(allItems.length < result.data.units.total);
+        setHasMore(allItems.length < resultData.total);
       }
     } catch (err) {
       console.error('Error loading more units:', err);
@@ -175,17 +222,110 @@ export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {
 
   return {
     units: items,
-    total: data?.units.total || 0,
-    facets: data?.units.facets || [],
-    getProjectCounts,
-    getAmenityCounts,
-    getRoomCounts,
-    getPriceStats,
-    getFloorAreaStats,
+    total: unitsData?.total || 0,
     loading: loading && !isFetchingMore,
     error,
     loadMore,
     hasMore,
     isFetchingMore,
+  };
+}
+
+/**
+ * Hook for efficiently getting facet counts without loading unit data
+ * This is more efficient for filter components that don't need the actual units
+ */
+export function useSearchFacets(filter: UnitFilter) {
+  const [cachedFacets, setCachedFacets] = useState<FacetCount[]>([]);
+
+  const { data, loading, error } = useQuery(SEARCH_FACETS, {
+    variables: { filter },
+    fetchPolicy: 'cache-and-network',
+  });
+
+  const facets = data?.searchFacets?.facets || [];
+  const total = data?.searchFacets?.total || 0;
+
+  // Set cachedFacets when data is successfully loaded and not loading or in error
+  useEffect(() => {
+    if (!loading && !error && facets.length > 0) {
+      setCachedFacets(facets);
+    }
+  }, [facets, loading, error]);
+
+  // Helper methods to get specific facet counts
+  const getProjectCounts = useCallback((): { id: string; count: number }[] => {
+    // Use cachedFacets here to provide immediate results if data is still loading
+    const targetFacets =
+      loading && cachedFacets.length > 0 ? cachedFacets : facets;
+    const projectFacet = targetFacets.find(
+      (f: FacetCount) => f.field_name === 'projectId'
+    );
+    if (!projectFacet) return [];
+
+    return projectFacet.counts.map((c: FacetCountValue) => ({
+      id: c.value,
+      count: c.count,
+    }));
+  }, [facets, cachedFacets, loading]); // Add cachedFacets and loading to dependencies
+
+  const getAmenityCounts = useCallback((): { id: string; count: number }[] => {
+    const targetFacets =
+      loading && cachedFacets.length > 0 ? cachedFacets : facets;
+    const amenityFacet = targetFacets.find(
+      (f: FacetCount) => f.field_name === 'amenityIds'
+    );
+    if (!amenityFacet) return [];
+
+    return amenityFacet.counts.map((c: FacetCountValue) => ({
+      id: c.value,
+      count: c.count,
+    }));
+  }, [facets, cachedFacets, loading]);
+
+  const getRoomCounts = useCallback((): { value: number; count: number }[] => {
+    const targetFacets =
+      loading && cachedFacets.length > 0 ? cachedFacets : facets;
+    const roomsFacet = targetFacets.find(
+      (f: FacetCount) => f.field_name === 'rooms'
+    );
+    if (!roomsFacet) return [];
+
+    return roomsFacet.counts
+      .map((c: FacetCountValue) => ({
+        value: parseInt(c.value),
+        count: c.count,
+      }))
+      .sort((a: { value: number }, b: { value: number }) => a.value - b.value);
+  }, [facets, cachedFacets, loading]);
+
+  const getPriceStats = useCallback(() => {
+    const targetFacets =
+      loading && cachedFacets.length > 0 ? cachedFacets : facets;
+    const priceFacet = targetFacets.find(
+      (f: FacetCount) => f.field_name === 'price'
+    );
+    return priceFacet?.stats;
+  }, [facets, cachedFacets, loading]);
+
+  const getFloorAreaStats = useCallback(() => {
+    const targetFacets =
+      loading && cachedFacets.length > 0 ? cachedFacets : facets;
+    const floorAreaFacet = targetFacets.find(
+      (f: FacetCount) => f.field_name === 'floorArea'
+    );
+    return floorAreaFacet?.stats;
+  }, [facets, cachedFacets, loading]);
+
+  return {
+    facets: cachedFacets.length > 0 ? cachedFacets : facets, // Return cachedFacets if available, otherwise current facets
+    total,
+    loading,
+    error,
+    getProjectCounts,
+    getAmenityCounts,
+    getRoomCounts,
+    getPriceStats,
+    getFloorAreaStats,
   };
 }

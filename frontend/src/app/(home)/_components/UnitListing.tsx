@@ -119,7 +119,7 @@ export default function UnitListing({ filters, sort = {} }: UnitListingProps) {
 
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'>
         {units.map((unit, index) => {
-          if (units.length === index + 1) {
+          if (units.length - 5 === index) {
             return (
               <div ref={lastUnitElementRef} key={unit.id} className='w-full'>
                 <UnitCard unit={unit} />

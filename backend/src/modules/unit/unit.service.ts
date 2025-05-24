@@ -62,162 +62,13 @@ export class UnitService {
     const useTypesense =
       this.configService.get<string>('USE_TYPESENSE') === 'true';
 
+    // If Typesense is enabled, delegate to the search module instead
+    // This service should only handle database operations
     if (useTypesense) {
-      try {
-        // Build search parameters for Typesense
-        const searchParams: any = {
-          q: filter?.searchTerm || '*',
-          query_by:
-            'name,number,description,projectName,developerName,amenityNames',
-          filter_by: '',
-          sort_by: '',
-          page: offset ? Math.floor(offset / (limit || 20)) + 1 : 1,
-          per_page: limit || 20,
-          facet_by:
-            'projectId,rooms,floor,price,floorArea,amenityNames,amenityIds,projectName,developerName',
-          num_typos: 1,
-          prefix: true,
-          cache: true,
-          prioritize_exact_match: true,
-          prioritize_token_position: true,
-          include_fields: '*', // Include all fields to avoid additional DB queries
-        };
-
-        // Add filtering (same logic as before)
-        const filterConditions = [];
-
-        if (filter?.projectIds && filter.projectIds.length > 0) {
-          const projectFilter = filter.projectIds
-            .map((id) => `projectId:=${id}`)
-            .join(' || ');
-          filterConditions.push(`(${projectFilter})`);
-        }
-
-        if (filter?.amenityIds && filter.amenityIds.length > 0) {
-          // Use the amenityIds directly with Typesense filtering
-          const amenityFilter = filter.amenityIds
-            .map((id) => `amenityIds:=${id}`)
-            .join(' && ');
-          filterConditions.push(`(${amenityFilter})`);
-        }
-
-        if (filter?.minRooms !== undefined) {
-          filterConditions.push(`rooms:>=${filter.minRooms}`);
-        }
-        if (filter?.maxRooms !== undefined) {
-          filterConditions.push(`rooms:<=${filter.maxRooms}`);
-        }
-
-        if (filter?.minPrice !== undefined) {
-          filterConditions.push(`price:>=${filter.minPrice}`);
-        }
-        if (filter?.maxPrice !== undefined) {
-          filterConditions.push(`price:<=${filter.maxPrice}`);
-        }
-
-        if (filter?.minFloorArea !== undefined) {
-          filterConditions.push(`floorArea:>=${filter.minFloorArea}`);
-        }
-        if (filter?.maxFloorArea !== undefined) {
-          filterConditions.push(`floorArea:<=${filter.maxFloorArea}`);
-        }
-
-        // Combine all filter conditions
-        if (filterConditions.length > 0) {
-          searchParams.filter_by = filterConditions.join(' && ');
-        }
-
-        // Set sort options
-        if (sort?.field === UnitSortField.NAME) {
-          searchParams.sort_by = `name:${sort.direction === SortDirection.DESC ? 'desc' : 'asc'}`;
-        } else if (sort?.field === UnitSortField.PRICE) {
-          searchParams.sort_by = `price:${sort.direction === SortDirection.DESC ? 'desc' : 'asc'}`;
-        } else if (sort?.field === UnitSortField.CREATED_AT) {
-          searchParams.sort_by = `createdAt:${sort.direction === SortDirection.DESC ? 'desc' : 'asc'}`;
-        } else {
-          // Default order is by createdAt desc
-          searchParams.sort_by = 'createdAt:desc';
-        }
-
-        this.logger.debug(
-          `Typesense search params: ${JSON.stringify(searchParams)}`
-        );
-        const searchResults =
-          await this.typesenseService.searchUnits(searchParams);
-
-        // Total found from Typesense
-        const total = searchResults.found;
-
-        // Extract facet counts from the search results
-        const facetCounts = searchResults.facet_counts || [];
-
-        // Map Typesense results directly to Unit entities
-        if (searchResults.hits && searchResults.hits.length > 0) {
-          // Convert Typesense documents directly to Unit entities
-          const units = searchResults.hits.map((hit) => {
-            const doc = hit.document;
-            const unit = new Unit();
-
-            // Map basic properties
-            unit.id = doc.id;
-            unit.name = doc.name;
-            unit.number = doc.number;
-            unit.description = doc.description;
-            unit.floor = doc.floor;
-            unit.rooms = doc.rooms;
-            unit.bathrooms = doc.bathrooms;
-            unit.floorArea = doc.floorArea;
-            unit.price = doc.price;
-            unit.createdAt = new Date(doc.createdAt);
-
-            // Map project
-            unit.project = {
-              id: doc.projectId,
-              name: doc.projectName,
-              developer: {
-                id: '', // Will be populated via GraphQL resolver if needed
-                name: doc.developerName,
-              },
-            } as any;
-
-            // Map amenities
-            if (doc.amenityIds && doc.amenityNames) {
-              unit.amenities = doc.amenityIds.map((id, index) => ({
-                id,
-                name: doc.amenityNames[index] || '',
-              })) as any[];
-            } else {
-              unit.amenities = [];
-            }
-
-            // Map images
-            if (doc.imageUrls) {
-              unit.images = doc.imageUrls.map((url, index) => ({
-                id: `${unit.id}-image-${index}`,
-                url,
-                altText: unit.name,
-              })) as any[];
-            } else {
-              unit.images = [];
-            }
-
-            return unit;
-          });
-
-          return [units, total, facetCounts];
-        }
-
-        return [[], total, facetCounts];
-      } catch (error) {
-        this.logger.error(
-          `Typesense search error: ${error.message}`,
-          error.stack
-        );
-        // Fall back to database search on error
-      }
+      this.logger.debug('Typesense is enabled, but using database fallback');
     }
 
-    // Database search (fallback)
+    // Database search
     const where: any = {};
 
     if (filter) {
@@ -396,85 +247,8 @@ export class UnitService {
     return parts.join(' ');
   }
 
-  // Find similar units based on vector similarity
-  async findSimilarUnits(unitId: string, limit = 5): Promise<Unit[]> {
-    // Check if Typesense is enabled
-    const useTypesense =
-      this.configService.get<string>('USE_TYPESENSE') === 'true';
-
-    if (useTypesense) {
-      try {
-        // First check if the units collection has an embedding field
-        const collectionInfo = await this.typesenseService
-          .getClient()
-          .collections('units')
-          .retrieve();
-        const hasEmbeddingField = collectionInfo.fields.some(
-          (field) => field.name === 'embedding'
-        );
-
-        if (!hasEmbeddingField) {
-          this.logger.warn(
-            'No embedding field found in Typesense collection, falling back to database similarity'
-          );
-          return this.findSimilarUnitsFromDatabase(unitId, limit);
-        }
-
-        // Use Typesense vector search to find similar units
-        const searchParams = {
-          q: '*',
-          vector_query: `embedding:([], id: ${unitId})`,
-          per_page: limit,
-          exclude_fields: 'embedding',
-        };
-
-        const searchResults =
-          await this.typesenseService.searchUnits(searchParams);
-
-        // Extract unit IDs from search results
-        const unitIds = searchResults.hits.map((hit) => hit.document.id);
-
-        if (unitIds.length === 0) {
-          // Fall back to database similarity if no results
-          return this.findSimilarUnitsFromDatabase(unitId, limit);
-        }
-
-        // Fetch full unit data with relations
-        const units = await this.unitRepository.find({
-          where: { id: In(unitIds) },
-          relations: ['project', 'project.developer', 'amenities'],
-        });
-
-        // Sort units in the same order as search results
-        const unitMap = new Map(units.map((unit) => [unit.id, unit]));
-        const sortedUnits = unitIds
-          .map((id) => unitMap.get(id))
-          .filter((unit): unit is Unit => unit !== undefined);
-
-        // Load images for each unit
-        for (const unit of sortedUnits) {
-          unit.images = await this.getUnitImages(unit.id);
-        }
-
-        return sortedUnits;
-      } catch (error) {
-        this.logger.error(
-          `Error finding similar units with Typesense: ${error.message}`
-        );
-        // Fall back to database similarity
-        return this.findSimilarUnitsFromDatabase(unitId, limit);
-      }
-    }
-
-    // Use database similarity if Typesense is disabled
-    return this.findSimilarUnitsFromDatabase(unitId, limit);
-  }
-
   // Database fallback for finding similar units
-  private async findSimilarUnitsFromDatabase(
-    unitId: string,
-    limit = 5
-  ): Promise<Unit[]> {
+  async findSimilarUnits(unitId: string, limit = 5): Promise<Unit[]> {
     // Use vector similarity search with our SQL function
     const similarUnits = await this.unitRepository.query(
       `
@@ -738,5 +512,18 @@ export class UnitService {
     }
 
     return this.unitRepository.save(unit);
+  }
+
+  // Helper method to check if Typesense is enabled
+  /**
+   * Determines if Typesense search is enabled based on environment configuration.
+   *
+   * This method is used by other components (like resolvers) to decide whether
+   * to use the database or the dedicated SearchModule for querying units.
+   *
+   * @returns boolean - true if Typesense search is enabled, false otherwise
+   */
+  isTypesenseEnabled(): boolean {
+    return this.configService.get<string>('USE_TYPESENSE') === 'true';
   }
 }
