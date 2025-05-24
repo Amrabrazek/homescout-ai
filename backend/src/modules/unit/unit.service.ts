@@ -59,19 +59,22 @@ export class UnitService {
     offset?: number
   ): Promise<[Unit[], number, any?]> {
     // Use Typesense for search if config flag is enabled
-    const useTypesense = this.configService.get<string>('USE_TYPESENSE') === 'true';
-    
+    const useTypesense =
+      this.configService.get<string>('USE_TYPESENSE') === 'true';
+
     if (useTypesense) {
       try {
         // Build search parameters for Typesense
         const searchParams: any = {
           q: filter?.searchTerm || '*',
-          query_by: 'name,number,description,projectName,developerName,amenityNames',
+          query_by:
+            'name,number,description,projectName,developerName,amenityNames',
           filter_by: '',
           sort_by: '',
           page: offset ? Math.floor(offset / (limit || 20)) + 1 : 1,
           per_page: limit || 20,
-          facet_by: 'projectId,rooms,floor,price,floorArea,amenityNames,amenityIds,projectName,developerName',
+          facet_by:
+            'projectId,rooms,floor,price,floorArea,amenityNames,amenityIds,projectName,developerName',
           num_typos: 1,
           prefix: true,
           cache: true,
@@ -84,13 +87,17 @@ export class UnitService {
         const filterConditions = [];
 
         if (filter?.projectIds && filter.projectIds.length > 0) {
-          const projectFilter = filter.projectIds.map(id => `projectId:=${id}`).join(' || ');
+          const projectFilter = filter.projectIds
+            .map((id) => `projectId:=${id}`)
+            .join(' || ');
           filterConditions.push(`(${projectFilter})`);
         }
 
         if (filter?.amenityIds && filter.amenityIds.length > 0) {
           // Use the amenityIds directly with Typesense filtering
-          const amenityFilter = filter.amenityIds.map(id => `amenityIds:=${id}`).join(' && ');
+          const amenityFilter = filter.amenityIds
+            .map((id) => `amenityIds:=${id}`)
+            .join(' && ');
           filterConditions.push(`(${amenityFilter})`);
         }
 
@@ -392,68 +399,82 @@ export class UnitService {
   // Find similar units based on vector similarity
   async findSimilarUnits(unitId: string, limit = 5): Promise<Unit[]> {
     // Check if Typesense is enabled
-    const useTypesense = this.configService.get<string>('USE_TYPESENSE') === 'true';
-    
+    const useTypesense =
+      this.configService.get<string>('USE_TYPESENSE') === 'true';
+
     if (useTypesense) {
       try {
         // First check if the units collection has an embedding field
-        const collectionInfo = await this.typesenseService.getClient().collections('units').retrieve();
-        const hasEmbeddingField = collectionInfo.fields.some(field => field.name === 'embedding');
-        
+        const collectionInfo = await this.typesenseService
+          .getClient()
+          .collections('units')
+          .retrieve();
+        const hasEmbeddingField = collectionInfo.fields.some(
+          (field) => field.name === 'embedding'
+        );
+
         if (!hasEmbeddingField) {
-          this.logger.warn('No embedding field found in Typesense collection, falling back to database similarity');
+          this.logger.warn(
+            'No embedding field found in Typesense collection, falling back to database similarity'
+          );
           return this.findSimilarUnitsFromDatabase(unitId, limit);
         }
-        
+
         // Use Typesense vector search to find similar units
         const searchParams = {
           q: '*',
           vector_query: `embedding:([], id: ${unitId})`,
           per_page: limit,
-          exclude_fields: 'embedding'
+          exclude_fields: 'embedding',
         };
-        
-        const searchResults = await this.typesenseService.searchUnits(searchParams);
-        
+
+        const searchResults =
+          await this.typesenseService.searchUnits(searchParams);
+
         // Extract unit IDs from search results
-        const unitIds = searchResults.hits.map(hit => hit.document.id);
-        
+        const unitIds = searchResults.hits.map((hit) => hit.document.id);
+
         if (unitIds.length === 0) {
           // Fall back to database similarity if no results
           return this.findSimilarUnitsFromDatabase(unitId, limit);
         }
-        
+
         // Fetch full unit data with relations
         const units = await this.unitRepository.find({
           where: { id: In(unitIds) },
           relations: ['project', 'project.developer', 'amenities'],
         });
-        
+
         // Sort units in the same order as search results
-        const unitMap = new Map(units.map(unit => [unit.id, unit]));
+        const unitMap = new Map(units.map((unit) => [unit.id, unit]));
         const sortedUnits = unitIds
-          .map(id => unitMap.get(id))
+          .map((id) => unitMap.get(id))
           .filter((unit): unit is Unit => unit !== undefined);
-        
+
         // Load images for each unit
         for (const unit of sortedUnits) {
           unit.images = await this.getUnitImages(unit.id);
         }
-        
+
         return sortedUnits;
       } catch (error) {
-        this.logger.error(`Error finding similar units with Typesense: ${error.message}`);
+        this.logger.error(
+          `Error finding similar units with Typesense: ${error.message}`
+        );
         // Fall back to database similarity
         return this.findSimilarUnitsFromDatabase(unitId, limit);
       }
     }
-    
+
     // Use database similarity if Typesense is disabled
     return this.findSimilarUnitsFromDatabase(unitId, limit);
   }
-  
+
   // Database fallback for finding similar units
-  private async findSimilarUnitsFromDatabase(unitId: string, limit = 5): Promise<Unit[]> {
+  private async findSimilarUnitsFromDatabase(
+    unitId: string,
+    limit = 5
+  ): Promise<Unit[]> {
     // Use vector similarity search with our SQL function
     const similarUnits = await this.unitRepository.query(
       `
@@ -491,16 +512,18 @@ export class UnitService {
   async create(createUnitInput: CreateUnitInput): Promise<Unit> {
     // Get a transaction for consistent DB operations
     const queryRunner = this.dataSource.createQueryRunner();
-    
+
     try {
       await queryRunner.connect();
       await queryRunner.startTransaction();
-      
+
       // Create the unit
       const unit = this.unitRepository.create(createUnitInput);
 
       // Check if project exists
-      const project = await this.projectService.findOne(createUnitInput.projectId);
+      const project = await this.projectService.findOne(
+        createUnitInput.projectId
+      );
       if (!project) {
         throw new NotFoundException(
           `Project with ID ${createUnitInput.projectId} not found`
@@ -522,11 +545,22 @@ export class UnitService {
         await queryRunner.manager.save(savedUnit);
       }
 
+      // Handle images if provided
+      if (createUnitInput.imageIds && createUnitInput.imageIds.length > 0) {
+        // Create unit_images junction records with order
+        for (let i = 0; i < createUnitInput.imageIds.length; i++) {
+          const unitImage = new UnitImage();
+          unitImage.unitId = savedUnit.id;
+          unitImage.imageId = createUnitInput.imageIds[i];
+          unitImage.order = i;
+          await queryRunner.manager.save(unitImage);
+        }
+      }
+
       await queryRunner.commitTransaction();
 
       // Get full unit details
       const fullUnit = await this.findOne(savedUnit.id);
-      
 
       // Emit event for unit creation
       this.eventEmitter.emit(
@@ -550,7 +584,7 @@ export class UnitService {
   async update(id: string, updateUnitInput: UpdateUnitInput): Promise<Unit> {
     // Get a transaction for consistent DB operations
     const queryRunner = this.dataSource.createQueryRunner();
-    
+
     try {
       await queryRunner.connect();
       await queryRunner.startTransaction();
@@ -567,7 +601,7 @@ export class UnitService {
 
       // Update unit properties
       for (const key in updateUnitInput) {
-        if (key !== 'id' && key !== 'amenityIds' && key !== 'images') {
+        if (key !== 'id' && key !== 'amenityIds' && key !== 'imageIds') {
           unit[key] = updateUnitInput[key];
         }
       }
@@ -581,13 +615,33 @@ export class UnitService {
         unit.amenities = amenities;
       }
 
+      // Handle images if provided
+      if (updateUnitInput.imageIds) {
+        // First delete existing unit_images records
+        await queryRunner.manager
+          .createQueryBuilder()
+          .delete()
+          .from(UnitImage)
+          .where('unitId = :unitId', { unitId: id })
+          .execute();
+
+        // Then create new unit_images junction records with order
+        for (let i = 0; i < updateUnitInput.imageIds.length; i++) {
+          const unitImage = new UnitImage();
+          unitImage.unitId = id;
+          unitImage.imageId = updateUnitInput.imageIds[i];
+          unitImage.order = i;
+          await queryRunner.manager.save(unitImage);
+        }
+      }
+
       // Save updates
       await queryRunner.manager.save(unit);
       await queryRunner.commitTransaction();
 
       // Get full updated unit
       const updatedUnit = await this.findOne(id);
-      
+
       // Emit event for unit update
       this.eventEmitter.emit('unit.updated', new UnitUpdatedEvent(id));
 
@@ -607,7 +661,7 @@ export class UnitService {
   async delete(id: string): Promise<Unit> {
     // Find the unit first to return it later
     const unit = await this.findOne(id);
-    
+
     if (!unit) {
       throw new NotFoundException(`Unit with ID ${id} not found`);
     }
