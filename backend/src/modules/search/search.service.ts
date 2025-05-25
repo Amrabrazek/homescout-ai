@@ -37,7 +37,7 @@ export class SearchService {
       const searchParams: any = {
         q: filter?.searchTerm || '*',
         query_by:
-          'name,number,description,projectName,developerName,amenityNames,embedding',
+          'name,number,description,projectName,developerName,amenityNames',
         filter_by: '',
         sort_by: '',
         page: offset ? Math.floor(offset / (limit || 20)) + 1 : 1,
