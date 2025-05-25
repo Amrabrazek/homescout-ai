@@ -3,6 +3,7 @@ import useEmblaCarousel from 'embla-carousel-react';
 import { cn } from '@/lib/utils/ui';
 import ImageLightbox from './image-lightbox';
 import { ImageIcon } from 'lucide-react';
+import Image from 'next/image';
 
 export default function ImagesGallery({ images }: { images: string[] }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -65,9 +66,11 @@ export default function ImagesGallery({ images }: { images: string[] }) {
                       filter: 'brightness(0.95)',
                     }}
                   >
-                    <img
+                    <Image
                       src={image}
                       className='absolute left-0 top-0 h-full w-full rounded-md object-cover'
+                      alt={`Unit image ${i + 1}`}
+                      fill
                     />
                   </div>
                 ))}
@@ -85,9 +88,11 @@ export default function ImagesGallery({ images }: { images: string[] }) {
                   })}
                   style={{ width: '82px', height: '82px' }}
                 >
-                  <img
+                  <Image
                     src={image}
+                    alt={`Unit image ${i + 1}`}
                     className='absolute left-0 top-0 h-full w-full rounded-md object-cover'
+                    fill
                   />
                 </div>
               ))}
