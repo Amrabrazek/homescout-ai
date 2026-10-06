@@ -26,6 +26,9 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
 
   // Use refs for debounce timers
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingChangesRef = useRef<Partial<UnitFilter>>({});
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
   const projectSearchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Local input state - only for controlled inputs
@@ -100,15 +103,17 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
       debounceTimerRef.current = null;
     }
 
-    // Set new timer to update the parent after typing stops
-    const timer = setTimeout(() => {
-      const processedValue =
-        type === 'number' ? (value ? Number(value) : undefined) : value;
+    const processedValue =
+      type === 'number' ? (value ? Number(value) : undefined) : value;
+    pendingChangesRef.current = {
+      ...pendingChangesRef.current,
+      [name]: processedValue !== '' ? processedValue : undefined,
+    };
 
-      onChange({
-        ...filters,
-        [name]: processedValue !== '' ? processedValue : undefined,
-      });
+    const timer = setTimeout(() => {
+      const pending = pendingChangesRef.current;
+      pendingChangesRef.current = {};
+      onChange({ ...filtersRef.current, ...pending });
     }, 500);
 
     debounceTimerRef.current = timer;
@@ -154,6 +159,7 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
+    pendingChangesRef.current = {};
 
     // Reset local input state
     setInputValues({

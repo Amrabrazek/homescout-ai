@@ -8,7 +8,8 @@ import {
   DELETE_UNIT,
 } from './mutations';
 import { UnitFormValues } from '@/lib/graphql/units/schema';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { UNITS_CACHE_TAG } from './server.loaders';
 
 // Action to create a unit
 export async function createUnit(data: UnitFormValues) {
@@ -21,7 +22,9 @@ export async function createUnit(data: UnitFormValues) {
       },
     });
 
-    // Return the data so the component can handle the redirect
+    revalidateTag(UNITS_CACHE_TAG);
+    revalidatePath('/');
+
     return {
       success: true,
       data: response.data.createUnit,
@@ -45,9 +48,9 @@ export async function updateUnit(data: UnitFormValues) {
       },
     });
 
-    // Revalidate paths to update the UI
+    revalidateTag(UNITS_CACHE_TAG);
     revalidatePath(`/dashboard/units/${response.data.updateUnit.id}`);
-    revalidatePath(`/unit/${response.data.updateUnit.id}`); // Also revalidate the public view page if it exists
+    revalidatePath(`/unit/${response.data.updateUnit.id}`);
 
     return {
       success: true,
@@ -72,9 +75,8 @@ export async function deleteUnit(id: string) {
       },
     });
 
-    // Revalidate paths to update the UI
-    revalidatePath('/dashboard/units');
-    revalidatePath('/'); // Revalidate home page to update listings
+    revalidateTag(UNITS_CACHE_TAG);
+    revalidatePath('/');
 
     return {
       success: true,

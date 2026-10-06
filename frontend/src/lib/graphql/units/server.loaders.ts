@@ -3,10 +3,8 @@ import { getServerClient } from '@/lib/apollo/client';
 import { GET_UNIT } from './queries';
 import type { Unit, GetUnitQueryResponse } from './types';
 
-/**
- * Server-side function to fetch a unit by ID
- * This is cached to prevent duplicate requests during server rendering
- */
+export const UNITS_CACHE_TAG = 'units';
+
 export const getUnitById = unstable_cache(
   async (id: string): Promise<Unit | null> => {
     const client = getServerClient();
@@ -24,5 +22,5 @@ export const getUnitById = unstable_cache(
     }
   },
   ['unit-by-id'],
-  { revalidate: 60 } // Cache for 60 seconds
+  { revalidate: 60, tags: [UNITS_CACHE_TAG] }
 );
