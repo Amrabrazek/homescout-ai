@@ -1,5 +1,5 @@
 {
-  "name": "nawy-task",
+  "name": "homescout-ai",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -8,15 +8,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Amrabrazek/nawy-task.git"
+    "url": "git+https://github.com/Amrabrazek/homescout-ai.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Amrabrazek/nawy-task/issues"
+    "url": "https://github.com/Amrabrazek/homescout-ai/issues"
   },
-  "homepage": "https://github.com/Amrabrazek/nawy-task#readme",
+  "homepage": "https://github.com/Amrabrazek/homescout-ai#readme",
   "dependencies": {
     "date-fns": "^4.1.0",
     "quill-blot-formatter": "^1.0.5"

@@ -1,5 +1,5 @@
 {
-  "name": "nawy-backend",
+  "name": "homescout-backend",
   "version": "1.0.0",
   "description": "NestJS GraphQL backend for Apartment Listing App",
   "main": "dist/main.js",

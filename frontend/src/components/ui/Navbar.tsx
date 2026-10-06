@@ -12,7 +12,7 @@ export default function Navbar() {
         <Link href={pathsConfig.home.index} className='flex items-center'>
           <div className='relative h-8 w-24'>
             {/* You can replace this with your actual logo */}
-            <div className='font-bold text-xl'>NAWY</div>
+            <div className='font-bold text-xl'>HomeScout AI</div>
           </div>
         </Link>
 
