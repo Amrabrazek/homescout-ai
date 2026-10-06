@@ -58,24 +58,14 @@ export class UnitService {
     limit?: number,
     offset?: number
   ): Promise<[Unit[], number, any?]> {
-    // Use Typesense for search if config flag is enabled
-    const useTypesense =
-      this.configService.get<string>('USE_TYPESENSE') === 'true';
-
-    // If Typesense is enabled, delegate to the search module instead
-    // This service should only handle database operations
-    if (useTypesense) {
-      this.logger.debug('Typesense is enabled, but using database fallback');
-    }
-
-    // Database search
     const where: any = {};
 
     if (filter) {
       if (filter.searchTerm) {
         // Search in both name and number fields with OR condition
         where.name = Raw(
-          (alias) => `${alias} ILIKE :searchTerm OR number ILIKE :searchTerm`,
+          (alias) =>
+            `(${alias} ILIKE :searchTerm OR "Unit"."number" ILIKE :searchTerm)`,
           { searchTerm: `%${filter.searchTerm}%` }
         );
       }
@@ -153,9 +143,9 @@ export class UnitService {
       order,
     });
 
-    // Load ordered images for each unit
+    const imagesByUnit = await this.getImagesForUnits(units.map((u) => u.id));
     for (const unit of units) {
-      unit.images = await this.getUnitImages(unit.id);
+      unit.images = imagesByUnit.get(unit.id) ?? [];
     }
 
     return [units, count];
@@ -184,7 +174,7 @@ export class UnitService {
       const apiKey = this.configService.get<string>('OPENAI_API_KEY');
 
       if (!apiKey) {
-        console.warn(
+        this.logger.warn(
           'OpenAI API key not configured. Skipping embedding generation.'
         );
         return null;
@@ -212,7 +202,7 @@ export class UnitService {
       const embedding = response.data.data[0].embedding;
       return embedding;
     } catch (error) {
-      console.error('Error generating embedding:', error.message);
+      this.logger.error('Error generating embedding:', error.message);
       return null;
     }
   }
@@ -252,32 +242,28 @@ export class UnitService {
     // Use vector similarity search with our SQL function
     const similarUnits = await this.unitRepository.query(
       `
-        SELECT u.* 
-        FROM units u
-        WHERE u.id IN (
-          SELECT id FROM match_similar_units($1)
-        )
-        ORDER BY (
-          SELECT similarity 
-          FROM match_similar_units($1) m 
-          WHERE m.id = u.id
-        ) DESC
-    `,
-      [unitId]
+        SELECT u.id
+        FROM match_similar_units($1, 0.7, $2) m
+        JOIN units u ON u.id = m.id
+        ORDER BY m.similarity DESC
+      `,
+      [unitId, limit]
     );
 
-    // Load relations data for each similar unit
-    const detailedUnits = [];
-    for (const similarUnit of similarUnits) {
-      const detailedUnit = await this.unitRepository.findOne({
-        where: { id: similarUnit.id },
-        relations: ['project', 'project.developer', 'amenities'],
-      });
+    const ids: string[] = similarUnits.map((row) => row.id);
+    if (ids.length === 0) return [];
 
-      if (detailedUnit) {
-        detailedUnit.images = await this.getUnitImages(detailedUnit.id);
-        detailedUnits.push(detailedUnit);
-      }
+    const units = await this.unitRepository.find({
+      where: { id: In(ids) },
+      relations: ['project', 'project.developer', 'amenities'],
+    });
+    const imagesByUnit = await this.getImagesForUnits(ids);
+    const byId = new Map(units.map((u) => [u.id, u]));
+    const detailedUnits = ids
+      .map((id) => byId.get(id))
+      .filter((u): u is Unit => !!u);
+    for (const unit of detailedUnits) {
+      unit.images = imagesByUnit.get(unit.id) ?? [];
     }
 
     return detailedUnits;
@@ -462,6 +448,23 @@ export class UnitService {
     return unit.amenities || [];
   }
 
+  async getImagesForUnits(unitIds: string[]): Promise<Map<string, Image[]>> {
+    const result = new Map<string, Image[]>();
+    if (unitIds.length === 0) return result;
+
+    const unitImages = await this.unitImageRepository.find({
+      where: { unitId: In(unitIds) },
+      relations: ['image'],
+      order: { order: 'ASC' },
+    });
+    for (const ui of unitImages) {
+      const list = result.get(ui.unitId) ?? [];
+      list.push(ui.image);
+      result.set(ui.unitId, list);
+    }
+    return result;
+  }
+
   async getUnitImages(unitId: string): Promise<Image[]> {
     const unitImages = await this.unitImageRepository.find({
       where: { unitId },
@@ -503,7 +506,7 @@ export class UnitService {
         // Refresh the unit object
         return this.findOne(unitId);
       } catch (error) {
-        console.error(
+        this.logger.error(
           `Error updating embedding for unit ${unitId}:`,
           error.message
         );
@@ -514,16 +517,4 @@ export class UnitService {
     return this.unitRepository.save(unit);
   }
 
-  // Helper method to check if Typesense is enabled
-  /**
-   * Determines if Typesense search is enabled based on environment configuration.
-   *
-   * This method is used by other components (like resolvers) to decide whether
-   * to use the database or the dedicated SearchModule for querying units.
-   *
-   * @returns boolean - true if Typesense search is enabled, false otherwise
-   */
-  isTypesenseEnabled(): boolean {
-    return this.configService.get<string>('USE_TYPESENSE') === 'true';
-  }
 }

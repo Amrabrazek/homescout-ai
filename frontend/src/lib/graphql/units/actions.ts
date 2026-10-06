@@ -105,7 +105,7 @@ export async function createImageEntity({
       variables: {
         createImageInput: {
           url: formattedUrl,
-          alt_text: altText,
+          altText,
         },
       },
     });

@@ -103,8 +103,8 @@ export class SearchService {
       } else if (sort?.field === UnitSortField.CREATED_AT) {
         searchParams.sort_by = `createdAt:${sort.direction === SortDirection.DESC ? 'desc' : 'asc'}`;
       } else {
-        // Default order is by createdAt desc
-        searchParams.sort_by = 'createdAt:desc';
+        searchParams.sort_by =
+          searchParams.q === '*' ? 'createdAt:desc' : '_text_match:desc,createdAt:desc';
       }
 
       this.logger.debug(
@@ -291,17 +291,10 @@ export class SearchService {
       // Use vector similarity search with SQL function
       const similarUnits = await this.unitRepository.query(
         `
-          SELECT u.* 
-          FROM units u
-          WHERE u.id IN (
-            SELECT id FROM match_similar_units($1)
-          )
-          ORDER BY (
-            SELECT similarity 
-            FROM match_similar_units($1) m 
-            WHERE m.id = u.id
-          ) DESC
-          LIMIT $2
+          SELECT u.*
+          FROM match_similar_units($1, 0.7, $2) m
+          JOIN units u ON u.id = m.id
+          ORDER BY m.similarity DESC
         `,
         [unitId, limit]
       );

@@ -11,5 +11,5 @@ export class CreateImageInput {
   @Field({ nullable: true })
   @IsString()
   @IsOptional()
-  alt_text?: string;
+  altText?: string;
 }
