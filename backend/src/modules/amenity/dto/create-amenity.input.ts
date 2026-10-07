@@ -12,4 +12,4 @@ export class CreateAmenityInput {
   @IsString()
   @IsOptional()
   icon?: string;
-} 
+}

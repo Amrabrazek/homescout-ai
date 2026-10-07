@@ -9,4 +9,4 @@ import { AmenityService } from './amenity.service';
   providers: [AmenityResolver, AmenityService],
   exports: [AmenityService],
 })
-export class AmenityModule {} 
+export class AmenityModule {}

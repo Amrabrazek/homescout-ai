@@ -9,4 +9,4 @@ import { DeveloperService } from './developer.service';
   providers: [DeveloperResolver, DeveloperService],
   exports: [DeveloperService],
 })
-export class DeveloperModule {} 
+export class DeveloperModule {}

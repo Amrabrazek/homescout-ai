@@ -7,4 +7,4 @@ export class CreateDeveloperInput {
   @IsString()
   @IsNotEmpty()
   name: string;
-} 
+}

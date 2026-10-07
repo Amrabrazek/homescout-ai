@@ -1,7 +1,6 @@
 'use client';
 
 import { useQuery } from '@apollo/client';
-import { useEffect, useState } from 'react';
 import { GET_FILTER_DATA } from '@/lib/graphql/units/queries';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormField, FormItem, FormLabel } from '@/components/ui/form';
@@ -29,30 +28,15 @@ export function AmenitySelector({ name, label }: AmenitySelectorProps) {
     <FormField
       name={name}
       render={({ field }) => {
-        // Use local state that syncs with field value
-        const [selectedAmenities, setSelectedAmenities] = useState<string[]>(
-          field.value
-        );
+        const selectedAmenities: string[] = field.value ?? [];
 
-        // Function to toggle amenity selection
         const toggleAmenity = (amenityId: string) => {
-          const newSelection = selectedAmenities.includes(amenityId)
-            ? selectedAmenities.filter((id) => id !== amenityId)
-            : [...selectedAmenities, amenityId];
-
-          setSelectedAmenities(newSelection);
-          field.onChange(newSelection);
+          field.onChange(
+            selectedAmenities.includes(amenityId)
+              ? selectedAmenities.filter((id) => id !== amenityId)
+              : [...selectedAmenities, amenityId]
+          );
         };
-
-        // Only sync from field to local state on mount or when field.value changes externally
-        useEffect(() => {
-          if (
-            field.value &&
-            JSON.stringify(field.value) !== JSON.stringify(selectedAmenities)
-          ) {
-            setSelectedAmenities(field.value);
-          }
-        }, [field.value]);
 
         return (
           <FormItem>

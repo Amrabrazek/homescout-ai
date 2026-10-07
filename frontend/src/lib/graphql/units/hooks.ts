@@ -115,12 +115,8 @@ function getUnitsData(
   return undefined;
 }
 
-// Public API: Main hook for units data
-export function useUnits(filter: UnitFilter, sort?: UnitSort, offset = 0) {
-  return USE_TYPESENSE
-    ? useTypesenseUnits(filter, sort, offset)
-    : useDbUnits(filter, sort, offset);
-}
+// USE_TYPESENSE is fixed at build time, so the same hook runs on every render.
+export const useUnits = USE_TYPESENSE ? useTypesenseUnits : useDbUnits;
 
 export function useFilterData() {
   return useQuery(GET_FILTER_DATA);
@@ -145,12 +141,9 @@ export function getSimilarUnitsData(
   return undefined;
 }
 
-// Public API: Main hook for similar units
-export function useSimilarUnits(unitId: string, limit = 5) {
-  return USE_TYPESENSE
-    ? useTypesenseSimilarUnits(unitId, limit)
-    : useDbSimilarUnits(unitId, limit);
-}
+export const useSimilarUnits = USE_TYPESENSE
+  ? useTypesenseSimilarUnits
+  : useDbSimilarUnits;
 
 // Helper hook for infinite scroll
 export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {

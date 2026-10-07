@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, Raw } from 'typeorm';
+import { Repository, Raw } from 'typeorm';
 import { Project } from '../../common/entities/project.entity';
 import { DeveloperService } from '../developer/developer.service';
 import { CreateProjectInput } from './dto/create-project.input';

@@ -23,10 +23,10 @@ export class UnitEmbeddingListener {
   async handleUnitCreatedEvent(event: UnitCreatedEvent) {
     try {
       // Get the full unit with all relations needed for indexing
-      const unit = await this.unitService.findOne(event.unitId, );
+      const unit = await this.unitService.findOne(event.unitId);
       // Index directly to Typesense
       await this.typesenseService.indexUnit(unit);
-      
+
       this.logger.log(`Successfully indexed unit ${event.unitId} to Typesense`);
     } catch (error) {
       this.logger.error(
@@ -43,7 +43,7 @@ export class UnitEmbeddingListener {
       const unit = await this.unitService.findOne(event.unitId);
       // Index directly to Typesense
       await this.typesenseService.indexUnit(unit);
-      
+
       this.logger.log(`Successfully updated unit ${event.unitId} in Typesense`);
     } catch (error) {
       this.logger.error(
@@ -65,5 +65,4 @@ export class UnitEmbeddingListener {
       );
     }
   }
-  
 }

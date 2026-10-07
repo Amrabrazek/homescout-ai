@@ -251,7 +251,7 @@ export default function UnitFilters({ filters, onChange }: FilterProps) {
             />
           </div>
           <p className='text-xs text-muted-foreground'>
-            Search by name, number, features or describe what you're looking for
+            Search by name, number, features or describe what you&apos;re looking for
           </p>
         </div>
 

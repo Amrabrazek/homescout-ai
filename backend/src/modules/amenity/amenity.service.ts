@@ -8,7 +8,7 @@ import { CreateAmenityInput } from './dto/create-amenity.input';
 export class AmenityService {
   constructor(
     @InjectRepository(Amenity)
-    private amenityRepository: Repository<Amenity>,
+    private amenityRepository: Repository<Amenity>
   ) {}
 
   async findAll(): Promise<Amenity[]> {
@@ -19,11 +19,11 @@ export class AmenityService {
     const amenity = await this.amenityRepository.findOne({
       where: { id },
     });
-    
+
     if (!amenity) {
       throw new NotFoundException(`Amenity with ID ${id} not found`);
     }
-    
+
     return amenity;
   }
 
@@ -35,4 +35,4 @@ export class AmenityService {
     const amenity = this.amenityRepository.create(createAmenityInput);
     return this.amenityRepository.save(amenity);
   }
-} 
+}

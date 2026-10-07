@@ -1,12 +1,5 @@
 import { Field, Float, InputType, Int } from '@nestjs/graphql';
-import {
-  IsArray,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Min,
-} from 'class-validator';
+import { IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 
 @InputType()
 export class UnitFilterInput {
