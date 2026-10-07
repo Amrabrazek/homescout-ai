@@ -405,7 +405,7 @@ export function UnitForm({ unitData }: UnitFormProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the unit "{unitData?.name}". This
+              This will permanently delete the unit &quot;{unitData?.name}&quot;. This
               action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
