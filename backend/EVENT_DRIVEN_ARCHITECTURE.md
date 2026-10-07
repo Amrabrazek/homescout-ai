@@ -1,10 +1,10 @@
 # Event-Driven Architecture & AI Embeddings
 
-This document describes the event-driven architecture implemented in the Nawy application, specifically focusing on the automatic generation of embeddings for unit similarity search.
+This document describes the event-driven architecture implemented in the HomeScout AI application, specifically focusing on the automatic generation of embeddings for unit similarity search.
 
 ## Overview
 
-The Nawy application uses an event-driven architecture to handle asynchronous processing tasks, such as generating AI embeddings for units. This approach decouples the main request flow from potentially time-consuming operations, providing better performance and scalability.
+The HomeScout AI application uses an event-driven architecture to handle asynchronous processing tasks, such as generating AI embeddings for units. This approach decouples the main request flow from potentially time-consuming operations, providing better performance and scalability.
 
 ## Event System Architecture
 

@@ -1,4 +1,4 @@
-# Nawy Apartment Listing App
+# HomeScout AI
 
 A full-stack application for listing and browsing apartment units, complete with filtering capabilities, a detailed view of each property, and AI-powered similar unit recommendations.
 
@@ -19,7 +19,7 @@ A full-stack application for listing and browsing apartment units, complete with
 
 ## Overview
 
-Nawy Apartment Listing App is a modern real estate platform that lets users browse, filter, and view detailed information about apartment units. The application provides a complete solution for real estate agencies to manage their property listings with an intuitive interface for both customers and administrators.
+HomeScout AI is a modern real estate platform that lets users browse, filter, and view detailed information about apartment units. The application provides a complete solution for real estate agencies to manage their property listings with an intuitive interface for both customers and administrators.
 
 ## Features
 
@@ -78,12 +78,12 @@ Nawy Apartment Listing App is a modern real estate platform that lets users brow
 
 ```bash
 # Using HTTPS
-git clone https://github.com/Amrabrazek/nawy-task.git
-cd nawy-task
+git clone https://github.com/Amrabrazek/homescout-ai.git
+cd homescout-ai
 
 # Or using SSH
-git clone git@github.com:Amrabrazek/nawy-task.git
-cd nawy-task
+git clone git@github.com:Amrabrazek/homescout-ai.git
+cd homescout-ai
 ```
 
 2. Create environment variables:

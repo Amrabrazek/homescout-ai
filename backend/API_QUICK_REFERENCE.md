@@ -1,6 +1,6 @@
-# Nawy GraphQL API Quick Reference
+# HomeScout AI GraphQL API Quick Reference
 
-This document provides a quick reference of all available queries and mutations in the Nawy GraphQL API.
+This document provides a quick reference of all available queries and mutations in the HomeScout AI GraphQL API.
 
 ## Queries
 

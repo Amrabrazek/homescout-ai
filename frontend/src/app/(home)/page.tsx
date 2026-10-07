@@ -2,12 +2,12 @@ import HomeHero from './_components/HomeHero';
 import Home from './_components/Home';
 // Page metadata for SEO
 export const metadata = {
-  title: 'Find Your Dream Property | Nawy',
+  title: 'Find Your Dream Property | HomeScout AI',
   description:
     'Browse our selection of premium properties, apartments, and villas across Egypt. Find your perfect home with advanced filtering options.',
-  keywords: ['property', 'real estate', 'apartments', 'homes', 'Egypt', 'Nawy'],
+  keywords: ['property', 'real estate', 'apartments', 'homes', 'Egypt', 'HomeScout AI'],
   openGraph: {
-    title: 'Find Your Dream Property | Nawy',
+    title: 'Find Your Dream Property | HomeScout AI',
     description:
       'Browse our selection of premium properties, apartments, and villas across Egypt.',
   },

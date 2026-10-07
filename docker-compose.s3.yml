@@ -2,7 +2,7 @@ services:
   minio:
     image: minio/minio
     networks:
-      - nawy-network
+      - homescout-network
     ports:
       - '9000:9000'
       - '9001:9001'
@@ -21,7 +21,7 @@ services:
   minio-createbucket:
     image: minio/mc
     networks:
-      - nawy-network
+      - homescout-network
     depends_on:
       minio:
         condition: service_healthy
@@ -35,7 +35,7 @@ services:
   storage:
     container_name: supabase-storage
     networks:
-      - nawy-network
+      - homescout-network
     image: supabase/storage-api:v1.11.13
     depends_on:
       db:
@@ -88,7 +88,7 @@ services:
   imgproxy:
     container_name: supabase-imgproxy
     networks:
-      - nawy-network
+      - homescout-network
     image: darthsim/imgproxy:v3.8.0
     healthcheck:
       test: ['CMD', 'imgproxy', 'health']
@@ -101,5 +101,5 @@ services:
       IMGPROXY_ENABLE_WEBP_DETECTION: ${IMGPROXY_ENABLE_WEBP_DETECTION}
 
 networks:
-  nawy-network:
+  homescout-network:
     driver: bridge

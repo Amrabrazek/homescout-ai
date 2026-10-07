@@ -12,7 +12,6 @@ import {
 } from '@nestjs/graphql';
 import { Project } from '../../common/entities/project.entity';
 import { Unit } from '../../common/entities/unit.entity';
-import { UnitImage } from '../../common/entities/unit-image.entity';
 import { Amenity } from '../../common/entities/amenity.entity';
 import { Image } from '../../common/entities/image.entity';
 import { ProjectService } from '../project/project.service';
@@ -119,23 +118,20 @@ export class UnitResolver {
 
   @ResolveField(() => Project)
   async project(@Parent() unit: Unit): Promise<Project> {
+    if (unit.project?.developer) return unit.project;
     const projectId = unit.projectId || (unit as any).project_id;
     return this.projectService.findOne(projectId);
   }
 
   @ResolveField(() => [Amenity])
   async amenities(@Parent() unit: Unit): Promise<Amenity[]> {
+    if (unit.amenities) return unit.amenities;
     return this.unitService.getUnitAmenities(unit.id);
-  }
-
-  @ResolveField(() => [UnitImage])
-  async unitImages(@Parent() unit: Unit): Promise<UnitImage[]> {
-    // This would be implemented in the UnitService
-    return [];
   }
 
   @ResolveField(() => [Image])
   async images(@Parent() unit: Unit): Promise<Image[]> {
+    if (unit.images) return unit.images;
     return this.unitService.getUnitImages(unit.id);
   }
 

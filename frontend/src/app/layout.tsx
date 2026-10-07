@@ -8,8 +8,8 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | Nawy',
-    default: 'Nawy - Premium Property Listings',
+    template: '%s | HomeScout AI',
+    default: 'HomeScout AI - Find Your Home with AI',
   },
   description: 'Browse available apartment listings',
   icons: {

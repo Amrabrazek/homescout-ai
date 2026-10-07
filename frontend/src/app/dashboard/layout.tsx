@@ -4,7 +4,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 
 export const metadata: Metadata = {
-  title: 'Admin Dashboard | Nawy',
+  title: 'Admin Dashboard | HomeScout AI',
   description: 'Manage your real estate properties, projects, and users',
 };
 

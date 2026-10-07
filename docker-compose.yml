@@ -1,4 +1,4 @@
-name: nawy-dev
+name: homescout-dev
 
 services:
   # NestJS Backend
@@ -6,10 +6,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: nawy-backend
+    container_name: homescout-backend
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     ports:
       - '3001:3001'
     depends_on:
@@ -49,7 +49,7 @@ services:
         NEXT_PUBLIC_GRAPHQL_ENDPOINT: http://localhost:3001/graphql
         NEXT_PUBLIC_SUPABASE_URL: http://localhost:8000
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
-    container_name: nawy-frontend
+    container_name: homescout-frontend
     restart: unless-stopped
     ports:
       - '3000:3000'
@@ -65,18 +65,18 @@ services:
       - /app/node_modules
       - /app/.next
     networks:
-      - nawy-network
+      - homescout-network
     command: npm run dev
 
   # Typesense search engine
   typesense:
     image: typesense/typesense:0.25.1
-    container_name: nawy-typesense
+    container_name: homescout-typesense
     restart: unless-stopped
     ports:
       - '8108:8108'
     networks:
-      - nawy-network
+      - homescout-network
     volumes:
       - ./supabase/volumes/typesense-data:/data
     environment:
@@ -102,7 +102,7 @@ services:
     image: supabase/studio:2025.04.21-sha-173cc56
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     healthcheck:
       test:
         [
@@ -144,7 +144,7 @@ services:
     image: kong:2.8.1
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     ports:
       - ${KONG_HTTP_PORT}:8000/tcp
       - ${KONG_HTTPS_PORT}:8443/tcp
@@ -174,7 +174,7 @@ services:
     image: supabase/gotrue:v2.171.0
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     healthcheck:
       test:
         [
@@ -259,7 +259,7 @@ services:
     image: postgrest/postgrest:v12.2.11
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     depends_on:
       db:
         # Disable this if you are using an external Postgres database
@@ -282,7 +282,7 @@ services:
     image: supabase/realtime:v2.34.47
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     depends_on:
       db:
         # Disable this if you are using an external Postgres database
@@ -329,7 +329,7 @@ services:
     image: supabase/storage-api:v1.22.7
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     volumes:
       - ./supabase/volumes/storage:/var/lib/storage:z
     healthcheck:
@@ -374,7 +374,7 @@ services:
     image: darthsim/imgproxy:v3.8.0
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     volumes:
       - ./supabase/volumes/storage:/var/lib/storage:z
     healthcheck:
@@ -393,7 +393,7 @@ services:
     image: supabase/postgres-meta:v0.88.9
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     depends_on:
       db:
         # Disable this if you are using an external Postgres database
@@ -413,7 +413,7 @@ services:
     image: supabase/edge-runtime:v1.67.4
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     volumes:
       - ./supabase/volumes/functions:/home/deno/functions:Z
     depends_on:
@@ -434,7 +434,7 @@ services:
     image: supabase/logflare:1.12.0
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     ports:
       - 4000:4000
     # Uncomment to use Big Query backend for analytics
@@ -481,7 +481,7 @@ services:
     # ports:
     #   - 5432:5432
     networks:
-      - nawy-network
+      - homescout-network
     volumes:
       - ./supabase/volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
       # Must be superuser to create event trigger
@@ -535,7 +535,7 @@ services:
     image: timberio/vector:0.28.1-alpine
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     volumes:
       - ./supabase/volumes/logs/vector.yml:/etc/vector/vector.yml:ro,z
       - ${DOCKER_SOCKET_LOCATION}:/var/run/docker.sock:ro,z
@@ -564,7 +564,7 @@ services:
     image: supabase/supavisor:2.5.1
     restart: unless-stopped
     networks:
-      - nawy-network
+      - homescout-network
     ports:
       - ${POSTGRES_PORT}:5432
       - ${POOLER_PROXY_PORT_TRANSACTION}:6543
@@ -617,5 +617,5 @@ volumes:
   db-config:
 
 networks:
-  nawy-network:
+  homescout-network:
     driver: bridge

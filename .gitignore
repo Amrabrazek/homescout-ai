@@ -61,3 +61,5 @@ supabase/volumes/typesense-data/
 .tmp/
 temp/
 .turbo 
+# TypeScript incremental build cache
+*.tsbuildinfo

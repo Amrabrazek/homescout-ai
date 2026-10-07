@@ -1,6 +1,6 @@
-# Nawy GraphQL API Documentation
+# HomeScout AI GraphQL API Documentation
 
-Welcome to the documentation for the Nawy GraphQL API. This set of documentation guides will help you understand and effectively use our API.
+Welcome to the documentation for the HomeScout AI GraphQL API. This set of documentation guides will help you understand and effectively use our API.
 
 ## Documentation Files
 

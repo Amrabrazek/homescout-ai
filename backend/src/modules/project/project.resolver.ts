@@ -45,6 +45,7 @@ export class ProjectResolver {
 
   @ResolveField(() => Developer)
   async developer(@Parent() project: Project): Promise<Developer> {
+    if (project.developer) return project.developer;
     const { developerId } = project;
     return this.developerService.findOne(developerId);
   }
