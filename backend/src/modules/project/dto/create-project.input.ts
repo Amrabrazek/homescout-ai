@@ -12,4 +12,4 @@ export class CreateProjectInput {
   @IsUUID()
   @IsNotEmpty()
   developerId: string;
-} 
+}

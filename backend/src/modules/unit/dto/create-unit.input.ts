@@ -1,7 +1,13 @@
 import { Field, Float, InputType, Int } from '@nestjs/graphql';
 import {
-  IsNotEmpty, IsNumber, IsOptional, IsPositive,
-  IsString, IsUUID, Min, MinLength
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  Min,
+  MinLength,
 } from 'class-validator';
 
 @InputType()
@@ -61,4 +67,4 @@ export class CreateUnitInput {
   @IsUUID('all', { each: true })
   @IsOptional()
   imageIds?: string[];
-} 
+}

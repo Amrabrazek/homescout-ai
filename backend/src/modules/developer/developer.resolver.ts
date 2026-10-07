@@ -19,8 +19,8 @@ export class DeveloperResolver {
 
   @Mutation(() => Developer)
   async createDeveloper(
-    @Args('createDeveloperInput') createDeveloperInput: CreateDeveloperInput,
+    @Args('createDeveloperInput') createDeveloperInput: CreateDeveloperInput
   ): Promise<Developer> {
     return this.developerService.create(createDeveloperInput);
   }
-} 
+}

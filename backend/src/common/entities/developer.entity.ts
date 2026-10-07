@@ -16,4 +16,4 @@ export class Developer {
   @Field(() => [Project], { nullable: true })
   @OneToMany(() => Project, (project) => project.developer)
   projects?: Project[];
-} 
+}

@@ -289,25 +289,7 @@ export async function setupTestApp(): Promise<INestApplication> {
       ],
     }).compile();
 
-    // Update .env.test with test project ID
-    const envFilePath = '.env.test';
-    try {
-      let envContent = '';
-      if (fs.existsSync(envFilePath)) {
-        envContent = fs.readFileSync(envFilePath, 'utf8');
-        if (envContent.includes('E2E_TEST_PROJECT_ID=')) {
-          envContent = envContent.replace(
-            /E2E_TEST_PROJECT_ID=.*/,
-            `E2E_TEST_PROJECT_ID=${testProjectId}`
-          );
-        } else {
-          envContent += `\nE2E_TEST_PROJECT_ID=${testProjectId}\n`;
-        }
-        fs.writeFileSync(envFilePath, envContent);
-      }
-    } catch (err) {
-      console.warn('Could not update .env.test file');
-    }
+    process.env.E2E_TEST_PROJECT_ID = testProjectId;
 
     const app = moduleFixture.createNestApplication();
     await app.init();

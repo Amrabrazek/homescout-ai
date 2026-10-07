@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TypesenseService } from '../../common/typesense/typesense.service';
-import { ConfigService } from '@nestjs/config';
 import { UnitFilterInput } from '../unit/dto/unit-filter.input';
 import {
   UnitSortInput,
@@ -104,7 +103,9 @@ export class SearchService {
         searchParams.sort_by = `createdAt:${sort.direction === SortDirection.DESC ? 'desc' : 'asc'}`;
       } else {
         searchParams.sort_by =
-          searchParams.q === '*' ? 'createdAt:desc' : '_text_match:desc,createdAt:desc';
+          searchParams.q === '*'
+            ? 'createdAt:desc'
+            : '_text_match:desc,createdAt:desc';
       }
 
       this.logger.debug(
@@ -156,7 +157,7 @@ export class SearchService {
 
             // Map images
             images: doc.imageUrls
-              ? doc.imageUrls.map((url, index) => ({
+              ? doc.imageUrls.map((url) => ({
                   url,
                 }))
               : [],

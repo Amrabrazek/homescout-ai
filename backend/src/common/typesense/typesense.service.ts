@@ -13,7 +13,10 @@ export class TypesenseService implements OnModuleInit {
         {
           host: this.configService.get<string>('TYPESENSE_HOST', 'typesense'),
           port: this.configService.get<number>('TYPESENSE_PORT', 8108),
-          protocol: this.configService.get<string>('TYPESENSE_PROTOCOL', 'http'),
+          protocol: this.configService.get<string>(
+            'TYPESENSE_PROTOCOL',
+            'http'
+          ),
         },
       ],
       apiKey: this.configService.get<string>('TYPESENSE_API_KEY', 'xyz'),
@@ -25,7 +28,7 @@ export class TypesenseService implements OnModuleInit {
     try {
       // Check if we can connect to Typesense
       const health = await this.client.health.retrieve();
-        this.logger.log(`Connected to Typesense: ${JSON.stringify(health)}`);
+      this.logger.log(`Connected to Typesense: ${JSON.stringify(health)}`);
       // Initialize collections
       await this.initializeCollections();
     } catch (error) {
@@ -57,8 +60,18 @@ export class TypesenseService implements OnModuleInit {
               { name: 'projectId', type: 'string', facet: true },
               { name: 'projectName', type: 'string', facet: true },
               { name: 'developerName', type: 'string', facet: true },
-              { name: 'amenityIds', type: 'string[]', optional: true, facet: true },
-              { name: 'amenityNames', type: 'string[]', optional: true, facet: true },
+              {
+                name: 'amenityIds',
+                type: 'string[]',
+                optional: true,
+                facet: true,
+              },
+              {
+                name: 'amenityNames',
+                type: 'string[]',
+                optional: true,
+                facet: true,
+              },
               { name: 'imageUrls', type: 'string[]', optional: true },
               { name: 'createdAt', type: 'int64' },
               // Add text representation fields
@@ -67,35 +80,35 @@ export class TypesenseService implements OnModuleInit {
               { name: 'floorText', type: 'string', optional: true },
               { name: 'floorAreaText', type: 'string', optional: true },
               { name: 'priceText', type: 'string', optional: true },
-              { 
-                name: 'embedding', 
-                type: 'float[]', 
+              {
+                name: 'embedding',
+                type: 'float[]',
                 optional: true,
                 embed: {
                   from: [
-                    'name', 
-                    'number', 
-                    'description', 
-                    'projectName', 
-                    'developerName', 
+                    'name',
+                    'number',
+                    'description',
+                    'projectName',
+                    'developerName',
                     'amenityNames',
                     'roomsText',
                     'bathroomsText',
                     'floorText',
                     'floorAreaText',
-                    'priceText'
+                    'priceText',
                   ],
                   model_config: {
                     model_name: 'ts/e5-small',
                     // model_name: 'openai/text-embedding-3-small',
                     // api_key: this.configService.get<string>('OPENAI_API_KEY')
-                  }
-                }
-              }
+                  },
+                },
+              },
             ],
-            default_sorting_field: 'createdAt'
+            default_sorting_field: 'createdAt',
           };
-          
+
           await this.client.collections().create(schema);
           this.logger.log('Units collection created with embedding field');
         } else {
@@ -103,7 +116,9 @@ export class TypesenseService implements OnModuleInit {
         }
       }
     } catch (error) {
-      this.logger.error(`Failed to initialize Typesense collections: ${error.message}`);
+      this.logger.error(
+        `Failed to initialize Typesense collections: ${error.message}`
+      );
       throw error;
     }
   }
@@ -112,7 +127,10 @@ export class TypesenseService implements OnModuleInit {
     try {
       // Prepare the document for Typesense
       const document = this.mapUnitToTypesenseDocument(unit);
-      return await this.client.collections('units').documents().upsert(document);
+      return await this.client
+        .collections('units')
+        .documents()
+        .upsert(document);
     } catch (error) {
       this.logger.error(`Failed to index unit: ${error.message}`);
       throw error;
@@ -139,8 +157,13 @@ export class TypesenseService implements OnModuleInit {
 
   async importUnits(units: any[]): Promise<any> {
     try {
-      const documents = units.map(unit => this.mapUnitToTypesenseDocument(unit));
-      return await this.client.collections('units').documents().import(documents);
+      const documents = units.map((unit) =>
+        this.mapUnitToTypesenseDocument(unit)
+      );
+      return await this.client
+        .collections('units')
+        .documents()
+        .import(documents);
     } catch (error) {
       this.logger.error(`Failed to import units: ${error.message}`);
       throw error;
@@ -151,10 +174,16 @@ export class TypesenseService implements OnModuleInit {
 
   private mapUnitToTypesenseDocument(unit: any): any {
     // Convert numeric values to string representations for embedding
-    const roomsText = unit.rooms ? `${unit.rooms} room${unit.rooms !== 1 ? 's' : ''}` : '';
-    const bathroomsText = unit.bathrooms ? `${unit.bathrooms} bathroom${unit.bathrooms !== 1 ? 's' : ''}` : '';
+    const roomsText = unit.rooms
+      ? `${unit.rooms} room${unit.rooms !== 1 ? 's' : ''}`
+      : '';
+    const bathroomsText = unit.bathrooms
+      ? `${unit.bathrooms} bathroom${unit.bathrooms !== 1 ? 's' : ''}`
+      : '';
     const floorText = unit.floor ? `floor ${unit.floor}` : '';
-    const floorAreaText = unit.floorArea ? `${unit.floorArea} square meters` : '';
+    const floorAreaText = unit.floorArea
+      ? `${unit.floorArea} square meters`
+      : '';
     const priceText = unit.price ? `${unit.price} price` : '';
 
     return {
@@ -170,20 +199,20 @@ export class TypesenseService implements OnModuleInit {
       projectId: unit.projectId || unit.project?.id,
       projectName: unit.project?.name || '',
       developerName: unit.project?.developer?.name || '',
-      amenityIds: unit.amenities?.map(a => a.id) || [],
-      amenityNames: unit.amenities?.map(a => a.name) || [],
-      imageUrls: unit.images?.map(img => img.url) || [],
+      amenityIds: unit.amenities?.map((a) => a.id) || [],
+      amenityNames: unit.amenities?.map((a) => a.name) || [],
+      imageUrls: unit.images?.map((img) => img.url) || [],
       createdAt: new Date(unit.createdAt).getTime(),
       // Add string representations for embedding
       roomsText,
       bathroomsText,
       floorText,
       floorAreaText,
-      priceText
+      priceText,
     };
   }
 
   getClient() {
     return this.client;
   }
-} 
+}

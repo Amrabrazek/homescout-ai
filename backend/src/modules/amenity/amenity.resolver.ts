@@ -19,8 +19,8 @@ export class AmenityResolver {
 
   @Mutation(() => Amenity)
   async createAmenity(
-    @Args('createAmenityInput') createAmenityInput: CreateAmenityInput,
+    @Args('createAmenityInput') createAmenityInput: CreateAmenityInput
   ): Promise<Amenity> {
     return this.amenityService.create(createAmenityInput);
   }
-} 
+}

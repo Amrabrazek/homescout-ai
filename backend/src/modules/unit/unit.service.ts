@@ -3,8 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   Repository,
-  Like,
-  ILike,
   MoreThanOrEqual,
   LessThanOrEqual,
   Between,
@@ -516,5 +514,4 @@ export class UnitService {
 
     return this.unitRepository.save(unit);
   }
-
 }

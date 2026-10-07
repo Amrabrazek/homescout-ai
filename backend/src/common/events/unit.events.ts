@@ -1,5 +1,3 @@
-import { Unit } from '../entities/unit.entity';
-
 export enum UnitEventType {
   CREATED = 'unit.created',
   UPDATED = 'unit.updated',
