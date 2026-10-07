@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { join } from 'path';
+import { databaseOptions } from './config/database.config';
+import { UploadModule } from './modules/upload/upload.module';
 
 // Modules
 import { DeveloperModule } from './modules/developer/developer.module';
@@ -20,35 +22,22 @@ import { SearchModule } from './modules/search/search.module';
     // Config
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: ['.env', '../.env'],
     }),
 
     // Event Emitter
     EventEmitterModule.forRoot(),
 
     // Database
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('DB_HOST', 'localhost'),
-        port: parseInt(configService.get('DB_PORT', '5432')),
-        username: configService.get('DB_USERNAME', 'supabase_admin'),
-        password: configService.get(
-          'DB_PASSWORD',
-          'your-super-secret-and-long-postgres-password'
-        ),
-        database: configService.get('DB_NAME', 'postgres'),
-        entities: [join(__dirname, '**', '*.entity.{ts,js}')],
-        synchronize: false,
-      }),
-    }),
+    TypeOrmModule.forRootAsync({ useFactory: () => databaseOptions() }),
 
     // GraphQL
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      autoSchemaFile:
+        process.env.NODE_ENV === 'production'
+          ? true
+          : join(process.cwd(), 'src/schema.gql'),
       sortSchema: true,
       playground: true,
     }),
@@ -61,6 +50,7 @@ import { SearchModule } from './modules/search/search.module';
     AmenityModule,
     TypesenseModule,
     SearchModule,
+    UploadModule,
   ],
 })
 export class AppModule {}

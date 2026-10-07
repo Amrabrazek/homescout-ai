@@ -2,18 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: [
-      'picsum.photos',
-      // 'eztjeqhcgupkxfmczgfw.supabase.co',
-      'zpwjwbwlpsbzrstdkrsg.supabase.co',
-      'localhost',
-      '127.0.0.1',
-      'images.unsplash.com',
+    remotePatterns: [
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'picsum.photos' },
+      { protocol: 'http', hostname: 'localhost', port: '9000' },
+      { protocol: 'http', hostname: '127.0.0.1', port: '9000' },
     ],
-  },
-  env: {
-    GRAPHQL_ENDPOINT:
-      process.env.GRAPHQL_ENDPOINT || 'http://localhost:3001/graphql',
   },
   experimental: {
     serverActions: true,

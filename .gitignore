@@ -29,18 +29,7 @@ coverage/
 # Docker volumes
 docker-volumes/
 
-# Supabase
-.supabase/
-**/supabase/.branches/
-**/supabase/.temp/
-**/supabase/volumes/db/data/
-**/supabase/volumes/storage/
-**/supabase/config.local.toml
 **/*-service-account-keys.json
-**/supabase/.env
-
-# Typesense data
-supabase/volumes/typesense-data/
 
 # Cache
 .eslintcache
