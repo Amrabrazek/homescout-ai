@@ -16,6 +16,7 @@ import { AmenityModule } from './modules/amenity/amenity.module';
 import { TypesenseModule } from './common/typesense/typesense.module';
 import { SearchModule } from './modules/search/search.module';
 import { SyncModule } from './modules/sync/sync.module';
+import { BuyerModule } from './modules/buyer/buyer.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { SyncModule } from './modules/sync/sync.module';
           : join(process.cwd(), 'src/schema.gql'),
       sortSchema: true,
       playground: true,
+      context: ({ req }) => ({ req }),
     }),
 
     // Feature Modules
@@ -49,6 +51,7 @@ import { SyncModule } from './modules/sync/sync.module';
     SearchModule,
     UploadModule,
     SyncModule,
+    BuyerModule,
   ],
 })
 export class AppModule {}

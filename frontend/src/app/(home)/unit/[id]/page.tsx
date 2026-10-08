@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import UnitDetails, { UnitDetailSkeleton } from './_components/UnitDetail';
 import { Suspense } from 'react';
 import { getUnitById } from '@/lib/graphql/units/server.loaders';
+import { getMyProfile } from '@/lib/graphql/buyer/server';
 
 type Props = {
   params: { id: string };
@@ -35,9 +36,12 @@ export default async function UnitPage({ params }: Props) {
     notFound();
   }
 
+  const profile = await getMyProfile().catch(() => null);
+  const initialSaved = !!profile?.savedUnitIds.includes(unit.id);
+
   return (
     <Suspense fallback={<UnitDetailSkeleton />}>
-      <UnitDetails unit={unit} />
+      <UnitDetails unit={unit} initialSaved={initialSaved} />
     </Suspense>
   );
 }

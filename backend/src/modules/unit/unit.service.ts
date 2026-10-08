@@ -117,15 +117,7 @@ export class UnitService {
     }
     if (rows.length === 0) return [];
 
-    const ids = rows.map((r) => r.id);
-    const units = await this.unitRepository.find({
-      where: { id: In(ids) },
-      relations: ['project', 'project.developer', 'amenities'],
-    });
-    const imagesByUnit = await this.getImagesForUnits(ids);
-    for (const unit of units) {
-      unit.images = imagesByUnit.get(unit.id) ?? [];
-    }
+    const units = await this.findManyByIds(rows.map((r) => r.id));
     const byId = new Map(units.map((u) => [u.id, u]));
     const candidates = rows
       .filter((r) => byId.has(r.id))
@@ -133,6 +125,26 @@ export class UnitService {
 
     const floor = 1 - EMBEDDING_MODELS[this.embeddings.model].maxDistance;
     return rankSimilarUnits(seed, candidates, limit, floor);
+  }
+
+  /** Units with their project, amenities and images, in the order of `ids`. */
+  async findManyByIds(ids: string[]): Promise<Unit[]> {
+    if (ids.length === 0) return [];
+
+    const units = await this.unitRepository.find({
+      where: { id: In(ids) },
+      relations: ['project', 'project.developer', 'amenities'],
+    });
+    const imagesByUnit = await this.getImagesForUnits(ids);
+    const byId = new Map(units.map((u) => [u.id, u]));
+    const detailedUnits = ids
+      .map((id) => byId.get(id))
+      .filter((u): u is Unit => !!u);
+    for (const unit of detailedUnits) {
+      unit.images = imagesByUnit.get(unit.id) ?? [];
+    }
+
+    return detailedUnits;
   }
 
   /** Exact nearest neighbours within the filtered pool, not the ANN index: post-filtering an index scan can return too few rows. */
