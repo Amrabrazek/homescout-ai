@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { uploadFilesToStorage } from '@/lib/supabase/storage';
+import { uploadFilesToStorage } from '@/lib/storage';
 import { createImageEntity } from '@/lib/graphql/units/actions';
 import { Card } from './card';
 import { Progress } from './progress';
@@ -88,7 +88,7 @@ export function ImageUploader({
       }
 
       try {
-        // Step 1: Upload files to Supabase storage
+        // Step 1: Upload files to object storage
         setUploadStatus('uploading');
         const uploadToastId = toast.loading(
           `Uploading ${validFiles.length} images...`

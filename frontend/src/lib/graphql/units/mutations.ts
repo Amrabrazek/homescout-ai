@@ -39,7 +39,7 @@ export const UPLOAD_IMAGES = gql`
   }
 `;
 
-// New Supabase-based image creation mutation
+// Registers an uploaded image so it can be attached to units
 export const CREATE_IMAGE = gql`
   mutation CreateImage($createImageInput: CreateImageInput!) {
     createImage(createImageInput: $createImageInput) {

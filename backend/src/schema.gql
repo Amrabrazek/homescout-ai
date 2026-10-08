@@ -19,7 +19,7 @@ input CreateDeveloperInput {
 }
 
 input CreateImageInput {
-  alt_text: String
+  altText: String
   url: String!
 }
 

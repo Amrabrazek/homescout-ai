@@ -1,34 +1,17 @@
-FROM node:18-alpine
-
+FROM node:20-alpine AS build
 WORKDIR /app
-
-# Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install
-
-# Copy the rest of the application
+RUN npm ci
 COPY . .
+RUN npm run build && npm prune --omit=dev
 
-# Build the application
-RUN npm run build
-
-# Make sure the output exists and is accessible
-# This fix ensures the entry point is always where the container expects it to be.
-# This is a common issue when dockerizing NestJS applications, especially when building inside the container rather than using pre-built files.
-RUN ls -la dist/ && \
-    if [ ! -f dist/main.js ]; then \
-        if [ -f dist/src/main.js ]; then \
-            mkdir -p /app/dist-temp && \
-            cp -r dist/src/* /app/dist-temp/ && \
-            rm -rf dist && \
-            mv /app/dist-temp dist; \
-        else \
-            echo "main.js not found in expected locations"; \
-            exit 1; \
-        fi \
-    fi
-
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/db ./db
 EXPOSE 3001
-
-# Start the application
-CMD ["node", "dist/main.js"] 
+# Migrate + seed (if empty), index search (if empty; a search outage must not block the API), start
+CMD ["sh", "-c", "node dist/scripts/seed.js && (node dist/scripts/populate-typesense.js --if-empty || echo 'Typesense indexing skipped') && node dist/main.js"]

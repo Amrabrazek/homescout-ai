@@ -17,6 +17,21 @@ async function bootstrap() {
     const unitService = app.get(UnitService);
     const typesenseService = app.get(TypesenseService);
 
+    if (process.argv.includes('--if-empty')) {
+      const existing = await typesenseService
+        .getClient()
+        .collections('units')
+        .retrieve()
+        .catch(() => null);
+      if (existing && existing.num_documents > 0) {
+        logger.log(
+          `Index already has ${existing.num_documents} units, skipping`
+        );
+        await app.close();
+        return;
+      }
+    }
+
     // Try to drop the existing collection
     try {
       logger.log('Attempting to drop existing units collection...');
