@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import PgBoss = require('pg-boss');
+import { Job } from 'pg-boss';
 import { EntityManager } from 'typeorm';
 import { PgBossService } from '../../common/queue/pg-boss.service';
 
@@ -16,7 +16,6 @@ export class BuyerTasteQueue implements OnModuleInit {
 
   async onModuleInit() {
     await this.pgBoss.boss.createQueue(BUYER_TASTE_QUEUE, {
-      name: BUYER_TASTE_QUEUE,
       retryLimit: 5,
       retryDelay: 2,
       retryBackoff: true,
@@ -25,9 +24,9 @@ export class BuyerTasteQueue implements OnModuleInit {
 
   async enqueue(buyerId: string, manager?: EntityManager): Promise<void> {
     await this.pgBoss.insert(
+      BUYER_TASTE_QUEUE,
       [
         {
-          name: BUYER_TASTE_QUEUE,
           data: { buyerId } satisfies BuyerTasteJob,
         },
       ],
@@ -36,7 +35,7 @@ export class BuyerTasteQueue implements OnModuleInit {
   }
 
   work(
-    handler: (jobs: PgBoss.Job<BuyerTasteJob>[]) => Promise<void>
+    handler: (jobs: Job<BuyerTasteJob>[]) => Promise<void>
   ): Promise<string> {
     return this.pgBoss.boss.work<BuyerTasteJob>(
       BUYER_TASTE_QUEUE,

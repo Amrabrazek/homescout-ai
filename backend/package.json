@@ -54,7 +54,7 @@
     "graphql": "^16.8.1",
     "graphql-tools": "^9.0.0",
     "pg": "^8.11.3",
-    "pg-boss": "^10.4.2",
+    "pg-boss": "^12.37.1",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^5.0.0",
     "rxjs": "^7.8.1",
@@ -101,6 +101,9 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^pg-boss$": "<rootDir>/../test/pg-boss.stub.ts"
+    }
   }
 }

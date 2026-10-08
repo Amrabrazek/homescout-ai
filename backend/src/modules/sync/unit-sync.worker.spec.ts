@@ -1,10 +1,10 @@
-import PgBoss = require('pg-boss');
+import { Job } from 'pg-boss';
 import { UnitSyncJob, UnitSyncQueue } from './unit-sync.queue';
 import { UnitSyncService } from './unit-sync.service';
 import { UnitSyncWorker } from './unit-sync.worker';
 
 const job = (unitId: string) =>
-  ({ id: `job-${unitId}`, data: { unitId } }) as PgBoss.Job<UnitSyncJob>;
+  ({ id: `job-${unitId}`, data: { unitId } }) as Job<UnitSyncJob>;
 
 describe('UnitSyncWorker.handle', () => {
   const result = { indexed: 1, embedded: 0, deleted: 0 };

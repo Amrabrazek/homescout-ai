@@ -4,7 +4,7 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import PgBoss = require('pg-boss');
+import { JobInsert, PgBoss } from 'pg-boss';
 import { EntityManager } from 'typeorm';
 import { databaseOptions } from '../../config/database.config';
 
@@ -51,13 +51,13 @@ export class PgBossService implements OnModuleInit, OnModuleDestroy {
    * Pass the transaction's EntityManager so the jobs commit (or roll back)
    * together with the write that caused them.
    */
-  async insert(jobs: PgBoss.JobInsert[], manager?: EntityManager) {
+  async insert(queue: string, jobs: JobInsert[], manager?: EntityManager) {
     if (jobs.length === 0) return;
     const db = manager && {
       executeSql: async (text: string, values: unknown[]) => ({
         rows: await manager.query(text, values),
       }),
     };
-    await this.boss.insert(jobs, db ? { db } : undefined);
+    await this.boss.insert(queue, jobs, db ? { db } : undefined);
   }
 }
