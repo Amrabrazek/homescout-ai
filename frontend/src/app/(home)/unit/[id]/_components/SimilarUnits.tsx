@@ -1,10 +1,7 @@
 'use client';
 
-import {
-  useSimilarUnits,
-  getSimilarUnitsData,
-} from '@/lib/graphql/units/hooks';
-import { Unit } from '@/lib/graphql/units/types';
+import { useSimilarUnits } from '@/lib/graphql/units/hooks';
+import { SimilarUnit } from '@/lib/graphql/units/types';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,7 +14,7 @@ interface SimilarUnitsProps {
 
 export function SimilarUnits({ unitId, limit = 4 }: SimilarUnitsProps) {
   const { data, loading, error } = useSimilarUnits(unitId, limit);
-  const similarUnits = getSimilarUnitsData(data);
+  const similarUnits = data?.similarUnits;
 
   if (error) {
     console.error('Error loading similar units:', error);
@@ -45,15 +42,16 @@ export function SimilarUnits({ unitId, limit = 4 }: SimilarUnitsProps) {
     <div className='mt-12'>
       <h2 className='text-2xl font-bold mb-6'>Similar Units</h2>
       <div className='flex overflow-x-auto pb-4 gap-4 hide-scrollbar'>
-        {similarUnits.map((unit: Unit) => (
-          <SimilarUnitCard key={unit.id} unit={unit} />
+        {similarUnits.map((similar) => (
+          <SimilarUnitCard key={similar.unit.id} similar={similar} />
         ))}
       </div>
     </div>
   );
 }
 
-function SimilarUnitCard({ unit }: { unit: Unit }) {
+function SimilarUnitCard({ similar }: { similar: SimilarUnit }) {
+  const { unit, reasons } = similar;
   const hasImage = unit.images && unit.images.length > 0;
   const imageUrl = hasImage ? unit.images[0].url : '/placeholder-unit.jpg';
 
@@ -93,6 +91,18 @@ function SimilarUnitCard({ unit }: { unit: Unit }) {
         <p className='font-bold mt-3'>
           ${unit.price?.toLocaleString() || 'Price on request'}
         </p>
+        {reasons.length > 0 && (
+          <div className='flex flex-wrap gap-1 mt-3'>
+            {reasons.map((reason) => (
+              <span
+                key={reason}
+                className='text-xs bg-blue-50 text-blue-700 rounded-full px-2 py-0.5'
+              >
+                {reason}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </Link>
   );

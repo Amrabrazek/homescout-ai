@@ -95,21 +95,6 @@ export class SearchService {
     return { facets, total };
   }
 
-  async findSimilarUnits(
-    unitId: string,
-    limit = 5,
-    filter?: UnitFilterInput
-  ): Promise<SearchUnitDocument[]> {
-    const result = await this.typesense.search({
-      q: '*',
-      vector_query: `embedding:([], id: ${unitId}, k: ${limit})`,
-      filter_by: compileUnitFilter(filter).typesense,
-      per_page: limit,
-      exclude_fields: 'embedding',
-    });
-    return (result.hits ?? []).map((hit) => toSearchDocument(hit.document));
-  }
-
   /**
    * Turns searchTerm into hard filters plus leftover text. Explicit filters win
    * over parsed ones.
