@@ -2,6 +2,9 @@
   "name": "homescout-frontend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -54,7 +57,7 @@
     "zod": "^3.21.4"
   },
   "devDependencies": {
-    "@types/node": "^20.17.46",
+    "@types/node": "^24.19.1",
     "@types/react": "^18.2.17",
     "@types/react-dom": "^18.2.7",
     "autoprefixer": "^10.4.14",

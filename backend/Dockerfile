@@ -1,12 +1,12 @@
 # Debian (glibc), not Alpine: onnxruntime-node, used by the local embedding model, needs glibc
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 
-FROM node:20-slim
+FROM node:24-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/package*.json ./
