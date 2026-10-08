@@ -9,6 +9,7 @@ import { UnitResolver } from './unit.resolver';
 import { UnitService } from './unit.service';
 import { SyncModule } from '../sync/sync.module';
 import { EmbeddingModule } from '../embedding/embedding.module';
+import { SearchModule } from '../search/search.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { EmbeddingModule } from '../embedding/embedding.module';
     ImageModule,
     SyncModule,
     EmbeddingModule,
+    SearchModule,
   ],
   providers: [UnitResolver, UnitService],
   exports: [UnitService],

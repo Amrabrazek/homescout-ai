@@ -77,6 +77,10 @@ export class UnitSyncQueue implements OnModuleInit, OnModuleDestroy {
     await this.boss.insert(jobs, db ? { db } : undefined);
   }
 
+  async fail(jobId: string, error: Error): Promise<void> {
+    await this.boss.fail(UNIT_SYNC_QUEUE, jobId, { message: error.message });
+  }
+
   work(
     handler: (jobs: PgBoss.Job<UnitSyncJob>[]) => Promise<void>
   ): Promise<string> {
