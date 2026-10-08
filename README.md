@@ -81,9 +81,10 @@ npm run dev
 | backend  | `npm run db:migrate`          | Apply pending migrations                      |
 | backend  | `npm run db:migrate:revert`   | Revert the last migration                     |
 | backend  | `npm run db:seed`             | Migrate, then seed sample data if DB is empty |
+| backend  | `npm run db:seed -- --reset`  | Replace all data with fresh sample data       |
 | backend  | `npm run typesense:populate`  | Rebuild the Typesense index from the database |
 | backend  | `npm run lint` / `typecheck`  | Static checks                                 |
-| backend  | `npm run test:e2e`            | API tests                                     |
+| backend  | `npm test` / `test:e2e`       | Unit tests / API tests                        |
 | frontend | `npm run lint` / `typecheck`  | Static checks                                 |
 
 CI runs lint, typecheck, tests and a production build on every pull request.
@@ -92,13 +93,12 @@ CI runs lint, typecheck, tests and a production build on every pull request.
 
 ```txt
 backend/
-  db/seed.sql              sample data
   src/
     config/                database config shared by the app and migration CLI
     migrations/            versioned schema migrations (TypeORM)
     common/                entities, events, Typesense client
     modules/               developer, project, unit, amenity, image, search, upload
-    scripts/               seed + Typesense population
+    scripts/               seed generator (scripts/seed/) + Typesense population
 frontend/
   src/app/                 App Router pages (listing, unit detail, dashboard)
   src/components/          UI components

@@ -1,4 +1,4 @@
-import { Field, ID, ObjectType } from '@nestjs/graphql';
+import { Field, Float, ID, ObjectType } from '@nestjs/graphql';
 import {
   Column,
   Entity,
@@ -20,6 +20,26 @@ export class Project {
   @Field()
   @Column()
   name: string;
+
+  @Field({ nullable: true })
+  @Column('text', { nullable: true })
+  area?: string;
+
+  @Field({ nullable: true })
+  @Column('text', { nullable: true })
+  city?: string;
+
+  @Field({ nullable: true })
+  @Column('text', { nullable: true })
+  region?: string;
+
+  @Field(() => Float, { nullable: true })
+  @Column('decimal', { precision: 9, scale: 6, nullable: true })
+  lat?: number;
+
+  @Field(() => Float, { nullable: true })
+  @Column('decimal', { precision: 9, scale: 6, nullable: true })
+  lng?: number;
 
   @Field()
   @Column({ name: 'developer_id' })
