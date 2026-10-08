@@ -16,11 +16,31 @@ Next.js 13 (frontend/) ──GraphQL──▶ NestJS (backend/) ──▶ Postgr
 ```
 `docker compose up --build` runs all 5 services locally.
 
+## Code map
+Start here instead of exploring. Pointers only; read the file for details.
+Update this table in the same PR when you add, move or rename one of these places.
+
+| To change… | Look in |
+|---|---|
+| DB schema | `backend/src/migrations/` (new file) + `backend/src/common/entities/` |
+| Enums (property type, finishing, view, region) | `backend/src/common/enums/unit-attributes.ts` |
+| Unit list / DB filters / sort | `backend/src/modules/unit/` (`unit.service.ts` `findAllWithCount`, `dto/unit-filter.input.ts`) |
+| Typesense schema + document mapping | `backend/src/common/typesense/typesense.service.ts` |
+| Typesense search query | `backend/src/modules/search/search.service.ts` |
+| Embeddings / similar units | `backend/src/modules/unit/unit-embedding.listener.ts`, `match_similar_units` in the initial migration |
+| Sample data | `backend/src/scripts/seed/` (`data.ts` catalog, `rules.ts`, `generate.ts`); entry `scripts/seed.ts` |
+| Image uploads | `backend/src/modules/upload/` |
+| Backend tests | unit: `src/**/*.spec.ts` (`npm test`); API: `test/**/*.e2e-spec.ts` (mocked services) |
+| Home page listing + filters UI | `frontend/src/app/(home)/_components/` (`UnitFilters.tsx`, `UnitListing.tsx`) |
+| Unit page | `frontend/src/app/(home)/unit/[id]/` |
+| Dashboard (CRUD forms) | `frontend/src/app/dashboard/` |
+| GraphQL queries, types, zod schemas | `frontend/src/lib/graphql/<entity>/` |
+
 ## Commands
 | Where | Command | Purpose |
 |---|---|---|
-| backend | `npm run lint` · `npm run typecheck` · `npm run test:e2e` | Checks (CI runs these) |
-| backend | `npm run db:seed` | Apply migrations, seed if empty |
+| backend | `npm run lint` · `npm run typecheck` · `npm test` · `npm run test:e2e` | Checks (CI runs these) |
+| backend | `npm run db:seed` | Apply migrations, seed if empty (`-- --reset` to replace data) |
 | backend | `npm run db:migrate` / `db:migrate:revert` | Migrations |
 | backend | `npm run typesense:populate` | Rebuild search index |
 | backend | `npm run start:dev` | API on :3001 (`/graphql`) |
