@@ -1,0 +1,211 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+import { BuyerEventType } from '../../common/enums/buyer-event-type';
+import { BuyerService } from '../buyer/buyer.service';
+import { UpdatePreferencesInput } from '../buyer/dto/update-preferences.input';
+import { UnitFilterInput } from '../unit/dto/unit-filter.input';
+import { SearchService } from '../search/search.service';
+import { UnitService } from '../unit/unit.service';
+import { SearchUnitsDto } from './dto/search-units.dto';
+import { UpdateBuyerPreferencesDto } from './dto/update-preferences.dto';
+import { toUnitCard, toUnitDetail, UnitCard, UnitDetail } from './unit-card';
+import {
+  expandToAreas,
+  LocationRow,
+  NamedItem,
+  resolveAmenities,
+  resolveLocations,
+} from './vocabulary';
+
+export interface UnitSearchResult {
+  total: number;
+  units: UnitCard[];
+  /** The hard filters every returned unit meets, plus the leftover keywords. */
+  appliedFilters: Record<string, unknown>;
+  /** Names that matched nothing in the data and were ignored. */
+  unmatched: string[];
+}
+
+export interface SimilarUnit {
+  unit: UnitCard;
+  reasons: string[];
+}
+
+export interface BuyerPreferences {
+  budgetMin: number | null;
+  budgetMax: number | null;
+  areas: string[];
+  propertyTypes: string[];
+  minRooms: number | null;
+  minSize: number | null;
+  amenities: string[];
+  savedUnitIds: string[];
+}
+
+const DEFAULT_LIMIT = 6;
+
+/**
+ * The concierge agent's tools. Results are compact and come straight from the
+ * DB so the chat can render them as cards without trusting model text.
+ */
+@Injectable()
+export class ConciergeService {
+  private readonly logger = new Logger(ConciergeService.name);
+
+  constructor(
+    private readonly searchService: SearchService,
+    private readonly unitService: UnitService,
+    private readonly buyerService: BuyerService,
+    private readonly dataSource: DataSource
+  ) {}
+
+  async searchUnits(input: SearchUnitsDto): Promise<UnitSearchResult> {
+    const limit = input.limit ?? DEFAULT_LIMIT;
+    const [rows, amenities] = await Promise.all([
+      this.locationRows(),
+      this.amenities(),
+    ]);
+    const places = resolveLocations(input.locations ?? [], rows);
+    const amenityMatch = resolveAmenities(input.amenities ?? [], amenities);
+
+    const requested: UnitFilterInput = {
+      searchTerm: input.query?.trim() || undefined,
+      areas: places.areas,
+      cities: places.cities,
+      regions: places.regions,
+      propertyTypes: input.propertyTypes,
+      amenityIds: amenityMatch.ids,
+      minRooms: input.minRooms,
+      maxRooms: input.maxRooms,
+      minPrice: input.minPrice,
+      maxPrice: input.maxPrice,
+      minFloorArea: input.minFloorArea,
+      maxFloorArea: input.maxFloorArea,
+    };
+    const { text, filter } = await this.searchService.understand(requested);
+
+    let total: number;
+    let units: UnitCard[];
+    try {
+      const result = await this.searchService.search({
+        filter: requested,
+        limit,
+      });
+      total = result.total;
+      units = result.items.map(toUnitCard);
+    } catch (error) {
+      this.logger.warn(
+        `Search index unavailable, using Postgres filters only: ${error.message}`
+      );
+      const [found, count] = await this.unitService.findAllWithCount(
+        filter,
+        undefined,
+        limit,
+        0
+      );
+      total = count;
+      units = found.map(toUnitCard);
+    }
+
+    return {
+      total,
+      units,
+      appliedFilters: withoutEmpty({
+        keywords: text,
+        ...filter,
+        amenityIds: undefined,
+        amenities: amenityMatch.ids.map(
+          (id) => amenities.find((a) => a.id === id).name
+        ),
+      }),
+      unmatched: [...places.unknown, ...amenityMatch.unknown],
+    };
+  }
+
+  async getUnit(id: string): Promise<UnitDetail> {
+    return toUnitDetail(await this.unitService.findOne(id));
+  }
+
+  async compareUnits(ids: string[]): Promise<UnitDetail[]> {
+    const units = await this.unitService.findManyByIds(ids);
+    return units.map(toUnitDetail);
+  }
+
+  async similarUnits(id: string, limit = 4): Promise<SimilarUnit[]> {
+    const ranked = await this.unitService.findSimilarUnits(id, limit);
+    return ranked.map((r) => ({
+      unit: toUnitCard(r.unit),
+      reasons: r.reasons,
+    }));
+  }
+
+  async getPreferences(buyerId: string): Promise<BuyerPreferences> {
+    const [profile, amenities, savedUnitIds] = await Promise.all([
+      this.buyerService.getProfile(buyerId),
+      this.amenities(),
+      this.buyerService.savedUnitIds(buyerId),
+    ]);
+    return {
+      budgetMin: profile.budgetMin ?? null,
+      budgetMax: profile.budgetMax ?? null,
+      areas: profile.areas,
+      propertyTypes: profile.propertyTypes,
+      minRooms: profile.minRooms ?? null,
+      minSize: profile.minSize ?? null,
+      amenities: profile.amenityIds
+        .map((id) => amenities.find((a) => a.id === id)?.name)
+        .filter((name): name is string => !!name),
+      savedUnitIds,
+    };
+  }
+
+  /** Lists replace the stored ones; send null to clear a value. */
+  async updatePreferences(
+    buyerId: string,
+    input: UpdateBuyerPreferencesDto
+  ): Promise<BuyerPreferences & { unmatched: string[] }> {
+    const { locations, amenities: amenityNames, ...rest } = input;
+    const unmatched: string[] = [];
+    const changes: Record<string, unknown> = { ...rest };
+
+    if (locations) {
+      const rows = await this.locationRows();
+      const places = resolveLocations(locations, rows);
+      changes.areas = expandToAreas(places, rows);
+      unmatched.push(...places.unknown);
+    }
+    if (amenityNames) {
+      const match = resolveAmenities(amenityNames, await this.amenities());
+      changes.amenityIds = match.ids;
+      unmatched.push(...match.unknown);
+    }
+
+    await this.buyerService.updatePreferences(
+      buyerId,
+      changes as UpdatePreferencesInput
+    );
+    return { ...(await this.getPreferences(buyerId)), unmatched };
+  }
+
+  async saveUnit(buyerId: string, unitId: string): Promise<void> {
+    await this.buyerService.recordEvent(buyerId, unitId, BuyerEventType.SAVE);
+  }
+
+  private locationRows(): Promise<LocationRow[]> {
+    return this.dataSource.query(
+      `SELECT DISTINCT area, city, region FROM projects`
+    );
+  }
+
+  private amenities(): Promise<NamedItem[]> {
+    return this.dataSource.query(`SELECT id, name FROM amenities`);
+  }
+}
+
+function withoutEmpty<T extends object>(value: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([, v]) => v != null && v !== '' && !(Array.isArray(v) && v.length === 0)
+    )
+  ) as Partial<T>;
+}

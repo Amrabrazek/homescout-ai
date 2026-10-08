@@ -14,7 +14,10 @@ export const BUYER_ID_HEADER = 'x-buyer-id';
  */
 export const BuyerId = createParamDecorator(
   (_: unknown, context: ExecutionContext): string => {
-    const { req } = GqlExecutionContext.create(context).getContext();
+    const req =
+      context.getType<string>() === 'graphql'
+        ? GqlExecutionContext.create(context).getContext().req
+        : context.switchToHttp().getRequest();
     const buyerId = req?.headers?.[BUYER_ID_HEADER];
     if (typeof buyerId !== 'string' || !isUUID(buyerId)) {
       throw new BadRequestException(
