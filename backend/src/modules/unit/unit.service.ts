@@ -16,9 +16,16 @@ import {
   SortDirection,
 } from './dto/unit-sort.input';
 import { compileUnitFilter } from '../search/unit-filter';
+import {
+  RankedUnit,
+  SIMILAR_CANDIDATES,
+  rankSimilarUnits,
+  similarityTiers,
+} from './similar-units';
 import { SearchService } from '../search/search.service';
 import { UnitSyncQueue } from '../sync/unit-sync.queue';
 import {
+  EMBEDDING_MODELS,
   EMBEDDING_PROVIDER,
   EmbeddingProvider,
 } from '../embedding/embedding.provider';
@@ -96,29 +103,73 @@ export class UnitService {
     return unit;
   }
 
-  async findSimilarUnits(unitId: string, limit = 5): Promise<Unit[]> {
-    const similarUnits = await this.unitRepository.query(
-      `SELECT id FROM match_similar_units($1, $2, 0, $3) ORDER BY similarity DESC`,
-      [unitId, this.embeddings.model, limit]
-    );
+  async findSimilarUnits(unitId: string, limit = 4): Promise<RankedUnit[]> {
+    const seed = await this.unitRepository.findOne({
+      where: { id: unitId },
+      relations: ['project'],
+    });
+    if (!seed) throw new NotFoundException(`Unit with ID ${unitId} not found`);
 
-    const ids: string[] = similarUnits.map((row) => row.id);
-    if (ids.length === 0) return [];
+    let rows: { id: string; similarity: number | null }[] = [];
+    for (const tier of similarityTiers(seed)) {
+      rows = await this.similarCandidates(seed, tier);
+      if (rows.length >= limit) break;
+    }
+    if (rows.length === 0) return [];
 
+    const ids = rows.map((r) => r.id);
     const units = await this.unitRepository.find({
       where: { id: In(ids) },
       relations: ['project', 'project.developer', 'amenities'],
     });
     const imagesByUnit = await this.getImagesForUnits(ids);
-    const byId = new Map(units.map((u) => [u.id, u]));
-    const detailedUnits = ids
-      .map((id) => byId.get(id))
-      .filter((u): u is Unit => !!u);
-    for (const unit of detailedUnits) {
+    for (const unit of units) {
       unit.images = imagesByUnit.get(unit.id) ?? [];
     }
+    const byId = new Map(units.map((u) => [u.id, u]));
+    const candidates = rows
+      .filter((r) => byId.has(r.id))
+      .map((r) => ({ unit: byId.get(r.id), similarity: r.similarity }));
 
-    return detailedUnits;
+    const floor = 1 - EMBEDDING_MODELS[this.embeddings.model].maxDistance;
+    return rankSimilarUnits(seed, candidates, limit, floor);
+  }
+
+  /** Exact nearest neighbours within the filtered pool, not the ANN index: post-filtering an index scan can return too few rows. */
+  private async similarCandidates(
+    seed: Unit,
+    filter: UnitFilterInput
+  ): Promise<{ id: string; similarity: number | null }[]> {
+    const { where, params } = compileUnitFilter(filter).sql;
+    const rows = await this.unitRepository
+      .createQueryBuilder('unit')
+      .innerJoin('unit.project', 'project')
+      .leftJoin(
+        'unit_embeddings',
+        'e',
+        'e.unit_id = unit.id AND e.model = :model'
+      )
+      .leftJoin(
+        'unit_embeddings',
+        's',
+        's.unit_id = :seedId AND s.model = :model'
+      )
+      .select('unit.id', 'id')
+      .addSelect('1 - (e.embedding <=> s.embedding)', 'similarity')
+      .where('unit.id <> :seedId', {
+        seedId: seed.id,
+        model: this.embeddings.model,
+      })
+      .andWhere(where, params)
+      .orderBy('similarity', 'DESC', 'NULLS LAST')
+      .addOrderBy('ABS(unit.price - :seedPrice)', 'ASC')
+      .setParameter('seedPrice', Number(seed.price))
+      .limit(SIMILAR_CANDIDATES)
+      .getRawMany();
+    return rows.map((r) => ({
+      id: r.id,
+      similarity: r.similarity == null ? null : Number(r.similarity),
+    }));
   }
 
   async create(createUnitInput: CreateUnitInput): Promise<Unit> {

@@ -4,7 +4,6 @@ import {
   GET_FILTER_DATA,
   SEARCH_UNITS,
   SIMILAR_UNITS_QUERY,
-  SEARCH_SIMILAR_UNITS,
   SEARCH_FACETS,
 } from './queries';
 import { useState, useEffect, useCallback } from 'react';
@@ -20,7 +19,6 @@ import type {
   FacetCountValue,
   UnitsResponse,
   GetSimilarUnitsQueryResponse,
-  TypesenseSimilarUnitsResponse,
   SimilarUnitsQueryVariables,
 } from './types';
 
@@ -60,24 +58,9 @@ function useTypesenseUnits(filter: UnitFilter, sort?: UnitSort, offset = 0) {
   );
 }
 
-// Database-specific similar units query
-function useDbSimilarUnits(unitId: string, limit = 5) {
+export function useSimilarUnits(unitId: string, limit = 4) {
   return useQuery<GetSimilarUnitsQueryResponse, SimilarUnitsQueryVariables>(
     SIMILAR_UNITS_QUERY,
-    {
-      variables: {
-        unitId,
-        limit,
-      },
-      fetchPolicy: 'cache-and-network',
-    }
-  );
-}
-
-// Typesense-specific similar units query
-function useTypesenseSimilarUnits(unitId: string, limit = 5) {
-  return useQuery<TypesenseSimilarUnitsResponse, SimilarUnitsQueryVariables>(
-    SEARCH_SIMILAR_UNITS,
     {
       variables: {
         unitId,
@@ -121,29 +104,6 @@ export const useUnits = USE_TYPESENSE ? useTypesenseUnits : useDbUnits;
 export function useFilterData() {
   return useQuery(GET_FILTER_DATA);
 }
-
-// Helper function to get similar units data from either query response
-export function getSimilarUnitsData(
-  data: GetSimilarUnitsQueryResponse | TypesenseSimilarUnitsResponse | undefined
-): Unit[] | undefined {
-  if (!data) return undefined;
-
-  if ('similarUnits' in data) {
-    return data.similarUnits;
-  } else if ('searchSimilarUnits' in data) {
-    // Convert SearchUnit to Unit if needed for compatibility
-    return data.searchSimilarUnits.map((item) => {
-      // Cast SearchUnit as Unit - they have the same structure
-      return item as any as Unit;
-    });
-  }
-
-  return undefined;
-}
-
-export const useSimilarUnits = USE_TYPESENSE
-  ? useTypesenseSimilarUnits
-  : useDbSimilarUnits;
 
 // Helper hook for infinite scroll
 export function useInfiniteUnits(filter: UnitFilter, sort?: UnitSort) {

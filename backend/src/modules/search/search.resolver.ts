@@ -2,11 +2,7 @@ import { Resolver, Query, Args, Int } from '@nestjs/graphql';
 import { SearchService } from './search.service';
 import { UnitFilterInput } from '../unit/dto/unit-filter.input';
 import { UnitSortInput } from '../unit/dto/unit-sort.input';
-import {
-  SearchUnitDocument,
-  SearchUnitsResponse,
-  FacetCountResponse,
-} from './search.model';
+import { SearchUnitsResponse, FacetCountResponse } from './search.model';
 
 @Resolver()
 export class SearchResolver {
@@ -33,14 +29,5 @@ export class SearchResolver {
     @Args('filter', { nullable: true }) filter?: UnitFilterInput
   ) {
     return this.searchService.getFacetCounts(filter);
-  }
-
-  @Query(() => [SearchUnitDocument], { name: 'searchSimilarUnits' })
-  async searchSimilarUnits(
-    @Args('unitId') unitId: string,
-    @Args('limit', { type: () => Int, nullable: true, defaultValue: 5 })
-    limit?: number
-  ) {
-    return this.searchService.findSimilarUnits(unitId, limit);
   }
 }
