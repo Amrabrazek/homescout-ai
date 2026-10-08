@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import PgBoss = require('pg-boss');
+import { Job } from 'pg-boss';
 import { UnitSyncJob, UnitSyncQueue } from './unit-sync.queue';
 import { UnitSyncService } from './unit-sync.service';
 
@@ -26,7 +26,7 @@ export class UnitSyncWorker implements OnApplicationBootstrap {
    * failing jobs go back to the queue. pg-boss then completes the rest, since
    * it only completes jobs that are still active.
    */
-  async handle(jobs: PgBoss.Job<UnitSyncJob>[]): Promise<void> {
+  async handle(jobs: Job<UnitSyncJob>[]): Promise<void> {
     try {
       const result = await this.sync.syncUnits(
         jobs.map((job) => job.data.unitId)

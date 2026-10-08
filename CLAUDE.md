@@ -59,6 +59,7 @@ Run lint, typecheck and tests for every app you touched before pushing.
 ## Conventions
 - Schema changes go in a new TypeORM migration (`backend/src/migrations/`); never edit an applied one.
 - Postgres is the source of truth; Typesense is derived from it and must be rebuildable.
+- pg-boss is ESM-only and Jest runs CommonJS, so both Jest configs map `pg-boss` to `backend/test/pg-boss.stub.ts`.
 - Backend formatting is Prettier (`npm run lint:fix`). No comments unless the reason is non-obvious.
 - Keep PRs focused on one issue. Don't widen scope.
 

@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import PgBoss = require('pg-boss');
+import { Job } from 'pg-boss';
 import { EntityManager } from 'typeorm';
 import { PgBossService } from '../../common/queue/pg-boss.service';
 
@@ -19,7 +19,6 @@ export class UnitSyncQueue implements OnModuleInit {
 
   async onModuleInit() {
     await this.pgBoss.boss.createQueue(UNIT_SYNC_QUEUE, {
-      name: UNIT_SYNC_QUEUE,
       retryLimit: 12,
       retryDelay: 2,
       retryBackoff: true,
@@ -32,8 +31,8 @@ export class UnitSyncQueue implements OnModuleInit {
    */
   async enqueue(unitIds: string[], manager?: EntityManager): Promise<void> {
     await this.pgBoss.insert(
+      UNIT_SYNC_QUEUE,
       unitIds.map((unitId) => ({
-        name: UNIT_SYNC_QUEUE,
         data: { unitId } satisfies UnitSyncJob,
       })),
       manager
@@ -46,9 +45,7 @@ export class UnitSyncQueue implements OnModuleInit {
     });
   }
 
-  work(
-    handler: (jobs: PgBoss.Job<UnitSyncJob>[]) => Promise<void>
-  ): Promise<string> {
+  work(handler: (jobs: Job<UnitSyncJob>[]) => Promise<void>): Promise<string> {
     return this.pgBoss.boss.work<UnitSyncJob>(
       UNIT_SYNC_QUEUE,
       { batchSize: 50, pollingIntervalSeconds: 1 },
