@@ -40,6 +40,12 @@ export class UnitSyncQueue implements OnModuleInit {
     );
   }
 
+  async fail(jobId: string, error: Error): Promise<void> {
+    await this.pgBoss.boss.fail(UNIT_SYNC_QUEUE, jobId, {
+      message: error.message,
+    });
+  }
+
   work(
     handler: (jobs: PgBoss.Job<UnitSyncJob>[]) => Promise<void>
   ): Promise<string> {

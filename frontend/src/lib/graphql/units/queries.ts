@@ -156,58 +156,30 @@ export const GET_UNIT = gql`
 export const SIMILAR_UNITS_QUERY = gql`
   query SimilarUnits($unitId: String!, $limit: Int) {
     similarUnits(unitId: $unitId, limit: $limit) {
-      id
-      name
-      number
-      floor
-      rooms
-      bathrooms
-      floorArea
-      price
-      images {
-        id
-        url
-        altText
-      }
-      project {
+      score
+      reasons
+      unit {
         id
         name
-        developer {
+        number
+        floor
+        rooms
+        bathrooms
+        floorArea
+        price
+        images {
+          id
+          url
+          altText
+        }
+        project {
           id
           name
+          developer {
+            id
+            name
+          }
         }
-      }
-    }
-  }
-`;
-
-// Add this new query for similar units through the Search module
-export const SEARCH_SIMILAR_UNITS = gql`
-  query SearchSimilarUnits($unitId: String!, $limit: Int) {
-    searchSimilarUnits(unitId: $unitId, limit: $limit) {
-      id
-      name
-      number
-      floor
-      rooms
-      bathrooms
-      floorArea
-      price
-      description
-      createdAt
-      project {
-        id
-        name
-        developer {
-          name
-        }
-      }
-      amenities {
-        id
-        name
-      }
-      images {
-        url
       }
     }
   }

@@ -32,7 +32,7 @@ Update this table in the same PR when you add, move or rename one of these place
 | Sync worker (pg-boss: embed + Typesense) | `backend/src/modules/sync/`; enqueue happens in `unit.service.ts` transactions |
 | Job queues (one shared pg-boss instance) | `backend/src/common/queue/pg-boss.service.ts` |
 | Buyer profile, events, taste vector | `backend/src/modules/buyer/` (`buyer.service.ts`, `taste-vector.ts` math, `buyer-taste.worker.ts`); buyer comes from the `x-buyer-id` header |
-| Similar units | `match_similar_units` in `migrations/1760100000000-UnitEmbeddings.ts`, `unit.service.ts` `findSimilarUnits` |
+| Similar units (filter tiers, rerank, reasons) | `backend/src/modules/unit/similar-units.ts`; candidate query in `unit.service.ts` `findSimilarUnits` |
 | Sample data | `backend/src/scripts/seed/` (`data.ts` catalog, `rules.ts`, `generate.ts`); entry `scripts/seed.ts` |
 | Image uploads | `backend/src/modules/upload/` |
 | Backend tests | unit: `src/**/*.spec.ts` (`npm test`); API: `test/**/*.e2e-spec.ts` (mocked services) |

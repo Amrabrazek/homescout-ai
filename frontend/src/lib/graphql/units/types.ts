@@ -105,12 +105,14 @@ export interface GetUnitQueryVariables {
   id: string;
 }
 
-export interface GetSimilarUnitsQueryResponse {
-  similarUnits: Unit[];
+export interface SimilarUnit {
+  unit: Unit;
+  score: number;
+  reasons: string[];
 }
 
-export interface SearchSimilarUnitsQueryResponse {
-  searchSimilarUnits: Unit[];
+export interface GetSimilarUnitsQueryResponse {
+  similarUnits: SimilarUnit[];
 }
 
 export interface SimilarUnitsQueryVariables {
@@ -163,8 +165,4 @@ export interface SearchUnitsResponse {
 
 export interface TypesenseSearchResponse {
   searchUnits: SearchUnitsResponse;
-}
-
-export interface TypesenseSimilarUnitsResponse {
-  searchSimilarUnits: SearchUnit[];
 }
