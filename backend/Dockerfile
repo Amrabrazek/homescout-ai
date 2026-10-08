@@ -1,16 +1,17 @@
-FROM node:20-alpine AS build
+# Debian (glibc), not Alpine: onnxruntime-node, used by the local embedding model, needs glibc
+FROM node:20-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 
-FROM node:20-alpine
+FROM node:20-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 EXPOSE 3001
-# Migrate + seed (if empty), index search (if empty; a search outage must not block the API), start
-CMD ["sh", "-c", "node dist/scripts/seed.js && (node dist/scripts/populate-typesense.js --if-empty || echo 'Typesense indexing skipped') && node dist/main.js"]
+# Migrate + seed (if empty), enqueue embedding/indexing if out of sync, then start the API and its sync worker
+CMD ["sh", "-c", "node dist/scripts/seed.js && node dist/scripts/reindex.js --if-needed && node dist/main.js"]

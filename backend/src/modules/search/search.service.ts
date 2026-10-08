@@ -1,410 +1,207 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { TypesenseService } from '../../common/typesense/typesense.service';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+import {
+  TypesenseService,
+  UnitDocument,
+} from '../../common/typesense/typesense.service';
+import {
+  EMBEDDING_PROVIDER,
+  EmbeddingProvider,
+} from '../embedding/embedding.provider';
 import { UnitFilterInput } from '../unit/dto/unit-filter.input';
 import {
-  UnitSortInput,
-  UnitSortField,
   SortDirection,
+  UnitSortField,
+  UnitSortInput,
 } from '../unit/dto/unit-sort.input';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Unit } from '../../common/entities/unit.entity';
+import { LocationVocabulary, parseSearchQuery } from './query-parser';
 import {
-  SearchUnitsResponse,
-  SearchUnitDocument,
   FacetCountResponse,
+  SearchUnitDocument,
+  SearchUnitsResponse,
 } from './search.model';
+import { compileUnitFilter } from './unit-filter';
 
+export interface UnitSearchRequest {
+  filter?: UnitFilterInput;
+  sort?: UnitSortInput;
+  limit?: number;
+  offset?: number;
+  facets?: boolean;
+}
+
+const QUERY_BY =
+  'name,projectName,area,city,developerName,amenityNames,description,number';
+const FACET_BY =
+  'projectId,rooms,floor,price,floorArea,amenityNames,amenityIds,projectName,developerName,area,city,region,propertyType,finishing';
+const VOCABULARY_TTL_MS = 5 * 60_000;
+
+/**
+ * The one search entry point: free text is parsed into hard filters (rooms,
+ * price, location); what remains goes to Typesense as a hybrid query, keyword
+ * (typo-tolerant) fused with a vector query from the active EmbeddingProvider.
+ */
 @Injectable()
 export class SearchService {
   private readonly logger = new Logger(SearchService.name);
+  private vocabulary?: { value: Promise<LocationVocabulary>; at: number };
 
   constructor(
-    private readonly typesenseService: TypesenseService,
-    @InjectRepository(Unit)
-    private unitRepository: Repository<Unit>
+    private readonly typesense: TypesenseService,
+    private readonly dataSource: DataSource,
+    @Inject(EMBEDDING_PROVIDER) private readonly embeddings: EmbeddingProvider
   ) {}
 
-  async searchUnits(
-    filter?: UnitFilterInput,
-    sort?: UnitSortInput,
-    limit?: number,
-    offset?: number
-  ): Promise<SearchUnitsResponse> {
-    try {
-      // Build search parameters for Typesense
-      const searchParams: any = {
-        q: filter?.searchTerm || '*',
-        query_by:
-          'name,number,description,projectName,developerName,amenityNames',
-        filter_by: '',
-        sort_by: '',
-        page: offset ? Math.floor(offset / (limit || 20)) + 1 : 1,
-        per_page: limit || 20,
-        facet_by:
-          'projectId,rooms,floor,price,floorArea,amenityNames,amenityIds,projectName,developerName',
-        num_typos: 1,
-        prefix: true,
-        prioritize_exact_match: true,
-        prioritize_token_position: true,
-        include_fields: '*', // Include all fields to avoid additional DB queries
-      };
+  async search(request: UnitSearchRequest): Promise<SearchUnitsResponse> {
+    const limit = request.limit ?? 20;
+    const offset = request.offset ?? 0;
+    const { text, filter } = await this.understand(request.filter);
 
-      // Add filtering logic
-      const filterConditions = [];
+    const params: Record<string, unknown> = {
+      q: text || '*',
+      query_by: QUERY_BY,
+      filter_by: compileUnitFilter(filter).typesense,
+      per_page: limit,
+      page: limit > 0 ? Math.floor(offset / limit) + 1 : 1,
+      exclude_fields: 'embedding',
+    };
+    if (request.facets) params.facet_by = FACET_BY;
 
-      if (filter?.projectIds && filter.projectIds.length > 0) {
-        const projectFilter = filter.projectIds
-          .map((id) => `projectId:=${id}`)
-          .join(' || ');
-        filterConditions.push(`(${projectFilter})`);
-      }
+    const sortBy = this.sortBy(request.sort, !!text);
+    if (sortBy) params.sort_by = sortBy;
 
-      if (filter?.amenityIds && filter.amenityIds.length > 0) {
-        // Use the amenityIds directly with Typesense filtering
-        const amenityFilter = filter.amenityIds
-          .map((id) => `amenityIds:=${id}`)
-          .join(' && ');
-        filterConditions.push(`(${amenityFilter})`);
-      }
-
-      if (filter?.minRooms !== undefined) {
-        filterConditions.push(`rooms:>=${filter.minRooms}`);
-      }
-      if (filter?.maxRooms !== undefined) {
-        filterConditions.push(`rooms:<=${filter.maxRooms}`);
-      }
-
-      if (filter?.minPrice !== undefined) {
-        filterConditions.push(`price:>=${filter.minPrice}`);
-      }
-      if (filter?.maxPrice !== undefined) {
-        filterConditions.push(`price:<=${filter.maxPrice}`);
-      }
-
-      if (filter?.minFloorArea !== undefined) {
-        filterConditions.push(`floorArea:>=${filter.minFloorArea}`);
-      }
-      if (filter?.maxFloorArea !== undefined) {
-        filterConditions.push(`floorArea:<=${filter.maxFloorArea}`);
-      }
-
-      // Combine all filter conditions
-      if (filterConditions.length > 0) {
-        searchParams.filter_by = filterConditions.join(' && ');
-      }
-
-      // Set sort options
-      if (sort?.field === UnitSortField.NAME) {
-        searchParams.sort_by = `name:${sort.direction === SortDirection.DESC ? 'desc' : 'asc'}`;
-      } else if (sort?.field === UnitSortField.PRICE) {
-        searchParams.sort_by = `price:${sort.direction === SortDirection.DESC ? 'desc' : 'asc'}`;
-      } else if (sort?.field === UnitSortField.CREATED_AT) {
-        searchParams.sort_by = `createdAt:${sort.direction === SortDirection.DESC ? 'desc' : 'asc'}`;
-      } else {
-        searchParams.sort_by =
-          searchParams.q === '*'
-            ? 'createdAt:desc'
-            : '_text_match:desc,createdAt:desc';
-      }
-
-      this.logger.debug(
-        `Typesense search params: ${JSON.stringify(searchParams)}`
-      );
-      const searchResults =
-        await this.typesenseService.searchUnits(searchParams);
-
-      // Total found from Typesense
-      const total = searchResults.found;
-
-      // Extract facet counts from the search results
-      const facetCounts = searchResults.facet_counts || [];
-
-      // Map search results to our dedicated search model
-      if (searchResults.hits && searchResults.hits.length > 0) {
-        const items: SearchUnitDocument[] = searchResults.hits.map((hit) => {
-          const doc = hit.document;
-
-          // Map to our SearchUnitDocument model
-          const searchUnit: SearchUnitDocument = {
-            id: doc.id,
-            name: doc.name,
-            number: doc.number,
-            description: doc.description,
-            floor: doc.floor,
-            rooms: doc.rooms,
-            bathrooms: doc.bathrooms,
-            floorArea: doc.floorArea,
-            price: doc.price,
-            createdAt: new Date(doc.createdAt),
-
-            // Create project with developer
-            project: {
-              id: doc.projectId,
-              name: doc.projectName,
-              developer: {
-                name: doc.developerName,
-              },
-            },
-
-            // Map amenities with icons
-            amenities: doc.amenityIds
-              ? doc.amenityIds.map((id, index) => ({
-                  id,
-                  name: doc.amenityNames ? doc.amenityNames[index] || '' : '',
-                }))
-              : [],
-
-            // Map images
-            images: doc.imageUrls
-              ? doc.imageUrls.map((url) => ({
-                  url,
-                }))
-              : [],
-          };
-
-          return searchUnit;
-        });
-
-        return {
-          items,
-          total,
-          facets: facetCounts,
-        };
-      }
-
-      return {
-        items: [],
-        total,
-        facets: facetCounts,
-      };
-    } catch (error) {
-      this.logger.error(
-        `Error in search service: ${error.message}`,
-        error.stack
-      );
-      throw error;
+    const vector = text ? await this.embedQuery(text) : undefined;
+    if (vector) {
+      params.vector_query = `embedding:([${vector.join(',')}], k: ${Math.max(100, offset + limit)})`;
     }
+
+    const result = await this.typesense.search(params);
+    return {
+      items: (result.hits ?? []).map((hit) => toSearchDocument(hit.document)),
+      total: result.found ?? 0,
+      facets: result.facet_counts ?? [],
+    };
   }
 
-  /**
-   * Find similar units based on vector similarity in Typesense
-   *
-   * @param unitId The ID of the unit to find similar units for
-   * @param limit Maximum number of similar units to return
-   * @returns Array of similar units
-   */
+  async getFacetCounts(filter?: UnitFilterInput): Promise<FacetCountResponse> {
+    const { facets, total } = await this.search({
+      filter,
+      limit: 0,
+      facets: true,
+    });
+    return { facets, total };
+  }
+
   async findSimilarUnits(
     unitId: string,
-    limit = 5
+    limit = 5,
+    filter?: UnitFilterInput
   ): Promise<SearchUnitDocument[]> {
+    const result = await this.typesense.search({
+      q: '*',
+      vector_query: `embedding:([], id: ${unitId}, k: ${limit})`,
+      filter_by: compileUnitFilter(filter).typesense,
+      per_page: limit,
+      exclude_fields: 'embedding',
+    });
+    return (result.hits ?? []).map((hit) => toSearchDocument(hit.document));
+  }
+
+  private async understand(
+    filter: UnitFilterInput = {}
+  ): Promise<{ text: string; filter: UnitFilterInput }> {
+    const { searchTerm, ...explicit } = filter;
+    if (!searchTerm?.trim()) return { text: '', filter: explicit };
+
+    const parsed = parseSearchQuery(searchTerm, await this.locations());
+    const merged: UnitFilterInput = { ...parsed.filter };
+    for (const [key, value] of Object.entries(explicit)) {
+      if (value != null && !(Array.isArray(value) && value.length === 0))
+        merged[key] = value;
+    }
+    return { text: parsed.text, filter: merged };
+  }
+
+  private sortBy(
+    sort: UnitSortInput | undefined,
+    hasText: boolean
+  ): string | undefined {
+    const fields: Partial<Record<UnitSortField, string>> = {
+      [UnitSortField.NAME]: 'name',
+      [UnitSortField.PRICE]: 'price',
+      [UnitSortField.CREATED_AT]: 'createdAt',
+    };
+    const field = fields[sort?.field];
+    if (!field) return hasText ? undefined : 'createdAt:desc';
+    const direction =
+      sort.direction ??
+      (field === 'createdAt' ? SortDirection.DESC : SortDirection.ASC);
+    return `${field}:${direction.toLowerCase()}`;
+  }
+
+  private async embedQuery(text: string): Promise<number[] | undefined> {
     try {
-      // First check if the units collection has an embedding field
-      const collectionInfo = await this.typesenseService
-        .getClient()
-        .collections('units')
-        .retrieve();
-
-      const hasEmbeddingField = collectionInfo.fields.some(
-        (field) => field.name === 'embedding'
-      );
-
-      if (!hasEmbeddingField) {
-        this.logger.warn(
-          'No embedding field found in Typesense collection, falling back to database similarity'
-        );
-        throw new Error('No embedding field in Typesense collection');
-      }
-
-      // Use Typesense vector search to find similar units
-      const searchParams = {
-        q: '*',
-        vector_query: `embedding:([], id: ${unitId})`,
-        per_page: limit,
-        exclude_fields: 'embedding',
-      };
-
-      const searchResults =
-        await this.typesenseService.searchUnits(searchParams);
-
-      // Map Typesense results to our dedicated search model
-      return searchResults.hits.map((hit) => {
-        const doc = hit.document;
-
-        // Map to our SearchUnitDocument model
-        const searchUnit: SearchUnitDocument = {
-          id: doc.id,
-          name: doc.name,
-          number: doc.number,
-          description: doc.description,
-          floor: doc.floor,
-          rooms: doc.rooms,
-          bathrooms: doc.bathrooms,
-          floorArea: doc.floorArea,
-          price: doc.price,
-          createdAt: new Date(doc.createdAt),
-
-          // Create project with developer
-          project: {
-            id: doc.projectId,
-            name: doc.projectName,
-            developer: {
-              name: doc.developerName,
-            },
-          },
-
-          // Map amenities with icons
-          amenities: doc.amenityIds
-            ? doc.amenityIds.map((id, index) => ({
-                id,
-                name: doc.amenityNames ? doc.amenityNames[index] || '' : '',
-                icon: doc.amenityIcons ? doc.amenityIcons[index] || '' : '',
-              }))
-            : [],
-
-          // Map images
-          images: doc.imageUrls
-            ? doc.imageUrls.map((url, index) => ({
-                id: `${doc.id}-image-${index}`,
-                url,
-                altText: doc.name,
-              }))
-            : [],
-        };
-
-        return searchUnit;
-      });
+      return await this.embeddings.embedQuery(text);
     } catch (error) {
-      this.logger.error(
-        `Typesense similarity search error: ${error.message}`,
-        error.stack
+      this.logger.warn(
+        `Query embedding failed, using keyword search only: ${error.message}`
       );
-
-      // If we have a database fallback, we can use it here
-      const unit = await this.unitRepository.findOne({
-        where: { id: unitId },
-      });
-
-      if (!unit) {
-        throw new Error(`Unit with ID ${unitId} not found`);
-      }
-
-      // Use vector similarity search with SQL function
-      const similarUnits = await this.unitRepository.query(
-        `
-          SELECT u.*
-          FROM match_similar_units($1, 0.7, $2) m
-          JOIN units u ON u.id = m.id
-          ORDER BY m.similarity DESC
-        `,
-        [unitId, limit]
-      );
-
-      // Map database results to our search model format
-      return similarUnits.map((dbUnit) => ({
-        id: dbUnit.id,
-        name: dbUnit.name,
-        number: dbUnit.number,
-        description: dbUnit.description,
-        floor: dbUnit.floor,
-        rooms: dbUnit.rooms,
-        bathrooms: dbUnit.bathrooms,
-        floorArea: dbUnit.floor_area,
-        price: dbUnit.price,
-        createdAt: new Date(dbUnit.created_at),
-        project: {
-          id: dbUnit.project_id,
-          name: 'Unknown Project', // We don't have this data from the raw query
-          developer: {
-            id: '',
-            name: 'Unknown Developer',
-          },
-        },
-        amenities: [],
-        images: [],
-      }));
+      return undefined;
     }
   }
 
-  /**
-   * Get only facet counts without unit data - more efficient for filters
-   *
-   * @param filter Unit filter criteria
-   * @returns Facet counts for filtering
-   */
-  async getFacetCounts(filter?: UnitFilterInput): Promise<FacetCountResponse> {
-    try {
-      // Build search parameters for Typesense
-      const searchParams: any = {
-        q: filter?.searchTerm || '*',
-        query_by:
-          'name,number,description,projectName,developerName,amenityNames',
-        filter_by: '',
-        per_page: 0, // We don't need any actual results, just facets
-        facet_by:
-          'projectId,rooms,floor,price,floorArea,amenityNames,amenityIds,projectName,developerName',
-        num_typos: 1,
-        prefix: true,
-        cache: true,
-      };
-
-      // Add filtering
-      const filterConditions = [];
-
-      if (filter?.projectIds && filter.projectIds.length > 0) {
-        const projectFilter = filter.projectIds
-          .map((id) => `projectId:=${id}`)
-          .join(' || ');
-        filterConditions.push(`(${projectFilter})`);
-      }
-
-      if (filter?.amenityIds && filter.amenityIds.length > 0) {
-        const amenityFilter = filter.amenityIds
-          .map((id) => `amenityIds:=${id}`)
-          .join(' && ');
-        filterConditions.push(`(${amenityFilter})`);
-      }
-
-      if (filter?.minRooms !== undefined) {
-        filterConditions.push(`rooms:>=${filter.minRooms}`);
-      }
-      if (filter?.maxRooms !== undefined) {
-        filterConditions.push(`rooms:<=${filter.maxRooms}`);
-      }
-
-      if (filter?.minPrice !== undefined) {
-        filterConditions.push(`price:>=${filter.minPrice}`);
-      }
-      if (filter?.maxPrice !== undefined) {
-        filterConditions.push(`price:<=${filter.maxPrice}`);
-      }
-
-      if (filter?.minFloorArea !== undefined) {
-        filterConditions.push(`floorArea:>=${filter.minFloorArea}`);
-      }
-      if (filter?.maxFloorArea !== undefined) {
-        filterConditions.push(`floorArea:<=${filter.maxFloorArea}`);
-      }
-
-      // Combine all filter conditions
-      if (filterConditions.length > 0) {
-        searchParams.filter_by = filterConditions.join(' && ');
-      }
-
-      const searchResults =
-        await this.typesenseService.searchUnits(searchParams);
-
-      // Extract facet counts from the search results
-      return {
-        facets: searchResults.facet_counts || [],
-        total: searchResults.found || 0,
-      };
-    } catch (error) {
-      this.logger.error(
-        `Error getting facet counts: ${error.message}`,
-        error.stack
-      );
-      throw error;
+  private locations(): Promise<LocationVocabulary> {
+    if (
+      !this.vocabulary ||
+      Date.now() - this.vocabulary.at > VOCABULARY_TTL_MS
+    ) {
+      const value = this.dataSource
+        .query(
+          `SELECT array_agg(DISTINCT area) FILTER (WHERE area IS NOT NULL) AS areas,
+                  array_agg(DISTINCT city) FILTER (WHERE city IS NOT NULL) AS cities,
+                  array_agg(DISTINCT region) FILTER (WHERE region IS NOT NULL) AS regions
+           FROM projects`
+        )
+        .then(([row]) => ({
+          areas: row?.areas ?? [],
+          cities: row?.cities ?? [],
+          regions: row?.regions ?? [],
+        }));
+      value.catch(() => (this.vocabulary = undefined));
+      this.vocabulary = { value, at: Date.now() };
     }
+    return this.vocabulary.value;
   }
+}
+
+function toSearchDocument(doc: UnitDocument): SearchUnitDocument {
+  return {
+    id: doc.id,
+    name: doc.name,
+    number: doc.number,
+    description: doc.description,
+    floor: doc.floor,
+    rooms: doc.rooms,
+    bathrooms: doc.bathrooms,
+    floorArea: doc.floorArea,
+    price: doc.price,
+    propertyType: doc.propertyType as SearchUnitDocument['propertyType'],
+    finishing: doc.finishing as SearchUnitDocument['finishing'],
+    view: doc.view as SearchUnitDocument['view'],
+    deliveryYear: doc.deliveryYear,
+    createdAt: new Date(doc.createdAt),
+    project: {
+      id: doc.projectId,
+      name: doc.projectName,
+      area: doc.area,
+      city: doc.city,
+      region: doc.region,
+      developer: { name: doc.developerName },
+    },
+    amenities: (doc.amenityIds ?? []).map((id, i) => ({
+      id,
+      name: doc.amenityNames?.[i] ?? '',
+    })),
+    images: (doc.imageUrls ?? []).map((url) => ({ url })),
+  };
 }

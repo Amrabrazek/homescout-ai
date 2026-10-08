@@ -1,218 +1,246 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Typesense from 'typesense';
+import { Unit } from '../entities/unit.entity';
+import {
+  EMBEDDING_PROVIDER,
+  EmbeddingProvider,
+} from '../../modules/embedding/embedding.provider';
+
+export const UNITS_COLLECTION = 'units';
+
+export interface UnitDocument {
+  id: string;
+  name: string;
+  number: string;
+  description: string;
+  floor: number;
+  rooms: number;
+  bathrooms: number;
+  floorArea: number;
+  price: number;
+  propertyType?: string;
+  finishing?: string;
+  view?: string;
+  deliveryYear?: number;
+  projectId: string;
+  projectName: string;
+  developerName: string;
+  area?: string;
+  city?: string;
+  region?: string;
+  amenityIds: string[];
+  amenityNames: string[];
+  imageUrls: string[];
+  createdAt: number;
+  embedding?: number[];
+}
+
+export function toUnitDocument(
+  unit: Unit,
+  imageUrls: string[],
+  embedding?: number[]
+): UnitDocument {
+  const project = unit.project;
+  return {
+    id: unit.id,
+    name: unit.name,
+    number: unit.number ?? '',
+    description: unit.description ?? '',
+    floor: unit.floor,
+    rooms: unit.rooms,
+    bathrooms: unit.bathrooms,
+    floorArea: Number(unit.floorArea),
+    price: Number(unit.price),
+    propertyType: unit.propertyType ?? undefined,
+    finishing: unit.finishing ?? undefined,
+    view: unit.view ?? undefined,
+    deliveryYear: unit.deliveryYear ?? undefined,
+    projectId: unit.projectId,
+    projectName: project?.name ?? '',
+    developerName: project?.developer?.name ?? '',
+    area: project?.area ?? undefined,
+    city: project?.city ?? undefined,
+    region: project?.region ?? undefined,
+    amenityIds: unit.amenities?.map((a) => a.id) ?? [],
+    amenityNames: unit.amenities?.map((a) => a.name) ?? [],
+    imageUrls,
+    createdAt: new Date(unit.createdAt).getTime(),
+    embedding,
+  };
+}
 
 @Injectable()
 export class TypesenseService implements OnModuleInit {
-  private client: any;
+  private readonly client: any;
   private readonly logger = new Logger(TypesenseService.name);
+  private collectionReady?: Promise<void>;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    @Inject(EMBEDDING_PROVIDER) private readonly embeddings: EmbeddingProvider
+  ) {
     this.client = new Typesense.Client({
       nodes: [
         {
-          host: this.configService.get<string>('TYPESENSE_HOST', 'typesense'),
-          port: this.configService.get<number>('TYPESENSE_PORT', 8108),
-          protocol: this.configService.get<string>(
-            'TYPESENSE_PROTOCOL',
-            'http'
-          ),
+          host: configService.get<string>('TYPESENSE_HOST', 'localhost'),
+          port: Number(configService.get('TYPESENSE_PORT', 8108)),
+          protocol: configService.get<string>('TYPESENSE_PROTOCOL', 'http'),
         },
       ],
-      apiKey: this.configService.get<string>('TYPESENSE_API_KEY', 'xyz'),
-      connectionTimeoutSeconds: 60,
+      apiKey: configService.get<string>('TYPESENSE_API_KEY', 'xyz'),
+      connectionTimeoutSeconds: 10,
+      numRetries: 1,
+      logLevel: 'error',
     });
   }
 
   async onModuleInit() {
     try {
-      // Check if we can connect to Typesense
-      const health = await this.client.health.retrieve();
-      this.logger.log(`Connected to Typesense: ${JSON.stringify(health)}`);
-      // Initialize collections
-      await this.initializeCollections();
+      await this.ensureCollection();
     } catch (error) {
-      this.logger.error(`Failed to connect to Typesense: ${error.message}`);
+      this.logger.warn(`Typesense unavailable: ${error.message}`);
     }
   }
 
-  async initializeCollections() {
-    try {
-      // Check if units collection exists, if not create it
-      try {
-        await this.client.collections('units').retrieve();
-        this.logger.log('Units collection already exists');
-      } catch (error) {
-        if (error.httpStatus === 404) {
-          // Collection doesn't exist, create it
-          const schema = {
-            name: 'units',
-            fields: [
-              { name: 'id', type: 'string' },
-              { name: 'name', type: 'string' },
-              { name: 'number', type: 'string' },
-              { name: 'description', type: 'string', optional: true },
-              { name: 'floor', type: 'int32', facet: true },
-              { name: 'rooms', type: 'int32', facet: true },
-              { name: 'bathrooms', type: 'int32', facet: true },
-              { name: 'floorArea', type: 'float', facet: true },
-              { name: 'price', type: 'float', facet: true },
-              { name: 'projectId', type: 'string', facet: true },
-              { name: 'projectName', type: 'string', facet: true },
-              { name: 'developerName', type: 'string', facet: true },
-              {
-                name: 'amenityIds',
-                type: 'string[]',
-                optional: true,
-                facet: true,
-              },
-              {
-                name: 'amenityNames',
-                type: 'string[]',
-                optional: true,
-                facet: true,
-              },
-              { name: 'imageUrls', type: 'string[]', optional: true },
-              { name: 'createdAt', type: 'int64' },
-              // Add text representation fields
-              { name: 'roomsText', type: 'string', optional: true },
-              { name: 'bathroomsText', type: 'string', optional: true },
-              { name: 'floorText', type: 'string', optional: true },
-              { name: 'floorAreaText', type: 'string', optional: true },
-              { name: 'priceText', type: 'string', optional: true },
-              {
-                name: 'embedding',
-                type: 'float[]',
-                optional: true,
-                embed: {
-                  from: [
-                    'name',
-                    'number',
-                    'description',
-                    'projectName',
-                    'developerName',
-                    'amenityNames',
-                    'roomsText',
-                    'bathroomsText',
-                    'floorText',
-                    'floorAreaText',
-                    'priceText',
-                  ],
-                  model_config: {
-                    model_name: 'ts/e5-small',
-                    // model_name: 'openai/text-embedding-3-small',
-                    // api_key: this.configService.get<string>('OPENAI_API_KEY')
-                  },
-                },
-              },
-            ],
-            default_sorting_field: 'createdAt',
-          };
+  /**
+   * Creates the collection, or recreates it when its vector size no longer
+   * matches EMBEDDING_MODEL. The index is a projection, so `npm run reindex` refills it.
+   */
+  ensureCollection(): Promise<void> {
+    this.collectionReady ??= this.createOrMigrateCollection().catch((error) => {
+      this.collectionReady = undefined;
+      throw error;
+    });
+    return this.collectionReady;
+  }
 
-          await this.client.collections().create(schema);
-          this.logger.log('Units collection created with embedding field');
-        } else {
-          throw error;
-        }
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to initialize Typesense collections: ${error.message}`
+  private async createOrMigrateCollection(): Promise<void> {
+    const existing = await this.client
+      .collections(UNITS_COLLECTION)
+      .retrieve()
+      .catch((error) => {
+        if (error.httpStatus === 404) return null;
+        throw error;
+      });
+
+    if (existing) {
+      const embedding = existing.fields.find((f) => f.name === 'embedding');
+      if (embedding?.num_dim === this.embeddings.dimensions) return;
+      this.logger.warn(
+        `Collection "${UNITS_COLLECTION}" has ${embedding?.num_dim ?? 'no'} vector dims, ` +
+          `${this.embeddings.model} needs ${this.embeddings.dimensions}; recreating it. Run "npm run reindex" to refill it.`
       );
-      throw error;
+      await this.client.collections(UNITS_COLLECTION).delete();
     }
+
+    await this.client.collections().create(this.schema());
+    this.logger.log(
+      `Created collection "${UNITS_COLLECTION}" (${this.embeddings.model}, ${this.embeddings.dimensions} dims)`
+    );
   }
 
-  async indexUnit(unit: any): Promise<any> {
-    try {
-      // Prepare the document for Typesense
-      const document = this.mapUnitToTypesenseDocument(unit);
-      return await this.client
-        .collections('units')
-        .documents()
-        .upsert(document);
-    } catch (error) {
-      this.logger.error(`Failed to index unit: ${error.message}`);
-      throw error;
-    }
-  }
-
-  async deleteUnit(unitId: string): Promise<any> {
-    try {
-      return await this.client.collections('units').documents(unitId).delete();
-    } catch (error) {
-      this.logger.error(`Failed to delete unit: ${error.message}`);
-      throw error;
-    }
-  }
-
-  async searchUnits(params: any): Promise<any> {
-    try {
-      return await this.client.collections('units').documents().search(params);
-    } catch (error) {
-      this.logger.error(`Failed to search units: ${error.message}`);
-      throw error;
-    }
-  }
-
-  async importUnits(units: any[]): Promise<any> {
-    try {
-      const documents = units.map((unit) =>
-        this.mapUnitToTypesenseDocument(unit)
-      );
-      return await this.client
-        .collections('units')
-        .documents()
-        .import(documents);
-    } catch (error) {
-      this.logger.error(`Failed to import units: ${error.message}`);
-      throw error;
-    }
-  }
-
-  // Drop and recreate the units collectio
-
-  private mapUnitToTypesenseDocument(unit: any): any {
-    // Convert numeric values to string representations for embedding
-    const roomsText = unit.rooms
-      ? `${unit.rooms} room${unit.rooms !== 1 ? 's' : ''}`
-      : '';
-    const bathroomsText = unit.bathrooms
-      ? `${unit.bathrooms} bathroom${unit.bathrooms !== 1 ? 's' : ''}`
-      : '';
-    const floorText = unit.floor ? `floor ${unit.floor}` : '';
-    const floorAreaText = unit.floorArea
-      ? `${unit.floorArea} square meters`
-      : '';
-    const priceText = unit.price ? `${unit.price} price` : '';
-
+  private schema() {
     return {
-      id: unit.id,
-      name: unit.name,
-      number: unit.number,
-      description: unit.description || '',
-      floor: unit.floor,
-      rooms: unit.rooms,
-      bathrooms: unit.bathrooms,
-      floorArea: parseFloat(unit.floorArea),
-      price: parseFloat(unit.price),
-      projectId: unit.projectId || unit.project?.id,
-      projectName: unit.project?.name || '',
-      developerName: unit.project?.developer?.name || '',
-      amenityIds: unit.amenities?.map((a) => a.id) || [],
-      amenityNames: unit.amenities?.map((a) => a.name) || [],
-      imageUrls: unit.images?.map((img) => img.url) || [],
-      createdAt: new Date(unit.createdAt).getTime(),
-      // Add string representations for embedding
-      roomsText,
-      bathroomsText,
-      floorText,
-      floorAreaText,
-      priceText,
+      name: UNITS_COLLECTION,
+      default_sorting_field: 'createdAt',
+      fields: [
+        { name: 'name', type: 'string' },
+        { name: 'number', type: 'string' },
+        { name: 'description', type: 'string', optional: true },
+        { name: 'floor', type: 'int32', facet: true },
+        { name: 'rooms', type: 'int32', facet: true },
+        { name: 'bathrooms', type: 'int32', facet: true },
+        { name: 'floorArea', type: 'float', facet: true },
+        { name: 'price', type: 'float', facet: true },
+        { name: 'propertyType', type: 'string', facet: true, optional: true },
+        { name: 'finishing', type: 'string', facet: true, optional: true },
+        { name: 'view', type: 'string', facet: true, optional: true },
+        { name: 'deliveryYear', type: 'int32', facet: true, optional: true },
+        { name: 'projectId', type: 'string', facet: true },
+        { name: 'projectName', type: 'string', facet: true },
+        { name: 'developerName', type: 'string', facet: true },
+        { name: 'area', type: 'string', facet: true, optional: true },
+        { name: 'city', type: 'string', facet: true, optional: true },
+        { name: 'region', type: 'string', facet: true, optional: true },
+        { name: 'amenityIds', type: 'string[]', facet: true, optional: true },
+        { name: 'amenityNames', type: 'string[]', facet: true, optional: true },
+        { name: 'imageUrls', type: 'string[]', index: false, optional: true },
+        { name: 'createdAt', type: 'int64' },
+        {
+          name: 'embedding',
+          type: 'float[]',
+          num_dim: this.embeddings.dimensions,
+          optional: true,
+        },
+      ],
     };
   }
 
-  getClient() {
-    return this.client;
+  async upsertDocuments(documents: UnitDocument[]): Promise<void> {
+    if (documents.length === 0) return;
+    const results = await this.withCollection<
+      { success: boolean; error?: string }[]
+    >((units) =>
+      units
+        .documents()
+        .import(documents, { action: 'upsert' })
+        .catch((error) => {
+          // The client throws ImportError when some documents fail; surface those details.
+          if (error.importResults) return error.importResults;
+          throw error;
+        })
+    );
+    const failed = results.filter((r) => !r.success);
+    if (failed.length > 0) {
+      throw new Error(
+        `Typesense rejected ${failed.length} document(s): ${failed[0].error}`
+      );
+    }
+  }
+
+  async deleteDocuments(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const filter = `id:[${ids.map((id) => `\`${id}\``).join(',')}]`;
+    await this.withCollection((units) =>
+      units.documents().delete({ filter_by: filter })
+    );
+  }
+
+  /** Re-creates the collection once if Typesense lost it (e.g. restarted without its volume). */
+  private async withCollection<T>(fn: (units: any) => Promise<T>): Promise<T> {
+    await this.ensureCollection();
+    try {
+      return await fn(this.client.collections(UNITS_COLLECTION));
+    } catch (error) {
+      if (error.httpStatus !== 404) throw error;
+      this.collectionReady = undefined;
+      await this.ensureCollection();
+      return fn(this.client.collections(UNITS_COLLECTION));
+    }
+  }
+
+  /** Runs one search through multi_search, which is POST, so long query vectors fit. */
+  async search(params: Record<string, unknown>): Promise<any> {
+    const { results } = await this.client.multiSearch.perform(
+      { searches: [{ collection: UNITS_COLLECTION, ...params }] },
+      {}
+    );
+    const [result] = results;
+    if (result.error) {
+      throw new Error(`Typesense search failed: ${result.error}`);
+    }
+    return result;
+  }
+
+  async listDocumentIds(): Promise<string[]> {
+    const jsonl: string = await this.client
+      .collections(UNITS_COLLECTION)
+      .documents()
+      .export({ include_fields: 'id' });
+    return jsonl
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line).id);
   }
 }

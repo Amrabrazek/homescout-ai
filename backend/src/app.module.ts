@@ -3,7 +3,6 @@ import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { join } from 'path';
 import { databaseOptions } from './config/database.config';
 import { UploadModule } from './modules/upload/upload.module';
@@ -16,6 +15,7 @@ import { ImageModule } from './modules/image/image.module';
 import { AmenityModule } from './modules/amenity/amenity.module';
 import { TypesenseModule } from './common/typesense/typesense.module';
 import { SearchModule } from './modules/search/search.module';
+import { SyncModule } from './modules/sync/sync.module';
 
 @Module({
   imports: [
@@ -24,9 +24,6 @@ import { SearchModule } from './modules/search/search.module';
       isGlobal: true,
       envFilePath: ['.env', '../.env'],
     }),
-
-    // Event Emitter
-    EventEmitterModule.forRoot(),
 
     // Database
     TypeOrmModule.forRootAsync({ useFactory: () => databaseOptions() }),
@@ -51,6 +48,7 @@ import { SearchModule } from './modules/search/search.module';
     TypesenseModule,
     SearchModule,
     UploadModule,
+    SyncModule,
   ],
 })
 export class AppModule {}

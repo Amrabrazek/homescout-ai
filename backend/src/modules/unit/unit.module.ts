@@ -7,8 +7,8 @@ import { AmenityModule } from '../amenity/amenity.module';
 import { ImageModule } from '../image/image.module';
 import { UnitResolver } from './unit.resolver';
 import { UnitService } from './unit.service';
-import { UnitEmbeddingListener } from './unit-embedding.listener';
-import { TypesenseModule } from '../../common/typesense/typesense.module';
+import { SyncModule } from '../sync/sync.module';
+import { EmbeddingModule } from '../embedding/embedding.module';
 
 @Module({
   imports: [
@@ -16,9 +16,10 @@ import { TypesenseModule } from '../../common/typesense/typesense.module';
     ProjectModule,
     AmenityModule,
     ImageModule,
-    TypesenseModule,
+    SyncModule,
+    EmbeddingModule,
   ],
-  providers: [UnitResolver, UnitService, UnitEmbeddingListener],
+  providers: [UnitResolver, UnitService],
   exports: [UnitService],
 })
 export class UnitModule {}

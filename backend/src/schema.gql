@@ -156,16 +156,21 @@ type SearchImage {
 }
 
 type SearchProject {
+  area: String
+  city: String
   developer: SearchDeveloper!
   id: ID!
   name: String!
+  region: String
 }
 
 type SearchUnitDocument {
   amenities: [SearchAmenity!]!
   bathrooms: Int!
   createdAt: DateTime!
+  deliveryYear: Int
   description: String
+  finishing: Finishing
   floor: Int!
   floorArea: Float!
   id: ID!
@@ -174,7 +179,9 @@ type SearchUnitDocument {
   number: String!
   price: Float!
   project: SearchProject!
+  propertyType: PropertyType
   rooms: Int!
+  view: UnitView
 }
 
 type SearchUnitsResponse {
@@ -218,6 +225,8 @@ type Unit {
 
 input UnitFilterInput {
   amenityIds: [String!]
+  areas: [String!]
+  cities: [String!]
   maxFloorArea: Float
   maxPrice: Float
   maxRooms: Int
@@ -227,8 +236,12 @@ input UnitFilterInput {
 
   """Filter by multiple project IDs"""
   projectIds: [String!]
+  propertyTypes: [PropertyType!]
+  regions: [String!]
 
-  """Search term to match against unit name or number"""
+  """
+  Free text. Search parses rooms, price and location out of it (e.g. "New Cairo 3 bedrooms under 8M")
+  """
   searchTerm: String
 }
 
@@ -255,11 +268,13 @@ enum UnitSortField {
 }
 
 input UnitSortInput {
-  """Sort direction"""
-  direction: SortDirection = DESC
+  """Sort direction; defaults to DESC for createdAt, ASC otherwise"""
+  direction: SortDirection
 
-  """Field to sort by"""
-  field: UnitSortField = CREATED_AT
+  """
+  Field to sort by; DEFAULT is relevance for text search, newest first otherwise
+  """
+  field: UnitSortField = DEFAULT
 }
 
 enum UnitView {

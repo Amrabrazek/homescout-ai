@@ -19,7 +19,13 @@ export class SearchResolver {
     @Args('limit', { type: () => Int, nullable: true }) limit?: number,
     @Args('offset', { type: () => Int, nullable: true }) offset?: number
   ) {
-    return this.searchService.searchUnits(filter, sort, limit, offset);
+    return this.searchService.search({
+      filter,
+      sort,
+      limit,
+      offset,
+      facets: true,
+    });
   }
 
   @Query(() => FacetCountResponse, { name: 'searchFacets' })
