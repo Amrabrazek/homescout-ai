@@ -2,9 +2,6 @@
   "name": "homescout-frontend",
   "version": "0.1.0",
   "private": true,
-  "engines": {
-    "node": "24.x"
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -16,6 +13,9 @@
     "quill": "^2.0.2"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.128",
+    "@ai-sdk/openai": "^3.0.124",
+    "@ai-sdk/react": "^3.0.305",
     "@apollo/client": "^3.8.0",
     "@hookform/resolvers": "^3.1.1",
     "@radix-ui/react-alert-dialog": "^1.1.13",
@@ -33,11 +33,13 @@
     "@radix-ui/react-toast": "^1.2.13",
     "@radix-ui/react-tooltip": "^1.2.6",
     "@shadcn/ui": "^0.0.4",
+    "ai": "^6.0.302",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "graphql": "^16.7.1",
+    "langfuse": "^3.39.2",
     "lodash": "^4.17.21",
     "lucide-react": "^0.509.0",
     "next": "^13.4.12",
@@ -52,10 +54,10 @@
     "tailwind-merge": "^1.14.0",
     "tailwindcss-animate": "^1.0.7",
     "yet-another-react-lightbox": "^3.23.0",
-    "zod": "^3.21.4"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^24.19.1",
+    "@types/node": "^20.17.46",
     "@types/react": "^18.2.17",
     "@types/react-dom": "^18.2.7",
     "autoprefixer": "^10.4.14",
