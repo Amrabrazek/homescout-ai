@@ -3,12 +3,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Unit } from '../../common/entities/unit.entity';
 import { TypesenseModule } from '../../common/typesense/typesense.module';
 import { EmbeddingModule } from '../embedding/embedding.module';
+import { QueueModule } from '../../common/queue/queue.module';
 import { UnitSyncQueue } from './unit-sync.queue';
 import { UnitSyncService } from './unit-sync.service';
 import { UnitSyncWorker } from './unit-sync.worker';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Unit]), TypesenseModule, EmbeddingModule],
+  imports: [
+    TypeOrmModule.forFeature([Unit]),
+    TypesenseModule,
+    EmbeddingModule,
+    QueueModule,
+  ],
   providers: [UnitSyncQueue, UnitSyncService, UnitSyncWorker],
   exports: [UnitSyncQueue],
 })

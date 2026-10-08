@@ -3,6 +3,7 @@ import { z } from 'zod';
 const PathsSchema = z.object({
   home: z.object({
     index: z.string().min(1),
+    preferences: z.string().min(1),
   }),
   units: z.object({
     detail: z.string().min(1),
@@ -27,6 +28,7 @@ const PathsSchema = z.object({
 const pathsConfig = PathsSchema.parse({
   home: {
     index: '/',
+    preferences: '/preferences',
   },
   units: {
     detail: '/unit/[id]',

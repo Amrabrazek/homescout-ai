@@ -24,12 +24,14 @@ import pathsConfig from '@config/paths.config';
 import ImagesGallery from '@/components/ui/images-gallery';
 import ContactModal from './ContactModal';
 import { SimilarUnits } from './SimilarUnits';
+import { BuyerActions } from './BuyerActions';
 
 type UnitDetailsProps = {
   unit: Unit;
+  initialSaved: boolean;
 };
 
-export default function UnitDetails({ unit }: UnitDetailsProps) {
+export default function UnitDetails({ unit, initialSaved }: UnitDetailsProps) {
   const [contactModalOpen, setContactModalOpen] = useState(false);
 
   return (
@@ -149,6 +151,7 @@ export default function UnitDetails({ unit }: UnitDetailsProps) {
               <MessageSquare size={18} className='mr-2' />
               WhatsApp Agent
             </Button>
+            <BuyerActions unitId={unit.id} initialSaved={initialSaved} />
           </div>
         </div>
       </div>

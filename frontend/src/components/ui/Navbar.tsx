@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { UserCircle } from 'lucide-react';
+import { Heart, UserCircle } from 'lucide-react';
 import pathsConfig from '@/config/paths.config';
 
 export default function Navbar() {
@@ -16,9 +16,18 @@ export default function Navbar() {
           </div>
         </Link>
 
-        <Link href={pathsConfig.units.new} className='flex items-center'>
-          <UserCircle className='h-8 w-8 text-gray-700 hover:text-primary transition-colors' />
-        </Link>
+        <div className='flex items-center gap-4'>
+          <Link
+            href={pathsConfig.home.preferences}
+            className='flex items-center gap-1 text-gray-700 hover:text-primary transition-colors'
+          >
+            <Heart className='h-6 w-6' />
+            <span className='hidden sm:inline'>My preferences</span>
+          </Link>
+          <Link href={pathsConfig.units.new} className='flex items-center'>
+            <UserCircle className='h-8 w-8 text-gray-700 hover:text-primary transition-colors' />
+          </Link>
+        </div>
       </div>
     </nav>
   );

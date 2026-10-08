@@ -9,6 +9,43 @@ type Amenity {
   units: [Unit!]
 }
 
+"""Distinct units the buyer viewed, saved or skipped"""
+type BuyerActivity {
+  saves: Int!
+  skips: Int!
+  views: Int!
+}
+
+enum BuyerEventType {
+  SAVE
+  SKIP
+  VIEW
+}
+
+"""
+What the buyer told us (preferences) plus what we learned from their activity
+"""
+type BuyerProfile {
+  activity: BuyerActivity!
+
+  """Amenity IDs"""
+  amenityIds: [String!]!
+  areas: [String!]!
+  budgetMax: Float
+  budgetMin: Float
+  createdAt: DateTime!
+
+  """Whether a taste vector exists for the active embedding model"""
+  hasTasteVector: Boolean!
+  id: ID!
+  minRooms: Int
+  minSize: Float
+  propertyTypes: [PropertyType!]!
+  savedUnitIds: [String!]!
+  tasteModel: String
+  updatedAt: DateTime!
+}
+
 input CreateAmenityInput {
   icon: String
   name: String!
@@ -97,6 +134,10 @@ type Mutation {
   createProject(createProjectInput: CreateProjectInput!): Project!
   createUnit(createUnitInput: CreateUnitInput!): Unit!
   deleteUnit(id: String!): Unit!
+  recordBuyerEvent(type: BuyerEventType!, unitId: String!): Boolean!
+  resetProfile: BuyerProfile!
+  unsaveUnit(unitId: String!): Boolean!
+  updatePreferences(input: UpdatePreferencesInput!): BuyerProfile!
   updateUnit(updateUnitInput: UpdateUnitInput!): Unit!
 }
 
@@ -132,8 +173,10 @@ type Query {
   developers: [Developer!]!
   image(id: String!): Image
   images: [Image!]!
+  myProfile: BuyerProfile!
   project(id: String!): Project!
   projects(developerId: String, limit: Int, offset: Int, searchTerm: String): [Project!]!
+  savedUnits: [Unit!]!
   searchFacets(filter: UnitFilterInput): FacetCountResponse!
   searchSimilarUnits(limit: Int = 5, unitId: String!): [SearchUnitDocument!]!
   searchUnits(filter: UnitFilterInput, limit: Int, offset: Int, sort: UnitSortInput): SearchUnitsResponse!
@@ -283,6 +326,17 @@ enum UnitView {
   POOL
   SEA
   STREET
+}
+
+"""Only the fields sent are changed; send null to clear one"""
+input UpdatePreferencesInput {
+  amenityIds: [String!]
+  areas: [String!]
+  budgetMax: Float
+  budgetMin: Float
+  minRooms: Int
+  minSize: Float
+  propertyTypes: [PropertyType!]
 }
 
 input UpdateUnitInput {

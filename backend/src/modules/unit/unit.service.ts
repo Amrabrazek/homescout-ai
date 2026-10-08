@@ -95,7 +95,11 @@ export class UnitService {
       [unitId, this.embeddings.model, limit]
     );
 
-    const ids: string[] = similarUnits.map((row) => row.id);
+    return this.findManyByIds(similarUnits.map((row) => row.id));
+  }
+
+  /** Units with their project, amenities and images, in the order of `ids`. */
+  async findManyByIds(ids: string[]): Promise<Unit[]> {
     if (ids.length === 0) return [];
 
     const units = await this.unitRepository.find({
