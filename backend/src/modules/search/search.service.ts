@@ -5,6 +5,7 @@ import {
   UnitDocument,
 } from '../../common/typesense/typesense.service';
 import {
+  EMBEDDING_MODELS,
   EMBEDDING_PROVIDER,
   EmbeddingProvider,
 } from '../embedding/embedding.provider';
@@ -72,7 +73,9 @@ export class SearchService {
 
     const vector = text ? await this.embedQuery(text) : undefined;
     if (vector) {
-      params.vector_query = `embedding:([${vector.join(',')}], k: ${Math.max(100, offset + limit)})`;
+      const k = Math.max(100, offset + limit);
+      const { maxDistance } = EMBEDDING_MODELS[this.embeddings.model];
+      params.vector_query = `embedding:([${vector.join(',')}], k: ${k}, distance_threshold: ${maxDistance})`;
     }
 
     const result = await this.typesense.search(params);
@@ -107,7 +110,11 @@ export class SearchService {
     return (result.hits ?? []).map((hit) => toSearchDocument(hit.document));
   }
 
-  private async understand(
+  /**
+   * Turns searchTerm into hard filters plus leftover text. Explicit filters win
+   * over parsed ones.
+   */
+  async understand(
     filter: UnitFilterInput = {}
   ): Promise<{ text: string; filter: UnitFilterInput }> {
     const { searchTerm, ...explicit } = filter;

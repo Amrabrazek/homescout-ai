@@ -1,8 +1,13 @@
 export const EMBEDDING_PROVIDER = Symbol('EMBEDDING_PROVIDER');
 
+/**
+ * maxDistance is the cosine distance above which a vector hit counts as
+ * unrelated and is dropped from hybrid search. e5 scores cluster high
+ * (unrelated text is often ~0.75 similar), so its cutoff is much tighter.
+ */
 export const EMBEDDING_MODELS = {
-  'local-e5-small': { dimensions: 384 },
-  'openai-text-embedding-3-small': { dimensions: 1536 },
+  'local-e5-small': { dimensions: 384, maxDistance: 0.2 },
+  'openai-text-embedding-3-small': { dimensions: 1536, maxDistance: 0.6 },
 } as const;
 
 export type EmbeddingModel = keyof typeof EMBEDDING_MODELS;

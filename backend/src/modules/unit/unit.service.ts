@@ -16,6 +16,7 @@ import {
   SortDirection,
 } from './dto/unit-sort.input';
 import { compileUnitFilter } from '../search/unit-filter';
+import { SearchService } from '../search/search.service';
 import { UnitSyncQueue } from '../sync/unit-sync.queue';
 import {
   EMBEDDING_PROVIDER,
@@ -33,7 +34,8 @@ export class UnitService {
     private amenityService: AmenityService,
     private dataSource: DataSource,
     private unitSyncQueue: UnitSyncQueue,
-    @Inject(EMBEDDING_PROVIDER) private embeddings: EmbeddingProvider
+    @Inject(EMBEDDING_PROVIDER) private embeddings: EmbeddingProvider,
+    private searchService: SearchService
   ) {}
 
   async findAllWithCount(
@@ -42,7 +44,12 @@ export class UnitService {
     limit?: number,
     offset?: number
   ): Promise<[Unit[], number, any?]> {
-    const { where, params } = compileUnitFilter(filter).sql;
+    const { text, filter: parsed } =
+      await this.searchService.understand(filter);
+    const { where, params } = compileUnitFilter({
+      ...parsed,
+      searchTerm: text,
+    }).sql;
     const sortColumns: Record<string, keyof Unit> = {
       [UnitSortField.NAME]: 'name',
       [UnitSortField.PRICE]: 'price',
