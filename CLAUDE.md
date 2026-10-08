@@ -14,7 +14,7 @@ Next.js 13 (frontend/) ──GraphQL──▶ NestJS (backend/) ──▶ Postgr
                                          ├──────────────▶ Typesense             (search projection)
                                          └──────────────▶ MinIO / S3            (images)
 ```
-`docker compose up --build` runs all 5 services locally.
+`docker compose up --build` runs all 5 services locally. Node 24 (Active LTS), pinned in `.nvmrc`; Dockerfiles and `engines` must match it.
 
 ## Code map
 Start here instead of exploring. Pointers only; read the file for details.
@@ -63,7 +63,7 @@ Run lint, typecheck and tests for every app you touched before pushing.
 - Keep PRs focused on one issue. Don't widen scope.
 
 ## Cloud sessions
-There is no Docker daemon. `.claude/hooks/session-start.sh` installs dependencies and starts
+There is no Docker daemon. `.claude/hooks/session-start.sh` switches the session to the `.nvmrc` Node, installs dependencies and starts
 Postgres 16 + pgvector on `localhost:5432` (user/password/db `homescout`) with seed data, so the
 backend's default config works without a `.env`. Typesense and MinIO are not available in cloud
 sessions; the API still starts without them (sync jobs keep retrying the Typesense step;
