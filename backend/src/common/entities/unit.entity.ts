@@ -88,10 +88,6 @@ export class Unit {
   @Column('text', { nullable: true })
   view?: UnitView;
 
-  // Vector embedding for similarity search
-  @Column('simple-array', { nullable: true })
-  embedding?: number[];
-
   @Field()
   @Column({ name: 'project_id' })
   projectId: string;

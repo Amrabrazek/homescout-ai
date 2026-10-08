@@ -20,7 +20,7 @@ services:
       retries: 10
 
   typesense:
-    image: typesense/typesense:0.25.1
+    image: typesense/typesense:27.1
     container_name: homescout-typesense
     restart: unless-stopped
     environment:
@@ -103,7 +103,12 @@ services:
       S3_BUCKET: ${S3_BUCKET:-images}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-homescout}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-homescout-secret}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-local-e5-small}
+      EMBEDDING_CACHE_DIR: /models
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      WORKER: 'true'
+    volumes:
+      - model-cache:/models
     ports:
       - '3001:3001'
 
@@ -127,3 +132,4 @@ volumes:
   postgres-data:
   typesense-data:
   minio-data:
+  model-cache:

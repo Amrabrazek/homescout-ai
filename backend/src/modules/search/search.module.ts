@@ -2,12 +2,10 @@ import { Module } from '@nestjs/common';
 import { SearchService } from './search.service';
 import { SearchResolver } from './search.resolver';
 import { TypesenseModule } from '../../common/typesense/typesense.module';
-import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Unit } from '../../common/entities/unit.entity';
+import { EmbeddingModule } from '../embedding/embedding.module';
 
 @Module({
-  imports: [TypesenseModule, ConfigModule, TypeOrmModule.forFeature([Unit])],
+  imports: [TypesenseModule, EmbeddingModule],
   providers: [SearchService, SearchResolver],
   exports: [SearchService],
 })

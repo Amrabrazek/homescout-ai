@@ -24,10 +24,13 @@ Update this table in the same PR when you add, move or rename one of these place
 |---|---|
 | DB schema | `backend/src/migrations/` (new file) + `backend/src/common/entities/` |
 | Enums (property type, finishing, view, region) | `backend/src/common/enums/unit-attributes.ts` |
-| Unit list / DB filters / sort | `backend/src/modules/unit/` (`unit.service.ts` `findAllWithCount`, `dto/unit-filter.input.ts`) |
+| Unit list / sort | `backend/src/modules/unit/` (`unit.service.ts` `findAllWithCount`, `dto/unit-filter.input.ts`) |
 | Typesense schema + document mapping | `backend/src/common/typesense/typesense.service.ts` |
-| Typesense search query | `backend/src/modules/search/search.service.ts` |
-| Embeddings / similar units | `backend/src/modules/unit/unit-embedding.listener.ts`, `match_similar_units` in the initial migration |
+| Search (hybrid keyword + vector), free-text parsing | `backend/src/modules/search/` (`search.service.ts`, `query-parser.ts`) |
+| Filters (one builder for SQL WHERE + Typesense `filter_by`) | `backend/src/modules/search/unit-filter.ts` |
+| Embedding providers + unit embedding text | `backend/src/modules/embedding/` (`EMBEDDING_MODEL`) |
+| Sync worker (pg-boss: embed + Typesense) | `backend/src/modules/sync/`; enqueue happens in `unit.service.ts` transactions |
+| Similar units | `match_similar_units` in `migrations/1760100000000-UnitEmbeddings.ts`, `unit.service.ts` `findSimilarUnits` |
 | Sample data | `backend/src/scripts/seed/` (`data.ts` catalog, `rules.ts`, `generate.ts`); entry `scripts/seed.ts` |
 | Image uploads | `backend/src/modules/upload/` |
 | Backend tests | unit: `src/**/*.spec.ts` (`npm test`); API: `test/**/*.e2e-spec.ts` (mocked services) |
@@ -42,7 +45,7 @@ Update this table in the same PR when you add, move or rename one of these place
 | backend | `npm run lint` · `npm run typecheck` · `npm test` · `npm run test:e2e` | Checks (CI runs these) |
 | backend | `npm run db:seed` | Apply migrations, seed if empty (`-- --reset` to replace data) |
 | backend | `npm run db:migrate` / `db:migrate:revert` | Migrations |
-| backend | `npm run typesense:populate` | Rebuild search index |
+| backend | `npm run reindex` (`-- --if-needed`) | Enqueue every unit: re-embed if changed + rebuild search index |
 | backend | `npm run start:dev` | API on :3001 (`/graphql`) |
 | frontend | `npm run lint` · `npm run typecheck` · `npm run build` | Checks (CI runs these) |
 | frontend | `npm run dev` | App on :3000 |
@@ -59,4 +62,5 @@ Run lint, typecheck and tests for every app you touched before pushing.
 There is no Docker daemon. `.claude/hooks/session-start.sh` installs dependencies and starts
 Postgres 16 + pgvector on `localhost:5432` (user/password/db `homescout`) with seed data, so the
 backend's default config works without a `.env`. Typesense and MinIO are not available in cloud
-sessions; the API still starts without them.
+sessions; the API still starts without them (sync jobs keep retrying the Typesense step;
+embeddings are still written to Postgres).

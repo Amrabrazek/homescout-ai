@@ -64,8 +64,8 @@ cd backend
 cp .env.example .env
 npm install
 npm run db:seed              # apply migrations + seed if empty
-npm run typesense:populate   # index units into Typesense
-npm run start:dev
+npm run start:dev            # API + sync worker; embeds and indexes new units
+npm run reindex              # (new terminal, first run) enqueue every unit for embedding + indexing
 
 # frontend (new terminal)
 cd frontend
@@ -82,7 +82,7 @@ npm run dev
 | backend  | `npm run db:migrate:revert`   | Revert the last migration                     |
 | backend  | `npm run db:seed`             | Migrate, then seed sample data if DB is empty |
 | backend  | `npm run db:seed -- --reset`  | Replace all data with fresh sample data       |
-| backend  | `npm run typesense:populate`  | Rebuild the Typesense index from the database |
+| backend  | `npm run reindex`             | Enqueue every unit: re-embed if changed, rebuild the Typesense index |
 | backend  | `npm run lint` / `typecheck`  | Static checks                                 |
 | backend  | `npm test` / `test:e2e`       | Unit tests / API tests                        |
 | frontend | `npm run lint` / `typecheck`  | Static checks                                 |
@@ -96,9 +96,10 @@ backend/
   src/
     config/                database config shared by the app and migration CLI
     migrations/            versioned schema migrations (TypeORM)
-    common/                entities, events, Typesense client
-    modules/               developer, project, unit, amenity, image, search, upload
-    scripts/               seed generator (scripts/seed/) + Typesense population
+    common/                entities, Typesense client
+    modules/               developer, project, unit, amenity, image, upload,
+                           embedding (providers), sync (pg-boss worker), search (hybrid search + filters)
+    scripts/               seed generator (scripts/seed/) + reindex
 frontend/
   src/app/                 App Router pages (listing, unit detail, dashboard)
   src/components/          UI components
@@ -111,9 +112,15 @@ API references: `backend/API_DOCUMENTATION.md`, `backend/API_QUICK_REFERENCE.md`
 
 ## AI features today
 
-- **Similar units**: units carry vector embeddings in Postgres (pgvector); the unit page shows the closest
-  matches. With `OPENAI_API_KEY` set, new and edited units get OpenAI embeddings.
-- **Search**: Typesense provides typo-tolerant, faceted search over units.
+- **Embeddings**: pluggable via `EMBEDDING_MODEL`: `local-e5-small` (free, runs in Node, the default) or
+  `openai-text-embedding-3-small` (needs `OPENAI_API_KEY`). Vectors live in Postgres (`unit_embeddings`);
+  several models can coexist. After switching, run `npm run reindex`.
+- **Sync**: creating, editing or deleting a unit enqueues a job (pg-boss) in the same transaction. A worker
+  in the API process re-embeds the unit when its text changed and updates Typesense, retrying with backoff
+  if Typesense is down. Set `WORKER=false` to run the API without it.
+- **Search**: one hybrid search, typo-tolerant keyword plus vector, with filters. Free text such as
+  "New Ciaro 3 bedroms under 8M" is parsed into hard filters (area, rooms, price) first.
+- **Similar units**: nearest neighbours of a unit's embedding (pgvector, or Typesense for `searchSimilarUnits`).
 
 ## Roadmap
 

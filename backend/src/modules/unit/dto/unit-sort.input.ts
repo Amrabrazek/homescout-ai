@@ -27,8 +27,9 @@ registerEnumType(SortDirection, {
 export class UnitSortInput {
   @Field(() => UnitSortField, {
     nullable: true,
-    defaultValue: UnitSortField.CREATED_AT,
-    description: 'Field to sort by',
+    defaultValue: UnitSortField.DEFAULT,
+    description:
+      'Field to sort by; DEFAULT is relevance for text search, newest first otherwise',
   })
   @IsEnum(UnitSortField)
   @IsOptional()
@@ -36,8 +37,8 @@ export class UnitSortInput {
 
   @Field(() => SortDirection, {
     nullable: true,
-    defaultValue: SortDirection.DESC,
-    description: 'Sort direction',
+    description:
+      'Sort direction; defaults to DESC for createdAt, ASC otherwise',
   })
   @IsEnum(SortDirection)
   @IsOptional()
