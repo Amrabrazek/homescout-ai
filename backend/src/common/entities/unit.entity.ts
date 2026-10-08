@@ -15,6 +15,7 @@ import { Project } from './project.entity';
 import { Amenity } from './amenity.entity';
 import { Image } from './image.entity';
 import { UnitImage } from './unit-image.entity';
+import { Finishing, PropertyType, UnitView } from '../enums/unit-attributes';
 
 @ObjectType()
 @Entity('units')
@@ -54,6 +55,38 @@ export class Unit {
   @Field(() => Float)
   @Column('decimal', { precision: 14, scale: 2 })
   price: number;
+
+  @Field(() => PropertyType, { nullable: true })
+  @Column('text', { name: 'property_type', nullable: true })
+  propertyType?: PropertyType;
+
+  @Field(() => Finishing, { nullable: true })
+  @Column('text', { nullable: true })
+  finishing?: Finishing;
+
+  @Field(() => Int, {
+    nullable: true,
+    description: 'Expected delivery year; null means ready to move',
+  })
+  @Column('int', { name: 'delivery_year', nullable: true })
+  deliveryYear?: number;
+
+  @Field(() => Float, { nullable: true })
+  @Column('decimal', {
+    name: 'down_payment_pct',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+  })
+  downPaymentPct?: number;
+
+  @Field(() => Int, { nullable: true })
+  @Column('int', { name: 'installment_years', nullable: true })
+  installmentYears?: number;
+
+  @Field(() => UnitView, { nullable: true })
+  @Column('text', { nullable: true })
+  view?: UnitView;
 
   // Vector embedding for similarity search
   @Column('simple-array', { nullable: true })

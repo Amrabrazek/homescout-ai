@@ -76,6 +76,13 @@ type FacetStatsValue {
   sum: Float
 }
 
+enum Finishing {
+  CORE_SHELL
+  FULLY_FINISHED
+  FURNISHED
+  SEMI_FINISHED
+}
+
 type Image {
   altText: String
   id: ID!
@@ -94,11 +101,28 @@ type Mutation {
 }
 
 type Project {
+  area: String
+  city: String
   developer: Developer!
   developerId: String!
   id: ID!
+  lat: Float
+  lng: Float
   name: String!
+  region: String
   units: [Unit!]
+}
+
+enum PropertyType {
+  APARTMENT
+  CHALET
+  DUPLEX
+  PENTHOUSE
+  SERVICED_APARTMENT
+  STUDIO
+  TOWNHOUSE
+  TWIN_HOUSE
+  VILLA
 }
 
 type Query {
@@ -169,19 +193,27 @@ type Unit {
   amenities: [Amenity!]
   bathrooms: Int!
   createdAt: DateTime!
+
+  """Expected delivery year; null means ready to move"""
+  deliveryYear: Int
   description: String
+  downPaymentPct: Float
+  finishing: Finishing
   floor: Int!
   floorArea: Float!
   id: ID!
   images: [Image!]
+  installmentYears: Int
   name: String!
   number: String!
   price: Float!
   project: Project!
   projectId: String!
+  propertyType: PropertyType
   rooms: Int!
   unitImages: [UnitImage!]
   updatedAt: DateTime!
+  view: UnitView
 }
 
 input UnitFilterInput {
@@ -228,6 +260,14 @@ input UnitSortInput {
 
   """Field to sort by"""
   field: UnitSortField = CREATED_AT
+}
+
+enum UnitView {
+  CITY
+  GARDEN
+  POOL
+  SEA
+  STREET
 }
 
 input UpdateUnitInput {
