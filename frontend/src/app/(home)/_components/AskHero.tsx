@@ -8,6 +8,8 @@ import pathsConfig from '@/config/paths.config';
 import { useUnderstandSearch } from '@/lib/graphql/units/hooks';
 import type { ParsedSearch } from '@/lib/graphql/units/types';
 import { formatPriceShort } from '@/lib/utils/formatters';
+import { propertyTypeLabel } from '@/components/concierge/format';
+import type { PropertyType } from '@/lib/concierge/types';
 
 const EXAMPLES = [
   '3 bedrooms in New Cairo under 12M',
@@ -19,6 +21,8 @@ function understood(parsed: ParsedSearch): string[] {
   const chips: string[] = [];
   const { minRooms, maxRooms, minPrice, maxPrice } = parsed;
   if (minRooms != null && minRooms === maxRooms) chips.push(`${minRooms} beds`);
+  else if (minRooms != null && maxRooms != null)
+    chips.push(`${minRooms}–${maxRooms} beds`);
   else if (minRooms != null) chips.push(`${minRooms}+ beds`);
   else if (maxRooms != null) chips.push(`up to ${maxRooms} beds`);
   if (minPrice != null && maxPrice != null)
@@ -28,6 +32,9 @@ function understood(parsed: ParsedSearch): string[] {
   else if (maxPrice != null) chips.push(`under ${formatPriceShort(maxPrice)}`);
   else if (minPrice != null) chips.push(`over ${formatPriceShort(minPrice)}`);
   chips.push(
+    ...(parsed.propertyTypes ?? []).map((type) =>
+      propertyTypeLabel(type as PropertyType)
+    ),
     ...(parsed.areas ?? []),
     ...(parsed.cities ?? []),
     ...(parsed.regions ?? [])

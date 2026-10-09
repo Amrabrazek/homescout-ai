@@ -26,7 +26,7 @@ Update this table in the same PR when you add, move or rename one of these place
 | Enums (property type, finishing, view, region) | `backend/src/common/enums/unit-attributes.ts` |
 | Unit list / sort | `backend/src/modules/unit/` (`unit.service.ts` `findAllWithCount`, `dto/unit-filter.input.ts`) |
 | Typesense schema + document mapping | `backend/src/common/typesense/typesense.service.ts` |
-| Search (hybrid keyword + vector), free-text parsing | `backend/src/modules/search/` (`search.service.ts`, `query-parser.ts`; `understandSearch` query shows what was parsed) |
+| Search (hybrid keyword + vector), free-text parsing | `backend/src/modules/search/` (`search.service.ts`, `query-parser.ts` regex, then `llm-query-parser.ts` + `search-llm.ts` for leftovers; `understandSearch` query shows what was parsed) |
 | Filters (one builder for SQL WHERE + Typesense `filter_by`) | `backend/src/modules/search/unit-filter.ts` |
 | Embedding providers + unit embedding text | `backend/src/modules/embedding/` (`EMBEDDING_MODEL`) |
 | Sync worker (pg-boss: embed + Typesense) | `backend/src/modules/sync/`; enqueue happens in `unit.service.ts` transactions |

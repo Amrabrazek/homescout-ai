@@ -51,6 +51,7 @@ export class SearchResolver {
       areas: filter.areas,
       cities: filter.cities,
       regions: filter.regions,
+      propertyTypes: filter.propertyTypes,
     };
   }
 }
