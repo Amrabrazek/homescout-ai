@@ -36,6 +36,7 @@ Update this table in the same PR when you add, move or rename one of these place
 | Sample data | `backend/src/scripts/seed/` (`data.ts` catalog, `rules.ts`, `generate.ts`); entry `scripts/seed.ts` |
 | Image uploads | `backend/src/modules/upload/` |
 | Backend tests | unit: `src/**/*.spec.ts` (`npm test`); API: `test/**/*.e2e-spec.ts` (mocked services) |
+| Brand (colour tokens, font, logo, favicon) | `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`, `frontend/src/components/brand/Logo.tsx`, `frontend/public/favicon.svg` |
 | Home page listing + filters UI | `frontend/src/app/(home)/_components/` (`UnitFilters.tsx`, `UnitListing.tsx`) |
 | Unit page | `frontend/src/app/(home)/unit/[id]/` |
 | Dashboard (CRUD forms) | `frontend/src/app/dashboard/` |
