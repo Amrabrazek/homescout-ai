@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Heart, UserCircle } from 'lucide-react';
+import { Heart, MessageCircle, UserCircle } from 'lucide-react';
 import pathsConfig from '@/config/paths.config';
 import { Logo } from '@/components/brand/Logo';
 
@@ -14,6 +14,13 @@ export default function Navbar() {
         </Link>
 
         <div className='flex items-center gap-4'>
+          <Link
+            href={pathsConfig.home.concierge}
+            className='flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors'
+          >
+            <MessageCircle className='h-5 w-5' />
+            <span className='hidden sm:inline'>Concierge</span>
+          </Link>
           <Link
             href={pathsConfig.home.preferences}
             className='flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors'

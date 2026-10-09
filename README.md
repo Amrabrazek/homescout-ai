@@ -69,7 +69,7 @@ npm run reindex              # (new terminal, first run) enqueue every unit for 
 
 # frontend (new terminal)
 cd frontend
-cp .env.example .env
+cp .env.example .env         # set ANTHROPIC_API_KEY to use the concierge chat
 npm install
 npm run dev
 ```
