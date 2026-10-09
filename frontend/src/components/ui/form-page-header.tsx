@@ -45,17 +45,23 @@ export function FormPageHeader({
   const headerTitle = isEditing ? title ?? '' : `New ${entityName}`;
 
   return (
-    <div className='bg-background form-header z-10 sticky top-0 w-full sm:-top-2 bg-white'>
+    <div className='form-header sticky top-0 z-10 w-full border-b bg-background/95 backdrop-blur sm:-top-2'>
       {/* Desktop header */}
-      <div className='hidden flex-1 items-start gap-4 px-8 py-6 sm:grid sm:gap-8'>
+      <div className='hidden flex-1 items-start gap-4 px-8 py-4 sm:grid sm:gap-8'>
         <div className='flex items-center gap-2'>
           <div className='flex grow items-center gap-4'>
             <Link href={redirectUrl}>
-              <Button variant='outline' size='icon' className='flex'>
+              <Button
+                variant='outline'
+                size='icon'
+                className='flex rounded-full'
+              >
                 <ArrowLeft width={18} height={15} />
               </Button>
             </Link>
-            <div className='text-sm'>{headerTitle}</div>
+            <h1 className='text-xl font-extrabold tracking-tight'>
+              {headerTitle}
+            </h1>
             {badges && badges.length > 0 && (
               <div className='flex gap-2'>
                 {badges.map((badge, index) => (
@@ -76,8 +82,8 @@ export function FormPageHeader({
             {showActionButtons && (
               <>
                 <Button
-                  variant='outline'
-                  className='h-[40px] px-4 py-2'
+                  variant='ghost'
+                  className='h-10 rounded-full px-4'
                   onClick={() => reset()}
                   disabled={!isDirty}
                 >
@@ -85,7 +91,7 @@ export function FormPageHeader({
                 </Button>
 
                 <Button
-                  className='h-[40px] px-4 py-2'
+                  className='h-10 rounded-full px-6'
                   onClick={onSubmit}
                   disabled={(!isDirty && isEditing) || loading}
                   id={isLargeScreen ? 'catalogDetailsTour-step4' : ''}
@@ -110,12 +116,13 @@ export function FormPageHeader({
                 <ArrowLeft size={24} />
               </Button>
             </Link>
-            <div className='text-md line-clamp-1'>{headerTitle}</div>
+            <h1 className='line-clamp-1 font-bold'>{headerTitle}</h1>
           </div>
           <div className='flex gap-1'>
             {extraButtons ?? null}
             <Button
               size='sm'
+              className='rounded-full'
               onClick={onSubmit}
               disabled={!isDirty}
               id={isLargeScreen ? '' : 'catalogDetailsTour-step4'}

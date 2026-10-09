@@ -148,7 +148,7 @@ export function UnitForm({ unitData }: UnitFormProps) {
     <>
       {isEditing && unitData?.id && (
         <>
-          <Button variant='outline' size='sm' asChild className='gap-1 h-10'>
+          <Button variant='outline' size='sm' asChild className='h-10 gap-1 rounded-full'>
             <Link
               href={getUnitViewUrl()}
               target='_blank'
@@ -163,16 +163,16 @@ export function UnitForm({ unitData }: UnitFormProps) {
             variant='outline'
             size='sm'
             onClick={handleCopyLink}
-            className='gap-1 h-10'
+            className='h-10 gap-1 rounded-full'
           >
             <Copy size={16} />
             <span className='hidden sm:inline'>Copy Link</span>
           </Button>
           <Button
-            variant='destructive'
+            variant='ghost'
             size='sm'
             onClick={handleDeleteClick}
-            className='gap-1 h-10'
+            className='h-10 gap-1 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive'
             disabled={isDeleting}
           >
             <Trash2 size={16} />

@@ -16,7 +16,7 @@ export default async function PreferencesPage() {
   ]);
 
   return (
-    <div className='container mx-auto py-8'>
+    <div className='container mx-auto max-w-6xl py-8'>
       <PreferencesPanel
         profile={profile}
         savedUnits={savedUnits}
