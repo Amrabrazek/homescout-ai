@@ -141,6 +141,19 @@ type Mutation {
   updateUnit(updateUnitInput: UpdateUnitInput!): Unit!
 }
 
+type ParsedSearch {
+  areas: [String!]
+  cities: [String!]
+  maxPrice: Float
+  maxRooms: Int
+  minPrice: Float
+  minRooms: Int
+  regions: [String!]
+
+  """Words left for keyword and vector search"""
+  text: String!
+}
+
 type Project {
   area: String
   city: String
@@ -180,6 +193,7 @@ type Query {
   searchFacets(filter: UnitFilterInput): FacetCountResponse!
   searchUnits(filter: UnitFilterInput, limit: Int, offset: Int, sort: UnitSortInput): SearchUnitsResponse!
   similarUnits(limit: Int, unitId: String!): [SimilarUnit!]!
+  understandSearch(searchTerm: String!): ParsedSearch!
   unit(id: String!): Unit
   units(filter: UnitFilterInput, limit: Int, offset: Int, sort: UnitSortInput): UnitResponse!
 }

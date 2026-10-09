@@ -1,30 +1,37 @@
-import HomeHero from './_components/HomeHero';
 import Home from './_components/Home';
-// Page metadata for SEO
+import { getMyProfile } from '@/lib/graphql/buyer/server';
+
 export const metadata = {
-  title: 'Find Your Dream Property | HomeScout AI',
+  title: 'Find a home that fits how you live | HomeScout AI',
   description:
-    'Browse our selection of premium properties, apartments, and villas across Egypt. Find your perfect home with advanced filtering options.',
-  keywords: ['property', 'real estate', 'apartments', 'homes', 'Egypt', 'HomeScout AI'],
+    'Describe the home you want in your own words. HomeScout AI searches apartments, villas and chalets across Egypt by meaning, not just filters.',
+  keywords: [
+    'property',
+    'real estate',
+    'apartments',
+    'homes',
+    'Egypt',
+    'HomeScout AI',
+  ],
   openGraph: {
-    title: 'Find Your Dream Property | HomeScout AI',
+    title: 'Find a home that fits how you live | HomeScout AI',
     description:
-      'Browse our selection of premium properties, apartments, and villas across Egypt.',
+      'Describe the home you want in your own words. HomeScout AI finds it across Egypt.',
   },
 };
 
-export default function HomePage() {
+async function savedUnitIds(): Promise<string[]> {
+  try {
+    return (await getMyProfile()).savedUnitIds;
+  } catch {
+    return [];
+  }
+}
+
+export default async function HomePage() {
   return (
-    <main className='min-h-screen bg-gray-50'>
-      {/* Hero section with scroll functionality */}
-      <HomeHero />
-
-      <div className='container mx-auto py-8' id='property-search'>
-        <h1 className='text-3xl font-bold mb-6'>Find Your Dream Property</h1>
-
-        {/* UnitSearch is a client component, while the page itself is server-rendered */}
-        <Home />
-      </div>
+    <main className='container min-h-screen'>
+      <Home savedUnitIds={await savedUnitIds()} />
     </main>
   );
 }

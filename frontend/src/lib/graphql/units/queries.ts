@@ -22,6 +22,7 @@ export const GET_UNITS = gql`
         project {
           id
           name
+          area
           developer {
             id
             name
@@ -79,6 +80,7 @@ export const SEARCH_UNITS = gql`
         project {
           id
           name
+          area
           developer {
             name
           }
@@ -203,6 +205,21 @@ export const SEARCH_FACETS = gql`
         }
       }
       total
+    }
+  }
+`;
+
+export const UNDERSTAND_SEARCH = gql`
+  query UnderstandSearch($searchTerm: String!) {
+    understandSearch(searchTerm: $searchTerm) {
+      text
+      minRooms
+      maxRooms
+      minPrice
+      maxPrice
+      areas
+      cities
+      regions
     }
   }
 `;
