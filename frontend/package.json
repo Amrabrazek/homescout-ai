@@ -33,7 +33,6 @@
     "@radix-ui/react-toast": "^1.2.13",
     "@radix-ui/react-tooltip": "^1.2.6",
     "@shadcn/ui": "^0.0.4",
-    "bufferutil": "^4.0.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -52,7 +51,6 @@
     "sonner": "^2.0.3",
     "tailwind-merge": "^1.14.0",
     "tailwindcss-animate": "^1.0.7",
-    "utf-8-validate": "^6.0.3",
     "yet-another-react-lightbox": "^3.23.0",
     "zod": "^3.21.4"
   },
