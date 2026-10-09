@@ -34,6 +34,7 @@ Update this table in the same PR when you add, move or rename one of these place
 | Buyer profile, events, taste vector | `backend/src/modules/buyer/` (`buyer.service.ts`, `taste-vector.ts` math, `buyer-taste.worker.ts`); buyer comes from the `x-buyer-id` header |
 | Similar units (filter tiers, rerank, reasons) | `backend/src/modules/unit/similar-units.ts`; candidate query in `unit.service.ts` `findSimilarUnits` |
 | Sample data | `backend/src/scripts/seed/` (`data.ts` catalog, `rules.ts`, `generate.ts`); entry `scripts/seed.ts` |
+| Concierge tool endpoints (`/internal/*` REST, name → filter resolution) | `backend/src/modules/concierge/` (`concierge.service.ts`, `vocabulary.ts`, `unit-card.ts`) |
 | Image uploads | `backend/src/modules/upload/` |
 | Backend tests | unit: `src/**/*.spec.ts` (`npm test`); API: `test/**/*.e2e-spec.ts` (mocked services) |
 | Home page listing + filters UI | `frontend/src/app/(home)/_components/` (`UnitFilters.tsx`, `UnitListing.tsx`) |
@@ -41,6 +42,8 @@ Update this table in the same PR when you add, move or rename one of these place
 | Dashboard (CRUD forms) | `frontend/src/app/dashboard/` |
 | Buyer cookie (`hs_buyer`) and event API | `frontend/src/middleware.ts`, `frontend/src/app/api/events/route.ts`; server-side buyer calls in `frontend/src/lib/graphql/buyer/server.ts` |
 | My preferences page | `frontend/src/app/(home)/preferences/` |
+| Concierge agent (route, tools, prompt, model from `LLM_PROVIDER`/`LLM_MODEL`, Langfuse) | `frontend/src/app/api/chat/route.ts`, `frontend/src/lib/concierge/` |
+| Concierge chat UI (floating panel, `/concierge`, tool-result cards) | `frontend/src/components/concierge/`, `frontend/src/app/(home)/concierge/` |
 | GraphQL queries, types, zod schemas | `frontend/src/lib/graphql/<entity>/` |
 
 ## Commands
