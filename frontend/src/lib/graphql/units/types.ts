@@ -1,4 +1,10 @@
 import { Project } from '../projects/types';
+import type { PropertyType } from '../buyer/types';
+
+export type Finishing =
+  'CORE_SHELL' | 'SEMI_FINISHED' | 'FULLY_FINISHED' | 'FURNISHED';
+
+export type UnitView = 'GARDEN' | 'SEA' | 'POOL' | 'CITY' | 'STREET';
 
 export interface Amenity {
   id: string;
@@ -23,6 +29,13 @@ export interface Unit {
   price: number;
   description?: string;
   createdAt: string;
+  propertyType?: PropertyType | null;
+  finishing?: Finishing | null;
+  view?: UnitView | null;
+  /** Null means ready to move. */
+  deliveryYear?: number | null;
+  downPaymentPct?: number | null;
+  installmentYears?: number | null;
   project: Project;
   amenities: Amenity[];
   images: Image[];
