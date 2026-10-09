@@ -67,10 +67,11 @@ const SCHEMA: JSONSchema7 = {
 };
 
 /**
- * Uses the concierge's LLM_PROVIDER / LLM_MODEL. Returns null when that
- * provider has no API key, so search stays regex-only.
+ * Uses the concierge's LLM_PROVIDER / LLM_MODEL. Returns null (regex-only
+ * search) unless SEARCH_LLM_ENABLED=true and that provider has an API key.
  */
 export function createSearchLlm(config: ConfigService): SearchLlm | null {
+  if (config.get<string>('SEARCH_LLM_ENABLED') !== 'true') return null;
   const provider = (
     config.get<string>('LLM_PROVIDER') || 'anthropic'
   ).toLowerCase() as keyof typeof DEFAULT_MODELS;
