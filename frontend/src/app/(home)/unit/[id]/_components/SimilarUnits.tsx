@@ -1,18 +1,19 @@
 'use client';
 
 import { useSimilarUnits } from '@/lib/graphql/units/hooks';
-import { SimilarUnit } from '@/lib/graphql/units/types';
-import Link from 'next/link';
-import Image from 'next/image';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ImageIcon } from 'lucide-react';
+import UnitCard, { UnitCardSkeleton } from '@/app/(home)/_components/UnitCard';
 
 interface SimilarUnitsProps {
   unitId: string;
+  savedUnitIds?: string[];
   limit?: number;
 }
 
-export function SimilarUnits({ unitId, limit = 4 }: SimilarUnitsProps) {
+export function SimilarUnits({
+  unitId,
+  savedUnitIds = [],
+  limit = 4,
+}: SimilarUnitsProps) {
   const { data, loading, error } = useSimilarUnits(unitId, limit);
   const similarUnits = data?.similarUnits;
 
@@ -21,107 +22,41 @@ export function SimilarUnits({ unitId, limit = 4 }: SimilarUnitsProps) {
     return null;
   }
 
-  if (loading) {
-    return (
-      <div className='mt-12'>
-        <h2 className='text-2xl font-bold mb-6'>Similar Units</h2>
-        <div className='flex overflow-x-auto pb-4 gap-4 hide-scrollbar'>
-          {Array.from({ length: limit }).map((_, i) => (
-            <SimilarUnitSkeleton key={i} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!similarUnits || similarUnits.length === 0) {
+  if (!loading && (!similarUnits || similarUnits.length === 0)) {
     return null;
   }
 
   return (
-    <div className='mt-12'>
-      <h2 className='text-2xl font-bold mb-6'>Similar Units</h2>
-      <div className='flex overflow-x-auto pb-4 gap-4 hide-scrollbar'>
-        {similarUnits.map((similar) => (
-          <SimilarUnitCard key={similar.unit.id} similar={similar} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SimilarUnitCard({ similar }: { similar: SimilarUnit }) {
-  const { unit, reasons } = similar;
-  const hasImage = unit.images && unit.images.length > 0;
-  const imageUrl = hasImage ? unit.images[0].url : '/placeholder-unit.jpg';
-
-  return (
-    <Link
-      href={`/unit/${unit.id}`}
-      className='bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow flex-shrink-0 w-[280px]'
-    >
-      <div className='relative h-48 w-full'>
-        {hasImage ? (
-          <Image
-            src={imageUrl}
-            alt={unit.name}
-            fill
-            className='object-cover'
-            sizes='280px'
-          />
-        ) : (
-          <div className='w-full h-full bg-gray-100 flex items-center justify-center'>
-            <div className='flex flex-col items-center justify-center text-muted-foreground'>
-              <ImageIcon className='w-12 h-12 mb-2 opacity-20' />
-              <span className='text-sm'>No image available</span>
-            </div>
-          </div>
-        )}
-      </div>
-      <div className='p-4'>
-        <h3 className='font-semibold text-lg truncate'>{unit.name}</h3>
-        <p className='text-gray-500 text-sm'>
-          {unit.project?.name || 'Unknown Project'}
-        </p>
-        <div className='flex justify-between mt-2'>
-          <span className='text-sm'>{unit.rooms} BR</span>
-          <span className='text-sm'>{unit.bathrooms} Bath</span>
-          <span className='text-sm'>{unit.floorArea} m²</span>
-        </div>
-        <p className='font-bold mt-3'>
-          ${unit.price?.toLocaleString() || 'Price on request'}
-        </p>
-        {reasons.length > 0 && (
-          <div className='flex flex-wrap gap-1 mt-3'>
-            {reasons.map((reason) => (
-              <span
-                key={reason}
-                className='text-xs bg-blue-50 text-blue-700 rounded-full px-2 py-0.5'
+    <section className='mt-14 border-t pt-10'>
+      <h2 className='mb-5 text-xl font-bold tracking-tight'>Similar homes</h2>
+      <div className='-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 hide-scrollbar sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4'>
+        {loading || !similarUnits
+          ? Array.from({ length: limit }).map((_, i) => (
+              <div key={i} className='w-[260px] shrink-0 sm:w-auto'>
+                <UnitCardSkeleton />
+              </div>
+            ))
+          : similarUnits.map(({ unit, reasons }) => (
+              <div
+                key={unit.id}
+                className='flex w-[260px] shrink-0 snap-start flex-col gap-2 sm:w-auto'
               >
-                {reason}
-              </span>
+                <UnitCard unit={unit} saved={savedUnitIds.includes(unit.id)} />
+                {reasons.length > 0 && (
+                  <div className='flex flex-wrap gap-1 px-0.5'>
+                    {reasons.map((reason) => (
+                      <span
+                        key={reason}
+                        className='rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground'
+                      >
+                        {reason}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
-          </div>
-        )}
       </div>
-    </Link>
-  );
-}
-
-function SimilarUnitSkeleton() {
-  return (
-    <div className='bg-white rounded-lg shadow-sm overflow-hidden flex-shrink-0 w-[280px]'>
-      <Skeleton className='h-48 w-full' />
-      <div className='p-4'>
-        <Skeleton className='h-5 w-3/4 mb-2' />
-        <Skeleton className='h-4 w-1/2 mb-3' />
-        <div className='flex justify-between mb-3'>
-          <Skeleton className='h-4 w-12' />
-          <Skeleton className='h-4 w-12' />
-          <Skeleton className='h-4 w-12' />
-        </div>
-        <Skeleton className='h-5 w-1/3' />
-      </div>
-    </div>
+    </section>
   );
 }

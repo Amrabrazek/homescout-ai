@@ -11,12 +11,15 @@ type SaveHeartProps = {
   unitId: string;
   initialSaved?: boolean;
   className?: string;
+  /** Show "Save" / "Saved" next to the heart, as a pill button. */
+  withLabel?: boolean;
 };
 
 export function SaveHeart({
   unitId,
   initialSaved = false,
   className,
+  withLabel = false,
 }: SaveHeartProps) {
   const [saved, setSaved] = useState(initialSaved);
   const [pending, setPending] = useState(false);
@@ -43,9 +46,12 @@ export function SaveHeart({
       type='button'
       onClick={toggle}
       aria-pressed={saved}
-      aria-label={saved ? 'Remove from saved' : 'Save'}
+      aria-label={withLabel ? undefined : saved ? 'Remove from saved' : 'Save'}
       className={cn(
-        'grid h-9 w-9 place-items-center rounded-full bg-background/90 shadow-sm transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'place-items-center rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        withLabel
+          ? 'inline-flex h-10 items-center justify-center gap-2 border bg-background px-4 text-sm font-semibold hover:bg-muted'
+          : 'grid h-9 w-9 bg-background/90 shadow-sm hover:scale-105',
         className
       )}
     >
@@ -54,6 +60,7 @@ export function SaveHeart({
           'fill-primary text-primary': saved,
         })}
       />
+      {withLabel && (saved ? 'Saved' : 'Save')}
     </button>
   );
 }

@@ -133,9 +133,18 @@ export const GET_UNIT = gql`
       floorArea
       price
       description
+      createdAt
+      propertyType
+      finishing
+      view
+      deliveryYear
+      downPaymentPct
+      installmentYears
       project {
         id
         name
+        area
+        city
         developer {
           id
           name
@@ -169,6 +178,7 @@ export const SIMILAR_UNITS_QUERY = gql`
         bathrooms
         floorArea
         price
+        createdAt
         images {
           id
           url
@@ -177,6 +187,7 @@ export const SIMILAR_UNITS_QUERY = gql`
         project {
           id
           name
+          area
           developer {
             id
             name

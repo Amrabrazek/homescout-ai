@@ -39,7 +39,7 @@ Update this table in the same PR when you add, move or rename one of these place
 | Backend tests | unit: `src/**/*.spec.ts` (`npm test`); API: `test/**/*.e2e-spec.ts` (mocked services) |
 | Brand (colour tokens, font, logo, favicon) | `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`, `frontend/src/components/brand/Logo.tsx`, `frontend/public/favicon.svg` |
 | Home page (ask box, filter bar + sheet, listing, cards) | `frontend/src/app/(home)/_components/` (`AskHero.tsx`, `FilterBar.tsx`, `UnitFilters.tsx`, `UnitListing.tsx`, `UnitCard.tsx`) |
-| Unit page | `frontend/src/app/(home)/unit/[id]/` |
+| Unit page (gallery, payment plan, "why it fits you") | `frontend/src/app/(home)/unit/[id]/`; fit checks in `frontend/src/lib/buyer/fit.ts` |
 | Dashboard (CRUD forms) | `frontend/src/app/dashboard/` |
 | Buyer cookie (`hs_buyer`) and event API | `frontend/src/middleware.ts`, `frontend/src/app/api/events/route.ts`; server-side buyer calls in `frontend/src/lib/graphql/buyer/server.ts` |
 | My preferences page | `frontend/src/app/(home)/preferences/` |

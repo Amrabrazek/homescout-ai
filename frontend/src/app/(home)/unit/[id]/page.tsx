@@ -37,11 +37,10 @@ export default async function UnitPage({ params }: Props) {
   }
 
   const profile = await getMyProfile().catch(() => null);
-  const initialSaved = !!profile?.savedUnitIds.includes(unit.id);
 
   return (
     <Suspense fallback={<UnitDetailSkeleton />}>
-      <UnitDetails unit={unit} initialSaved={initialSaved} />
+      <UnitDetails unit={unit} profile={profile} />
     </Suspense>
   );
 }
