@@ -10,7 +10,7 @@ cd "$CLAUDE_PROJECT_DIR"
 
 # Cloud images default to an older Node; use the version in .nvmrc for this hook and the session.
 if [ -s "${NVM_DIR:=/opt/nvm}/nvm.sh" ]; then
-  set +u; . "$NVM_DIR/nvm.sh"; nvm install "$(cat .nvmrc)" >/dev/null; set -u
+  set +u; . "$NVM_DIR/nvm.sh" --no-use; nvm install "$(cat .nvmrc)" >/dev/null; set -u
   if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
     echo "export PATH=\"$(dirname "$(nvm which current)"):\$PATH\"" >> "$CLAUDE_ENV_FILE"
   fi

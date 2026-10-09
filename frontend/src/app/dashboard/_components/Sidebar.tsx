@@ -5,11 +5,13 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import pathsConfig from '@config/paths.config';
+import { Logo } from '@/components/brand/Logo';
 
 // Menu items.
 const items = [
@@ -23,6 +25,11 @@ const items = [
 export function AppSidebar() {
   return (
     <Sidebar>
+      <SidebarHeader className='px-4 py-3'>
+        <a href={pathsConfig.home.index} aria-label='HomeScout home'>
+          <Logo className='text-lg' markClassName='h-7 w-7' />
+        </a>
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Application</SidebarGroupLabel>

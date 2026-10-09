@@ -78,7 +78,7 @@ export default function UnitCard({ unit }: UnitCardProps) {
 
           {isNew && (
             <div className='absolute top-2 right-2 z-10'>
-              <Badge className='bg-green-500 hover:bg-green-600 text-white'>
+              <Badge>
                 NEW
               </Badge>
             </div>

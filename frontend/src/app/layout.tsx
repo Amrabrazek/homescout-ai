@@ -4,9 +4,9 @@ import './globals.css';
 import { ApolloWrapper } from '@/lib/apollo/provider';
 import { Toaster } from '@/components/ui/sonner';
 
-const inter = localFont({
-  src: './fonts/inter-latin-var.woff2',
-  weight: '100 900',
+const jakarta = localFont({
+  src: './fonts/plus-jakarta-sans-latin-wght-normal.woff2',
+  weight: '200 800',
   display: 'swap',
 });
 
@@ -17,11 +17,7 @@ export const metadata: Metadata = {
   },
   description: 'Browse available apartment listings',
   icons: {
-    icon: [
-      { url: '/favicon.ico', sizes: '32x32' },
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-    ],
-    apple: { url: '/favicon.ico', type: 'image/x-icon' },
+    icon: { url: '/favicon.svg', type: 'image/svg+xml' },
   },
 };
 
@@ -32,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang='en'>
-      <body className={inter.className}>
+      <body className={jakarta.className}>
         <ApolloWrapper>{children}</ApolloWrapper>
         <Toaster />
       </body>
