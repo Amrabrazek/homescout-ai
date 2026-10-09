@@ -32,7 +32,7 @@ function understood(parsed: ParsedSearch): string[] {
     ...(parsed.cities ?? []),
     ...(parsed.regions ?? [])
   );
-  if (chips.length && parsed.text) chips.push(`“${parsed.text}”`);
+  if (parsed.text) chips.push(`“${parsed.text}”`);
   return chips;
 }
 
@@ -44,7 +44,6 @@ type AskHeroProps = {
 export default function AskHero({ searchTerm, onSearch }: AskHeroProps) {
   const [value, setValue] = useState(searchTerm ?? '');
   const parsed = useUnderstandSearch(searchTerm);
-  const chips = parsed ? understood(parsed) : [];
 
   useEffect(() => setValue(searchTerm ?? ''), [searchTerm]);
 
@@ -99,17 +98,12 @@ export default function AskHero({ searchTerm, onSearch }: AskHeroProps) {
         </form>
 
         <div className='mt-3 flex flex-wrap items-center gap-2 text-sm'>
-          {searchTerm && parsed && !chips.length ? (
-            <span className='flex items-center gap-1.5 text-muted-foreground'>
-              <Sparkles className='h-4 w-4' />
-              Searching by meaning
-            </span>
-          ) : searchTerm && parsed ? (
+          {searchTerm && parsed ? (
             <>
               <span className='font-semibold text-muted-foreground'>
                 Understood as
               </span>
-              {chips.map((chip) => (
+              {understood(parsed).map((chip) => (
                 <span
                   key={chip}
                   className='rounded-full bg-accent px-3 py-1 font-semibold text-accent-foreground'
