@@ -7,12 +7,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import {
   UnitSortField,
   SortDirection,
   UnitSort,
 } from '@/lib/graphql/units/types';
+
+const OPTIONS: { value: string; label: string; sort: UnitSort }[] = [
+  { value: 'best', label: 'Best match', sort: {} },
+  {
+    value: 'newest',
+    label: 'Newest',
+    sort: { field: UnitSortField.CREATED_AT, direction: SortDirection.DESC },
+  },
+  {
+    value: 'price-asc',
+    label: 'Price: low to high',
+    sort: { field: UnitSortField.PRICE, direction: SortDirection.ASC },
+  },
+  {
+    value: 'price-desc',
+    label: 'Price: high to low',
+    sort: { field: UnitSortField.PRICE, direction: SortDirection.DESC },
+  },
+  {
+    value: 'name',
+    label: 'Name A to Z',
+    sort: { field: UnitSortField.NAME, direction: SortDirection.ASC },
+  },
+];
+
+function toValue(sort: UnitSort): string {
+  const match = OPTIONS.find(
+    (o) =>
+      o.sort.field === sort.field &&
+      (!o.sort.field ||
+        o.sort.direction === (sort.direction ?? o.sort.direction))
+  );
+  return match?.value ?? 'best';
+}
 
 interface UnitSorterProps {
   sort: UnitSort;
@@ -20,57 +53,27 @@ interface UnitSorterProps {
 }
 
 export default function UnitSorter({ sort, onSortChange }: UnitSorterProps) {
-  // Default to CREATED_AT and DESC if not provided
-  const sortField = sort.field || UnitSortField.DEFAULT;
-  const sortDirection = sort.direction || SortDirection.DESC;
-
-  const handleSortFieldChange = (value: string) => {
-    onSortChange({
-      ...sort,
-      field: value as UnitSortField,
-      // Set a default direction if not already set
-      direction: sort.direction || SortDirection.ASC,
-    });
-  };
-
-  const handleSortDirectionChange = (value: string) => {
-    onSortChange({
-      ...sort,
-      direction: value as SortDirection,
-    });
-  };
-
   return (
-    <div className='flex flex-col sm:flex-row gap-3 items-start sm:items-end w-full'>
-      <div className='space-y-1.5 w-full'>
-        <Label htmlFor='sort-field'>Sort by</Label>
-        <Select value={sortField} onValueChange={handleSortFieldChange}>
-          <SelectTrigger id='sort-field' className='w-full'>
-            <SelectValue placeholder='Sort by...' />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={UnitSortField.DEFAULT}>Most relevant</SelectItem>
-            <SelectItem value={UnitSortField.NAME}>Name</SelectItem>
-            <SelectItem value={UnitSortField.CREATED_AT}>
-              Date created
-            </SelectItem>
-            <SelectItem value={UnitSortField.PRICE}>Price</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className='space-y-1.5 w-full'>
-        <Label htmlFor='sort-direction'>Direction</Label>
-        <Select value={sortDirection} onValueChange={handleSortDirectionChange}>
-          <SelectTrigger id='sort-direction' className='w-full'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={SortDirection.ASC}>Ascending</SelectItem>
-            <SelectItem value={SortDirection.DESC}>Descending</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
+    <Select
+      value={toValue(sort)}
+      onValueChange={(value) =>
+        onSortChange(OPTIONS.find((o) => o.value === value)?.sort ?? {})
+      }
+    >
+      <SelectTrigger
+        aria-label='Sort'
+        className='h-9 w-auto gap-2 rounded-full border-0 bg-transparent px-2 text-sm font-semibold shadow-none'
+      >
+        <span className='text-muted-foreground font-medium'>Sort:</span>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent align='end'>
+        {OPTIONS.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

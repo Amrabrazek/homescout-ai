@@ -166,3 +166,14 @@ export interface SearchUnitsResponse {
 export interface TypesenseSearchResponse {
   searchUnits: SearchUnitsResponse;
 }
+
+export interface ParsedSearch {
+  text: string;
+  minRooms?: number | null;
+  maxRooms?: number | null;
+  minPrice?: number | null;
+  maxPrice?: number | null;
+  areas?: string[] | null;
+  cities?: string[] | null;
+  regions?: string[] | null;
+}

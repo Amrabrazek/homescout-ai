@@ -6,16 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/ui';
 import { unsaveUnit } from '@/lib/graphql/buyer/actions';
-import type { BuyerEventType } from '@/lib/graphql/buyer/types';
-
-function recordEvent(unitId: string, type: BuyerEventType) {
-  return fetch('/api/events', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ unitId, type }),
-    keepalive: true,
-  });
-}
+import { recordEvent } from '@/lib/buyer/events';
 
 type BuyerActionsProps = {
   unitId: string;

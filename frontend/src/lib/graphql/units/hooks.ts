@@ -5,6 +5,7 @@ import {
   SEARCH_UNITS,
   SIMILAR_UNITS_QUERY,
   SEARCH_FACETS,
+  UNDERSTAND_SEARCH,
 } from './queries';
 import { useState, useEffect, useCallback } from 'react';
 
@@ -20,6 +21,7 @@ import type {
   UnitsResponse,
   GetSimilarUnitsQueryResponse,
   SimilarUnitsQueryVariables,
+  ParsedSearch,
 } from './types';
 
 const UNITS_PER_PAGE = 20;
@@ -281,4 +283,13 @@ export function useSearchFacets(filter: UnitFilter) {
     getPriceStats,
     getFloorAreaStats,
   };
+}
+
+export function useUnderstandSearch(searchTerm?: string) {
+  const term = searchTerm?.trim() ?? '';
+  const { data } = useQuery<{ understandSearch: ParsedSearch }>(
+    UNDERSTAND_SEARCH,
+    { variables: { searchTerm: term }, skip: !term }
+  );
+  return term ? data?.understandSearch : undefined;
 }

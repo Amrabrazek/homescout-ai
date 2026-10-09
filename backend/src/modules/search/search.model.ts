@@ -129,3 +129,30 @@ export class FacetCountResponse {
   @Field(() => Int)
   total: number;
 }
+
+@ObjectType()
+export class ParsedSearch {
+  @Field({ description: 'Words left for keyword and vector search' })
+  text: string;
+
+  @Field(() => Int, { nullable: true })
+  minRooms?: number;
+
+  @Field(() => Int, { nullable: true })
+  maxRooms?: number;
+
+  @Field(() => Float, { nullable: true })
+  minPrice?: number;
+
+  @Field(() => Float, { nullable: true })
+  maxPrice?: number;
+
+  @Field(() => [String], { nullable: true })
+  areas?: string[];
+
+  @Field(() => [String], { nullable: true })
+  cities?: string[];
+
+  @Field(() => [String], { nullable: true })
+  regions?: string[];
+}

@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import UnitFilters from '@/app/(home)/_components/UnitFilters';
 import UnitListing from '@/app/(home)/_components/UnitListing';
-import UnitSorter from '@/app/(home)/_components/UnitSorter';
+import AskHero from './AskHero';
+import FilterBar from './FilterBar';
 import type {
   UnitFilter,
   UnitSort,
@@ -12,7 +12,11 @@ import type {
   UnitSortField,
 } from '@/lib/graphql/units/types';
 
-export default function Home() {
+type HomeProps = {
+  savedUnitIds: string[];
+};
+
+export default function Home({ savedUnitIds }: HomeProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<UnitFilter>({});
@@ -152,29 +156,27 @@ export default function Home() {
     updateUrl(filters, newSort);
   };
 
-  // Show skeleton during initial load
-  if (Object.keys(filters).length === 0 && searchParams.toString().length > 0) {
-    return (
-      <div className='grid grid-cols-1 lg:grid-cols-4 gap-6 animate-pulse'>
-        <div className='lg:col-span-1 bg-gray-200 h-[600px] rounded-md'></div>
-        <div className='lg:col-span-3 bg-gray-200 h-[600px] rounded-md'></div>
-      </div>
-    );
-  }
-
   return (
-    <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
-      <div className='lg:col-span-1'>
-        <div className='sticky top-20'>
-          <UnitFilters filters={filters} onChange={handleFilterChange} />
-        </div>
+    <>
+      <AskHero
+        searchTerm={filters.searchTerm}
+        onSearch={(searchTerm) =>
+          handleFilterChange({ ...filters, searchTerm })
+        }
+      />
+      <div id='property-search' className='flex flex-col gap-6 pb-16'>
+        <FilterBar
+          filters={filters}
+          onChange={handleFilterChange}
+          sort={sort}
+          onSortChange={handleSortChange}
+        />
+        <UnitListing
+          filters={filters}
+          sort={sort}
+          savedUnitIds={savedUnitIds}
+        />
       </div>
-      <div className='lg:col-span-3'>
-        <div className='mb-6 flex justify-end'>
-          <UnitSorter sort={sort} onSortChange={handleSortChange} />
-        </div>
-        <UnitListing filters={filters} sort={sort} />
-      </div>
-    </div>
+    </>
   );
 }

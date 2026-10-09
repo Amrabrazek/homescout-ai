@@ -9,11 +9,19 @@ import type { UnitFilter, UnitSort } from '@/lib/graphql/units/types';
 type UnitListingProps = {
   filters: UnitFilter;
   sort?: UnitSort;
+  savedUnitIds?: string[];
 };
 
-const SKELETON_COUNT = 9;
+const SKELETON_COUNT = 8;
+const GRID =
+  'grid w-full grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
 
-export default function UnitListing({ filters, sort = {} }: UnitListingProps) {
+export default function UnitListing({
+  filters,
+  sort = {},
+  savedUnitIds = [],
+}: UnitListingProps) {
+  const saved = new Set(savedUnitIds);
   const observer = useRef<IntersectionObserver | null>(null);
   const lastUnitElementRef = useRef<HTMLDivElement | null>(null);
   const [prevTotal, setPrevTotal] = useState(0);
@@ -79,15 +87,11 @@ export default function UnitListing({ filters, sort = {} }: UnitListingProps) {
     return (
       <div className='w-full'>
         <div className='mb-4 flex justify-between items-center'>
-          <h2 className='text-xl font-semibold'>
-            {prevTotal > 0
-              ? `${prevTotal} Units available`
-              : 'Loading units...'}
+          <h2 className='text-xl font-extrabold tracking-tight'>
+            {prevTotal > 0 ? homes(prevTotal) : 'Finding homes…'}
           </h2>
         </div>
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'>
-          {renderSkeletons(SKELETON_COUNT)}
-        </div>
+        <div className={GRID}>{renderSkeletons(SKELETON_COUNT)}</div>
       </div>
     );
   }
@@ -97,7 +101,9 @@ export default function UnitListing({ filters, sort = {} }: UnitListingProps) {
     return (
       <div className='w-full'>
         <div className='mb-4 flex justify-between items-center'>
-          <h2 className='text-xl font-semibold'>0 Units available</h2>
+          <h2 className='text-xl font-extrabold tracking-tight'>
+            No homes found
+          </h2>
         </div>
         <div className='w-full min-h-[800px] flex items-center justify-center'>
           <div className='w-full max-w-[550px]'>
@@ -114,21 +120,23 @@ export default function UnitListing({ filters, sort = {} }: UnitListingProps) {
   return (
     <div className='w-full'>
       <div className='mb-4 flex justify-between items-center'>
-        <h2 className='text-xl font-semibold'>{`${currentTotal} Units available`}</h2>
+        <h2 className='text-xl font-extrabold tracking-tight'>
+          {homes(currentTotal)}
+        </h2>
       </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'>
+      <div className={GRID}>
         {units.map((unit, index) => {
           if (units.length - 5 === index) {
             return (
               <div ref={lastUnitElementRef} key={unit.id} className='w-full'>
-                <UnitCard unit={unit} />
+                <UnitCard unit={unit} saved={saved.has(unit.id)} />
               </div>
             );
           } else {
             return (
               <div key={unit.id} className='w-full'>
-                <UnitCard unit={unit} />
+                <UnitCard unit={unit} saved={saved.has(unit.id)} />
               </div>
             );
           }
@@ -138,12 +146,16 @@ export default function UnitListing({ filters, sort = {} }: UnitListingProps) {
       </div>
 
       {!hasMore && units.length > 0 && !loading && (
-        <div className='text-center p-4 mt-4 text-gray-500'>
+        <div className='text-center p-4 mt-4 text-muted-foreground'>
           {units.length === total
-            ? 'All units loaded'
-            : `Showing ${units.length} of ${currentTotal} units`}
+            ? 'You have seen every match'
+            : `Showing ${units.length} of ${currentTotal} homes`}
         </div>
       )}
     </div>
   );
+}
+
+function homes(count: number) {
+  return `${count.toLocaleString()} ${count === 1 ? 'home' : 'homes'}`;
 }

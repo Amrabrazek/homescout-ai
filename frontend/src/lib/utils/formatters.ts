@@ -10,6 +10,14 @@ export function formatPrice(price: number, currency?: string): string {
   }).format(price);
 }
 
+/** Short price for cards: EGP 4.17M, EGP 850K. */
+export function formatPriceShort(price: number, currency = 'EGP'): string {
+  if (price >= 1_000_000)
+    return `${currency} ${Number((price / 1_000_000).toFixed(2))}M`;
+  if (price >= 1_000) return `${currency} ${Math.round(price / 1_000)}K`;
+  return `${currency} ${price}`;
+}
+
 /**
  * Format a number of square meters to a string with units
  */
