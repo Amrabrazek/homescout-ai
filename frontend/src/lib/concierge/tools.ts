@@ -65,8 +65,8 @@ export function conciergeTools(api: InternalApi) {
     }),
 
     compare_units: tool({
-      description: 'Side-by-side details of 2 to 4 units.',
-      inputSchema: z.object({ ids: z.array(unitId).min(2).max(4) }),
+      description: 'Side-by-side details of 2 to 6 units. Put every unit the buyer wants compared in one call.',
+      inputSchema: z.object({ ids: z.array(unitId).min(2).max(6) }),
       execute: ({ ids }) =>
         api<UnitDetail[]>('POST', '/units/compare', { ids }),
       toModelOutput: ({ output }) => ({

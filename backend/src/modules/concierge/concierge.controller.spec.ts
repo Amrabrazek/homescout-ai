@@ -62,10 +62,14 @@ describe('ConciergeController', () => {
       .expect(400);
   });
 
-  it('compares two to four units', async () => {
+  it('compares two to six units', async () => {
     await request(app.getHttpServer())
       .post('/internal/units/compare')
       .send({ ids: [UNIT] })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/internal/units/compare')
+      .send({ ids: Array(7).fill(UNIT) })
       .expect(400);
     await request(app.getHttpServer())
       .post('/internal/units/compare')
