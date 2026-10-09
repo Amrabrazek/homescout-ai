@@ -150,7 +150,7 @@ export default function AskHero({ searchTerm, onSearch }: AskHeroProps) {
           Concierge
         </span>
         <span className='self-end rounded-2xl bg-foreground px-4 py-2.5 text-sm text-background'>
-          Something like the unit I saved, but with a garden and under 10M
+          Something like the unit I saved, but closer to my office
         </span>
         <span className='rounded-2xl border bg-background px-4 py-3 text-sm leading-relaxed'>
           Ask in your own words. The concierge searches real units, compares
