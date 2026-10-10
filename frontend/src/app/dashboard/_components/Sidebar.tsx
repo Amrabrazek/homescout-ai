@@ -1,4 +1,4 @@
-import { Building2, MapPinHouse, Pickaxe, Home } from 'lucide-react';
+import { Home, Plus } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -16,9 +16,14 @@ import { Logo } from '@/components/brand/Logo';
 // Menu items.
 const items = [
   {
-    title: 'Home',
+    title: 'Browse homes',
     url: pathsConfig.home.index,
     icon: Home,
+  },
+  {
+    title: 'New unit',
+    url: pathsConfig.units.new,
+    icon: Plus,
   },
 ];
 
@@ -32,7 +37,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupLabel>Listings</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (

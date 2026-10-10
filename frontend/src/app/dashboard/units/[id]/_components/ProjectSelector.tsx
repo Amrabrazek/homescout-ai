@@ -248,13 +248,13 @@ export function ProjectSelector({
                     )}
 
                     {!loading && !hasMore && projects.length > 0 && (
-                      <div className='text-center text-sm text-gray-500 py-2'>
+                      <div className='text-center text-sm text-muted-foreground py-2'>
                         No more projects
                       </div>
                     )}
 
                     {!loading && projects.length === 0 && (
-                      <div className='text-center text-sm text-gray-500 py-4'>
+                      <div className='text-center text-sm text-muted-foreground py-4'>
                         No projects found
                       </div>
                     )}

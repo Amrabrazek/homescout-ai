@@ -18,22 +18,15 @@ function FormSectionFieldsContainer({
   className,
 }: FormSectionFieldsContainerProps) {
   return (
-    <div
-      className={cn(
-        'border-muted flex flex-col gap-1 rounded-[10px] border bg-[#F4F4F5] p-1',
-        className
-      )}
-    >
-      <div className='flex flex-col gap-2 p-1 ps-4'>
-        <div className='text-md'>{title}</div>
+    <section className={cn('rounded-2xl border bg-card', className)}>
+      <div className='flex flex-col gap-0.5 border-b px-5 py-4'>
+        <h2 className='font-bold'>{title}</h2>
         {subtitle && (
-          <div className='font-body text-muted-foreground text-sm'>
-            {subtitle}
-          </div>
+          <p className='text-sm text-muted-foreground'>{subtitle}</p>
         )}
       </div>
-      <div className='flex flex-col rounded-md border bg-white'>{children}</div>
-    </div>
+      <div className='flex flex-col px-1 py-1'>{children}</div>
+    </section>
   );
 }
 
