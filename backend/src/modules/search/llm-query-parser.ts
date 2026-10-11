@@ -8,6 +8,8 @@ const TIMEOUT_MS = 4_000;
 const CACHE_SIZE = 1_000;
 const MAX_ROOMS = 20;
 const MAX_PRICE = 10_000_000_000;
+const MAX_FLOOR_AREA = 100_000;
+const MAX_FLOOR = 200;
 
 /**
  * Second pass after the regex parser. When the regex leaves words over, an LLM
@@ -110,6 +112,16 @@ export function toParsedQuery(
   );
   if (price.min != null) filter.minPrice = price.min;
   if (price.max != null) filter.maxPrice = price.max;
+  const size = range(value.minFloorArea, value.maxFloorArea, (n) =>
+    n > 0 && n < MAX_FLOOR_AREA ? n : undefined
+  );
+  if (size.min != null) filter.minFloorArea = size.min;
+  if (size.max != null) filter.maxFloorArea = size.max;
+  const floor = range(value.minFloor, value.maxFloor, (n) =>
+    Number.isInteger(n) && n >= 0 && n <= MAX_FLOOR ? n : undefined
+  );
+  if (floor.min != null) filter.minFloor = floor.min;
+  if (floor.max != null) filter.maxFloor = floor.max;
 
   const types = strings(value.propertyTypes).filter((t): t is PropertyType =>
     (Object.values(PropertyType) as string[]).includes(t)
@@ -134,6 +146,8 @@ export function mergeParses(regex: ParsedQuery, llm: ParsedQuery): ParsedQuery {
   const groups: (keyof ParsedQuery['filter'])[][] = [
     ['minRooms', 'maxRooms'],
     ['minPrice', 'maxPrice'],
+    ['minFloorArea', 'maxFloorArea'],
+    ['minFloor', 'maxFloor'],
     ['propertyTypes'],
     ['areas', 'cities', 'regions'],
   ];

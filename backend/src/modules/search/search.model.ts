@@ -147,6 +147,18 @@ export class ParsedSearch {
   @Field(() => Float, { nullable: true })
   maxPrice?: number;
 
+  @Field(() => Float, { nullable: true })
+  minFloorArea?: number;
+
+  @Field(() => Float, { nullable: true })
+  maxFloorArea?: number;
+
+  @Field(() => Int, { nullable: true })
+  minFloor?: number;
+
+  @Field(() => Int, { nullable: true })
+  maxFloor?: number;
+
   @Field(() => [String], { nullable: true })
   areas?: string[];
 

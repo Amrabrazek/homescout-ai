@@ -31,6 +31,17 @@ function understood(parsed: ParsedSearch): string[] {
     );
   else if (maxPrice != null) chips.push(`under ${formatPriceShort(maxPrice)}`);
   else if (minPrice != null) chips.push(`over ${formatPriceShort(minPrice)}`);
+  const { minFloorArea, maxFloorArea, minFloor, maxFloor } = parsed;
+  if (minFloorArea != null && maxFloorArea != null)
+    chips.push(`${minFloorArea}–${maxFloorArea} m²`);
+  else if (minFloorArea != null) chips.push(`${minFloorArea}+ m²`);
+  else if (maxFloorArea != null) chips.push(`up to ${maxFloorArea} m²`);
+  if (maxFloor === 0) chips.push('ground floor');
+  else if (minFloor != null && minFloor === maxFloor)
+    chips.push(`floor ${minFloor}`);
+  else if (minFloor === 1 && maxFloor == null) chips.push('not ground floor');
+  else if (minFloor != null) chips.push(`floor ${minFloor}+`);
+  else if (maxFloor != null) chips.push(`up to floor ${maxFloor}`);
   chips.push(
     ...(parsed.propertyTypes ?? []).map((type) =>
       propertyTypeLabel(type as PropertyType)

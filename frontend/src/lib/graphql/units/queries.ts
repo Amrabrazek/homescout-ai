@@ -228,6 +228,10 @@ export const UNDERSTAND_SEARCH = gql`
       maxRooms
       minPrice
       maxPrice
+      minFloorArea
+      maxFloorArea
+      minFloor
+      maxFloor
       areas
       cities
       regions

@@ -75,8 +75,8 @@ describe('parseSearchQuery', () => {
   });
 
   it('does not treat other numbers or short words as hints', () => {
-    expect(parseSearchQuery('floor 3 sea view', vocabulary)).toEqual({
-      text: 'floor 3 sea view',
+    expect(parseSearchQuery('building 3 sea view', vocabulary)).toEqual({
+      text: 'building 3 sea view',
       filter: {},
     });
   });
@@ -105,6 +105,68 @@ describe('parseSearchQuery', () => {
       text: 'sea view coast',
       filter: {},
     });
+  });
+
+  it('parses messy price and type shorthand', () => {
+    expect(parseSearchQuery('need 3 bdr apt max 7 mil', vocabulary)).toEqual({
+      text: '',
+      filter: {
+        minRooms: 3,
+        maxRooms: 3,
+        maxPrice: 7_000_000,
+        propertyTypes: ['apartment'],
+      },
+    });
+    for (const q of ['villa 30m-40m', 'villa 30 to 40 million'])
+      expect(parseSearchQuery(q, vocabulary).filter).toEqual({
+        minPrice: 30_000_000,
+        maxPrice: 40_000_000,
+        propertyTypes: ['villa'],
+      });
+  });
+
+  it('parses size in square metres without reading it as a price', () => {
+    expect(
+      parseSearchQuery('apartment 150 sqm or bigger', vocabulary).filter
+    ).toEqual({ minFloorArea: 150, propertyTypes: ['apartment'] });
+    expect(parseSearchQuery('over 200 m2 under 9m', vocabulary).filter).toEqual(
+      { minFloorArea: 200, maxPrice: 9_000_000 }
+    );
+    expect(parseSearchQuery('less than 120 meters', vocabulary).filter).toEqual(
+      { maxFloorArea: 120 }
+    );
+    expect(
+      parseSearchQuery('200 meters from the beach', vocabulary).filter
+    ).toEqual({});
+  });
+
+  it('parses floors, including "not ground floor"', () => {
+    expect(
+      parseSearchQuery('2 bed under 5 mil not ground floor', vocabulary)
+    ).toEqual({
+      text: '',
+      filter: { minRooms: 2, maxRooms: 2, maxPrice: 5_000_000, minFloor: 1 },
+    });
+    expect(parseSearchQuery('ground floor with garden', vocabulary)).toEqual({
+      text: 'garden',
+      filter: { maxFloor: 0 },
+    });
+    expect(parseSearchQuery('high floor', vocabulary).filter).toEqual({
+      minFloor: 5,
+    });
+    expect(parseSearchQuery('on the 3rd floor', vocabulary).filter).toEqual({
+      minFloor: 3,
+      maxFloor: 3,
+    });
+  });
+
+  it('drops excluded features and filler words from the search text', () => {
+    expect(
+      parseSearchQuery(
+        'im looking for something with a sea view without a pool',
+        vocabulary
+      ).text
+    ).toBe('sea view');
   });
 
   it('matches cities and regions as well as areas', () => {
