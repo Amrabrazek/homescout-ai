@@ -23,7 +23,7 @@ export interface ParsedQuery {
   >;
 }
 
-const NUMBER = String.raw`(\d+(?:\.\d+)?)\s*(m|mn|million|k|thousand)?`;
+const NUMBER = String.raw`(\d+(?:\.\d+)?)\s*(million|thousand|mn|m|k)?\b`;
 const UPPER = String.raw`under|below|less than|max(?:imum)?|up to|upto|within|budget(?: of)?|<`;
 const LOWER = String.raw`over|above|more than|min(?:imum)?|at least|starting(?: from)?|>`;
 
@@ -61,6 +61,21 @@ const ROOMS =
   /(?:\b(at least|min(?:imum)?|up to|max(?:imum)?)\s+)?\b(\d{1,2})(?:\s*(?:-|–|to|or)\s*(\d{1,2}))?\s*(\+)?\s*-?\s*([a-z]+)\b(?:\s+(or more|plus|or less|max)\b)?/gi;
 const ROOM_ABBREVIATIONS = new Set(['br', 'bd', 'bdr', 'bed', 'beds', 'bhk']);
 const ROOM_WORDS = ['bedrooms', 'bedroom', 'rooms', 'room'];
+
+const GENERIC_PLACE_WORDS = new Set([
+  'north',
+  'south',
+  'east',
+  'west',
+  'city',
+  'coast',
+  'road',
+  'desert',
+  'capital',
+  'canal',
+  'delta',
+  'cairo',
+]);
 
 const PROPERTY_TYPES: [RegExp, PropertyType][] = [
   [/\bserviced apartments?\b/i, PropertyType.SERVICED_APARTMENT],
@@ -221,12 +236,41 @@ function matchLocations(
       }
       if (!best) continue;
 
-      const list = (filter[best.kind] ??= []);
-      if (!list.includes(best.name)) list.push(best.name);
+      add(filter, best.kind, best.name);
       used.fill(true, start, start + size);
     }
   }
+
+  // A distinctive word of a place name stands for that place: "Zayed" means
+  // Sheikh Zayed and New Zayed, "Gouna" means El Gouna.
+  words.forEach((word, i) => {
+    const w = normalize(word);
+    if (used[i] || w.length < 5 || GENERIC_PLACE_WORDS.has(w)) return;
+    for (const [kind, names] of kinds) {
+      for (const name of names) {
+        const match = normalize(name)
+          .split(' ')
+          .some(
+            (part) =>
+              !GENERIC_PLACE_WORDS.has(part) &&
+              editDistance(w, part) <= allowedTypos(part)
+          );
+        if (!match) continue;
+        add(filter, kind, name);
+        used[i] = true;
+      }
+    }
+  });
   return words.filter((_, i) => !used[i]);
+}
+
+function add(
+  filter: ParsedQuery['filter'],
+  kind: 'areas' | 'cities' | 'regions',
+  name: string
+) {
+  const list = (filter[kind] ??= []);
+  if (!list.includes(name)) list.push(name);
 }
 
 function allowedTypos(name: string): number {

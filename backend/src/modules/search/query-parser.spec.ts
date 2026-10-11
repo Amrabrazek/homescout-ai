@@ -35,8 +35,12 @@ describe('parseSearchQuery', () => {
     ['over 2,500,000 EGP', { minPrice: 2_500_000 }],
     ['below 900k', { maxPrice: 900_000 }],
     ['up to 12', { maxPrice: 12_000_000 }],
+    [
+      'between 10 and 15 million',
+      { minPrice: 10_000_000, maxPrice: 15_000_000 },
+    ],
   ])('parses prices in "%s"', (query, filter) => {
-    expect(parseSearchQuery(query, vocabulary).filter).toEqual(filter);
+    expect(parseSearchQuery(query, vocabulary)).toEqual({ text: '', filter });
   });
 
   it.each(['2br', '2 bed', '2-bedroom', '2 rooms'])(
@@ -73,6 +77,32 @@ describe('parseSearchQuery', () => {
   it('does not treat other numbers or short words as hints', () => {
     expect(parseSearchQuery('floor 3 sea view', vocabulary)).toEqual({
       text: 'floor 3 sea view',
+      filter: {},
+    });
+  });
+
+  it('matches a place by its distinctive word', () => {
+    expect(
+      parseSearchQuery('villa in New Cairo or Zayed', {
+        ...vocabulary,
+        areas: [...vocabulary.areas, 'New Zayed'],
+      })
+    ).toEqual({
+      text: '',
+      filter: {
+        propertyTypes: ['villa'],
+        areas: ['New Cairo', 'Sheikh Zayed', 'New Zayed'],
+      },
+    });
+    expect(parseSearchQuery('gouna chalet', vocabulary).filter).toEqual({
+      propertyTypes: ['chalet'],
+      areas: ['El Gouna'],
+    });
+  });
+
+  it('does not treat generic place words as places', () => {
+    expect(parseSearchQuery('sea view near the coast', vocabulary)).toEqual({
+      text: 'sea view coast',
       filter: {},
     });
   });
