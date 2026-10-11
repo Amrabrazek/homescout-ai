@@ -15,6 +15,7 @@ import {
   UnitSortField,
   UnitSortInput,
 } from '../unit/dto/unit-sort.input';
+import { LlmQueryParser } from './llm-query-parser';
 import { LocationVocabulary, parseSearchQuery } from './query-parser';
 import {
   FacetCountResponse,
@@ -39,7 +40,7 @@ const VOCABULARY_TTL_MS = 5 * 60_000;
 
 /**
  * The one search entry point: free text is parsed into hard filters (rooms,
- * price, location); what remains goes to Typesense as a hybrid query, keyword
+ * price, property type, location; regex first, then an LLM for leftovers); what remains goes to Typesense as a hybrid query, keyword
  * (typo-tolerant) fused with a vector query from the active EmbeddingProvider.
  */
 @Injectable()
@@ -50,7 +51,8 @@ export class SearchService {
   constructor(
     private readonly typesense: TypesenseService,
     private readonly dataSource: DataSource,
-    @Inject(EMBEDDING_PROVIDER) private readonly embeddings: EmbeddingProvider
+    @Inject(EMBEDDING_PROVIDER) private readonly embeddings: EmbeddingProvider,
+    private readonly llmParser: LlmQueryParser
   ) {}
 
   async search(request: UnitSearchRequest): Promise<SearchUnitsResponse> {
@@ -105,7 +107,12 @@ export class SearchService {
     const { searchTerm, ...explicit } = filter;
     if (!searchTerm?.trim()) return { text: '', filter: explicit };
 
-    const parsed = parseSearchQuery(searchTerm, await this.locations());
+    const vocabulary = await this.locations();
+    const parsed = await this.llmParser.refine(
+      searchTerm,
+      parseSearchQuery(searchTerm, vocabulary),
+      vocabulary
+    );
     const merged: UnitFilterInput = { ...parsed.filter };
     for (const [key, value] of Object.entries(explicit)) {
       if (value != null && !(Array.isArray(value) && value.length === 0))

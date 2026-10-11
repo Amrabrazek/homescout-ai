@@ -231,6 +231,7 @@ export const UNDERSTAND_SEARCH = gql`
       areas
       cities
       regions
+      propertyTypes
     }
   }
 `;

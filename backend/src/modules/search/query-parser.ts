@@ -1,3 +1,4 @@
+import { PropertyType } from '../../common/enums/unit-attributes';
 import { UnitFilterInput } from '../unit/dto/unit-filter.input';
 
 export interface LocationVocabulary {
@@ -18,6 +19,7 @@ export interface ParsedQuery {
     | 'areas'
     | 'cities'
     | 'regions'
+    | 'propertyTypes'
   >;
 }
 
@@ -55,9 +57,22 @@ const PRICE_PATTERNS: {
   },
 ];
 
-const ROOMS = /\b(\d{1,2})\s*-?\s*([a-z]+)\b/gi;
+const ROOMS =
+  /(?:\b(at least|min(?:imum)?|up to|max(?:imum)?)\s+)?\b(\d{1,2})(?:\s*(?:-|–|to|or)\s*(\d{1,2}))?\s*(\+)?\s*-?\s*([a-z]+)\b(?:\s+(or more|plus|or less|max)\b)?/gi;
 const ROOM_ABBREVIATIONS = new Set(['br', 'bd', 'bdr', 'bed', 'beds', 'bhk']);
 const ROOM_WORDS = ['bedrooms', 'bedroom', 'rooms', 'room'];
+
+const PROPERTY_TYPES: [RegExp, PropertyType][] = [
+  [/\bserviced apartments?\b/i, PropertyType.SERVICED_APARTMENT],
+  [/\bstudios?\b/i, PropertyType.STUDIO],
+  [/\b(?:apartments?|flats?)\b/i, PropertyType.APARTMENT],
+  [/\bduplex(?:es)?\b/i, PropertyType.DUPLEX],
+  [/\bpenthouses?\b/i, PropertyType.PENTHOUSE],
+  [/\btown ?houses?\b/i, PropertyType.TOWNHOUSE],
+  [/\btwin ?houses?\b/i, PropertyType.TWIN_HOUSE],
+  [/\bvillas?\b/i, PropertyType.VILLA],
+  [/\bchalets?\b/i, PropertyType.CHALET],
+];
 
 const STOP_WORDS = new Set([
   'a',
@@ -78,7 +93,7 @@ const STOP_WORDS = new Set([
 ]);
 
 /**
- * Pulls rooms, price and location out of free text so they become hard filters
+ * Pulls rooms, price, property type and location out of free text so they become hard filters
  * instead of fuzzy hints. Location names come from the data (projects table) and
  * are matched with typo tolerance, e.g. "New Ciaro" → area "New Cairo".
  */
@@ -89,6 +104,27 @@ export function parseSearchQuery(
   const filter: ParsedQuery['filter'] = {};
   let rest = ` ${query.replace(/(\d),(?=\d{3}\b)/g, '$1')} `;
 
+  rest = rest.replace(
+    ROOMS,
+    (
+      whole,
+      prefix?: string,
+      from?: string,
+      to?: string,
+      plus?: string,
+      word?: string,
+      suffix?: string
+    ) => {
+      if (!isRoomWord(word.toLowerCase())) return whole;
+      const qualifier = `${prefix ?? ''} ${suffix ?? ''}`;
+      applyRooms(filter, Number(from), to ? Number(to) : undefined, {
+        atLeast: !!plus || /least|min|more|plus/i.test(qualifier),
+        atMost: /up to|max|less/i.test(qualifier),
+      });
+      return ' ';
+    }
+  );
+
   for (const { regex, apply } of PRICE_PATTERNS) {
     const match = rest.match(regex);
     if (!match) continue;
@@ -96,11 +132,11 @@ export function parseSearchQuery(
     rest = rest.replace(match[0], ' ');
   }
 
-  rest = rest.replace(ROOMS, (whole, count: string, word: string) => {
-    if (!isRoomWord(word.toLowerCase())) return whole;
-    filter.minRooms = filter.maxRooms = Number(count);
-    return ' ';
-  });
+  for (const [regex, type] of PROPERTY_TYPES) {
+    if (!regex.test(rest)) continue;
+    (filter.propertyTypes ??= []).push(type);
+    rest = rest.replace(regex, ' ');
+  }
 
   const words = rest.split(/\s+/).filter(Boolean);
   const remaining = matchLocations(words, vocabulary, filter);
@@ -109,6 +145,24 @@ export function parseSearchQuery(
     text: remaining.filter((w) => !STOP_WORDS.has(w.toLowerCase())).join(' '),
     filter,
   };
+}
+
+function applyRooms(
+  filter: ParsedQuery['filter'],
+  from: number,
+  to: number | undefined,
+  { atLeast, atMost }: { atLeast: boolean; atMost: boolean }
+) {
+  if (to != null) {
+    filter.minRooms = Math.min(from, to);
+    filter.maxRooms = Math.max(from, to);
+  } else if (atLeast) {
+    filter.minRooms = from;
+  } else if (atMost) {
+    filter.maxRooms = from;
+  } else {
+    filter.minRooms = filter.maxRooms = from;
+  }
 }
 
 function toPrice(value: string, unit?: string): number {

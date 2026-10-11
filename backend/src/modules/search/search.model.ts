@@ -155,4 +155,7 @@ export class ParsedSearch {
 
   @Field(() => [String], { nullable: true })
   regions?: string[];
+
+  @Field(() => [PropertyType], { nullable: true })
+  propertyTypes?: PropertyType[];
 }

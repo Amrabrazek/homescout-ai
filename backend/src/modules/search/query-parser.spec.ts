@@ -25,8 +25,8 @@ describe('parseSearchQuery', () => {
     expect(
       parseSearchQuery('family villa with a garden in sheikh zayd', vocabulary)
     ).toEqual({
-      text: 'family villa garden',
-      filter: { areas: ['Sheikh Zayed'] },
+      text: 'family garden',
+      filter: { areas: ['Sheikh Zayed'], propertyTypes: ['villa'] },
     });
   });
 
@@ -48,6 +48,27 @@ describe('parseSearchQuery', () => {
       });
     }
   );
+
+  it.each([
+    ['2-3 rooms', { minRooms: 2, maxRooms: 3 }],
+    ['2 or 3 bedrooms', { minRooms: 2, maxRooms: 3 }],
+    ['3 to 4 beds', { minRooms: 3, maxRooms: 4 }],
+    ['3+ beds', { minRooms: 3 }],
+    ['3 bedrooms or more', { minRooms: 3 }],
+    ['at least 3 bedrooms', { minRooms: 3 }],
+    ['up to 2 rooms', { maxRooms: 2 }],
+  ])('parses room ranges in "%s"', (query, filter) => {
+    expect(parseSearchQuery(query, vocabulary)).toEqual({ text: '', filter });
+  });
+
+  it('parses property types', () => {
+    expect(
+      parseSearchQuery('studio or serviced apartment', vocabulary)
+    ).toEqual({
+      text: '',
+      filter: { propertyTypes: ['serviced_apartment', 'studio'] },
+    });
+  });
 
   it('does not treat other numbers or short words as hints', () => {
     expect(parseSearchQuery('floor 3 sea view', vocabulary)).toEqual({

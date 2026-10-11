@@ -22,6 +22,7 @@ describe('SearchResolver.understandSearch', () => {
       areas: ['New Cairo'],
       cities: undefined,
       regions: undefined,
+      propertyTypes: undefined,
     });
     expect(understand).toHaveBeenCalledWith({
       searchTerm: '3 bed garden in new cairo under 8M',

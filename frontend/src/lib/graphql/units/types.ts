@@ -189,4 +189,5 @@ export interface ParsedSearch {
   areas?: string[] | null;
   cities?: string[] | null;
   regions?: string[] | null;
+  propertyTypes?: string[] | null;
 }
