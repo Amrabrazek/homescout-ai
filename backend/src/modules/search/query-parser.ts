@@ -62,6 +62,21 @@ const ROOMS =
 const ROOM_ABBREVIATIONS = new Set(['br', 'bd', 'bdr', 'bed', 'beds', 'bhk']);
 const ROOM_WORDS = ['bedrooms', 'bedroom', 'rooms', 'room'];
 
+const GENERIC_PLACE_WORDS = new Set([
+  'north',
+  'south',
+  'east',
+  'west',
+  'city',
+  'coast',
+  'road',
+  'desert',
+  'capital',
+  'canal',
+  'delta',
+  'cairo',
+]);
+
 const PROPERTY_TYPES: [RegExp, PropertyType][] = [
   [/\bserviced apartments?\b/i, PropertyType.SERVICED_APARTMENT],
   [/\bstudios?\b/i, PropertyType.STUDIO],
@@ -221,12 +236,41 @@ function matchLocations(
       }
       if (!best) continue;
 
-      const list = (filter[best.kind] ??= []);
-      if (!list.includes(best.name)) list.push(best.name);
+      add(filter, best.kind, best.name);
       used.fill(true, start, start + size);
     }
   }
+
+  // A distinctive word of a place name stands for that place: "Zayed" means
+  // Sheikh Zayed and New Zayed, "Gouna" means El Gouna.
+  words.forEach((word, i) => {
+    const w = normalize(word);
+    if (used[i] || w.length < 5 || GENERIC_PLACE_WORDS.has(w)) return;
+    for (const [kind, names] of kinds) {
+      for (const name of names) {
+        const match = normalize(name)
+          .split(' ')
+          .some(
+            (part) =>
+              !GENERIC_PLACE_WORDS.has(part) &&
+              editDistance(w, part) <= allowedTypos(part)
+          );
+        if (!match) continue;
+        add(filter, kind, name);
+        used[i] = true;
+      }
+    }
+  });
   return words.filter((_, i) => !used[i]);
+}
+
+function add(
+  filter: ParsedQuery['filter'],
+  kind: 'areas' | 'cities' | 'regions',
+  name: string
+) {
+  const list = (filter[kind] ??= []);
+  if (!list.includes(name)) list.push(name);
 }
 
 function allowedTypos(name: string): number {

@@ -77,6 +77,32 @@ describe('parseSearchQuery', () => {
     });
   });
 
+  it('matches a place by its distinctive word', () => {
+    expect(
+      parseSearchQuery('villa in New Cairo or Zayed', {
+        ...vocabulary,
+        areas: [...vocabulary.areas, 'New Zayed'],
+      })
+    ).toEqual({
+      text: '',
+      filter: {
+        propertyTypes: ['villa'],
+        areas: ['New Cairo', 'Sheikh Zayed', 'New Zayed'],
+      },
+    });
+    expect(parseSearchQuery('gouna chalet', vocabulary).filter).toEqual({
+      propertyTypes: ['chalet'],
+      areas: ['El Gouna'],
+    });
+  });
+
+  it('does not treat generic place words as places', () => {
+    expect(parseSearchQuery('sea view near the coast', vocabulary)).toEqual({
+      text: 'sea view coast',
+      filter: {},
+    });
+  });
+
   it('matches cities and regions as well as areas', () => {
     expect(parseSearchQuery('hurgada red sea', vocabulary).filter).toEqual({
       cities: ['Hurghada'],
