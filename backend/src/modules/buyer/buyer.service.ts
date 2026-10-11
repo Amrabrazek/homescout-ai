@@ -111,6 +111,16 @@ export class BuyerService {
     return rows.map((r) => r.unit_id);
   }
 
+  /** Units the buyer already saved or skipped; the feed doesn't offer them again. */
+  async decidedUnitIds(buyerId: string): Promise<string[]> {
+    const rows: { unit_id: string }[] = await this.dataSource.query(
+      `SELECT DISTINCT unit_id FROM buyer_events
+       WHERE buyer_id = $1 AND type IN ($2, $3)`,
+      [buyerId, BuyerEventType.SAVE, BuyerEventType.SKIP]
+    );
+    return rows.map((r) => r.unit_id);
+  }
+
   async savedUnits(buyerId: string): Promise<Unit[]> {
     return this.unitService.findManyByIds(await this.savedUnitIds(buyerId));
   }

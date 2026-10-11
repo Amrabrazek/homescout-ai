@@ -30,6 +30,13 @@ import {
   EmbeddingProvider,
 } from '../embedding/embedding.provider';
 
+export interface FeedCandidate {
+  id: string;
+  similarity: number | null;
+  /** Saves and views across all buyers. */
+  popularity: number;
+}
+
 @Injectable()
 export class UnitService {
   constructor(
@@ -123,8 +130,7 @@ export class UnitService {
       .filter((r) => byId.has(r.id))
       .map((r) => ({ unit: byId.get(r.id), similarity: r.similarity }));
 
-    const floor = 1 - EMBEDDING_MODELS[this.embeddings.model].maxDistance;
-    return rankSimilarUnits(seed, candidates, limit, floor);
+    return rankSimilarUnits(seed, candidates, limit, this.vectorFloor);
   }
 
   /** Units with their project, amenities and images, in the order of `ids`. */
@@ -145,6 +151,81 @@ export class UnitService {
     }
 
     return detailedUnits;
+  }
+
+  /**
+   * Feed candidates in the filtered pool: closest to the taste vector first
+   * (exact, like similarCandidates), then most saved and viewed, then newest.
+   */
+  async feedCandidates(
+    filter: UnitFilterInput,
+    taste: number[] | null,
+    limit: number,
+    {
+      createdAfter,
+      excludeIds = [],
+    }: { createdAfter?: Date; excludeIds?: string[] } = {}
+  ): Promise<FeedCandidate[]> {
+    const { where, params } = compileUnitFilter(filter).sql;
+    const qb = this.unitRepository
+      .createQueryBuilder('unit')
+      .innerJoin('unit.project', 'project')
+      .select('unit.id', 'id')
+      .addSelect(
+        `(SELECT COUNT(*) FROM buyer_events be
+          WHERE be.unit_id = unit.id AND be.type <> 'skip')`,
+        'popularity'
+      )
+      .where(where, params);
+    if (taste) {
+      qb.leftJoin(
+        'unit_embeddings',
+        'e',
+        'e.unit_id = unit.id AND e.model = :model',
+        { model: this.embeddings.model }
+      )
+        .addSelect('1 - (e.embedding <=> CAST(:taste AS vector))', 'similarity')
+        .setParameter('taste', `[${taste.join(',')}]`)
+        .orderBy('similarity', 'DESC', 'NULLS LAST');
+    } else {
+      qb.addSelect('NULL', 'similarity');
+    }
+    if (createdAfter) {
+      qb.andWhere('unit.createdAt > :createdAfter', { createdAfter });
+    }
+    if (excludeIds.length) {
+      qb.andWhere('unit.id NOT IN (:...excludeIds)', { excludeIds });
+    }
+    const rows = await qb
+      .addOrderBy('popularity', 'DESC')
+      .addOrderBy('unit.createdAt', 'DESC')
+      .limit(limit)
+      .getRawMany();
+    return rows.map((r) => ({
+      id: r.id,
+      similarity: r.similarity == null ? null : Number(r.similarity),
+      popularity: Number(r.popularity),
+    }));
+  }
+
+  /** Cosine similarity of each unit's embedding to `vector`; units without one are left out. */
+  async similarityTo(
+    unitIds: string[],
+    vector: number[]
+  ): Promise<Map<string, number>> {
+    if (unitIds.length === 0) return new Map();
+    const rows: { unit_id: string; similarity: string }[] =
+      await this.dataSource.query(
+        `SELECT unit_id, 1 - (embedding <=> $3::vector) AS similarity
+         FROM unit_embeddings WHERE unit_id = ANY($1) AND model = $2`,
+        [unitIds, this.embeddings.model, `[${vector.join(',')}]`]
+      );
+    return new Map(rows.map((r) => [r.unit_id, Number(r.similarity)]));
+  }
+
+  /** The cosine similarity a model's unrelated matches sit at. */
+  get vectorFloor(): number {
+    return 1 - EMBEDDING_MODELS[this.embeddings.model].maxDistance;
   }
 
   /** Exact nearest neighbours within the filtered pool, not the ANN index: post-filtering an index scan can return too few rows. */
