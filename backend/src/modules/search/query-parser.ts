@@ -23,7 +23,7 @@ export interface ParsedQuery {
   >;
 }
 
-const NUMBER = String.raw`(\d+(?:\.\d+)?)\s*(m|mn|million|k|thousand)?`;
+const NUMBER = String.raw`(\d+(?:\.\d+)?)\s*(million|thousand|mn|m|k)?\b`;
 const UPPER = String.raw`under|below|less than|max(?:imum)?|up to|upto|within|budget(?: of)?|<`;
 const LOWER = String.raw`over|above|more than|min(?:imum)?|at least|starting(?: from)?|>`;
 
