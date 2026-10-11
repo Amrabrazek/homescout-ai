@@ -34,6 +34,20 @@ describe('compileUnitFilter', () => {
     );
   });
 
+  it('matches a unit in any of the places when they are of different kinds', () => {
+    const { sql, typesense } = compileUnitFilter({
+      areas: ['New Cairo'],
+      regions: ['West Cairo'],
+      maxPrice: 50_000_000,
+    });
+    expect(sql.where).toBe(
+      '("project"."area" IN (:...f0) OR "project"."region" IN (:...f1)) AND "unit"."price" <= :f2'
+    );
+    expect(typesense).toBe(
+      '(area:=[`New Cairo`] || region:=[`West Cairo`]) && price:<=50000000'
+    );
+  });
+
   it('requires every selected amenity', () => {
     const { sql, typesense } = compileUnitFilter({ amenityIds: ['a', 'b'] });
     expect(sql.where).toContain('HAVING COUNT(DISTINCT amenity_id) = :f1');

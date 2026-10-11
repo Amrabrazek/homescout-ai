@@ -28,6 +28,7 @@ const FIELDS = {
 
 type Condition =
   | { kind: 'oneOf'; field: FieldRef; values: string[] }
+  | { kind: 'anyOf'; options: { field: FieldRef; values: string[] }[] }
   | { kind: 'range'; field: FieldRef; min?: number; max?: number }
   | { kind: 'allAmenities'; ids: string[] }
   | { kind: 'text'; term: string };
@@ -62,9 +63,14 @@ function toConditions(filter: UnitFilterInput): Condition[] {
   if (filter.searchTerm?.trim())
     conditions.push({ kind: 'text', term: filter.searchTerm.trim() });
   oneOf(FIELDS.projectId, filter.projectIds);
-  oneOf(FIELDS.area, filter.areas);
-  oneOf(FIELDS.city, filter.cities);
-  oneOf(FIELDS.region, filter.regions);
+  const places = [
+    { field: FIELDS.area, values: filter.areas },
+    { field: FIELDS.city, values: filter.cities },
+    { field: FIELDS.region, values: filter.regions },
+  ].filter((p) => p.values?.length);
+  if (places.length === 1) oneOf(places[0].field, places[0].values);
+  // "New Cairo or West Cairo" names an area and a region: a unit in either matches.
+  if (places.length > 1) conditions.push({ kind: 'anyOf', options: places });
   oneOf(FIELDS.propertyType, filter.propertyTypes);
   if (filter.amenityIds?.length)
     conditions.push({ kind: 'allAmenities', ids: filter.amenityIds });
@@ -87,6 +93,10 @@ function toSql(c: Condition, params: Record<string, unknown>): string {
     }
     case 'oneOf':
       return `${c.field.sql} IN (:...${param(c.values)})`;
+    case 'anyOf':
+      return `(${c.options
+        .map((o) => `${o.field.sql} IN (:...${param(o.values)})`)
+        .join(' OR ')})`;
     case 'range': {
       const parts: string[] = [];
       if (c.min != null) parts.push(`${c.field.sql} >= :${param(c.min)}`);
@@ -108,6 +118,10 @@ function toTypesense(c: Condition): string | undefined {
       return undefined;
     case 'oneOf':
       return `${c.field.typesense}:=[${c.values.map(quote).join(',')}]`;
+    case 'anyOf':
+      return `(${c.options
+        .map((o) => `${o.field.typesense}:=[${o.values.map(quote).join(',')}]`)
+        .join(' || ')})`;
     case 'range':
       if (c.min != null && c.max != null)
         return `${c.field.typesense}:[${c.min}..${c.max}]`;
