@@ -88,4 +88,19 @@ export class UnitFilterInput {
   @Min(0)
   @IsOptional()
   maxFloorArea?: number;
+
+  @Field(() => Int, {
+    nullable: true,
+    description: 'Lowest floor (0 = ground)',
+  })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  minFloor?: number;
+
+  @Field(() => Int, { nullable: true })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  maxFloor?: number;
 }

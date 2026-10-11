@@ -13,6 +13,10 @@ const empty = {
   maxRooms: null,
   minPrice: null,
   maxPrice: null,
+  minFloorArea: null,
+  maxFloorArea: null,
+  minFloor: null,
+  maxFloor: null,
   propertyTypes: [],
   places: [],
   text: '',
@@ -154,6 +158,17 @@ describe('toParsedQuery', () => {
         regions: ['East Cairo'],
       },
     });
+  });
+});
+
+describe('toParsedQuery size and floor', () => {
+  it('keeps valid size and floor ranges', () => {
+    expect(
+      toParsedQuery(
+        { ...empty, minFloorArea: 150, minFloor: 1, maxFloor: 0.5 },
+        vocabulary
+      )?.filter
+    ).toEqual({ minFloorArea: 150, minFloor: 1 });
   });
 });
 

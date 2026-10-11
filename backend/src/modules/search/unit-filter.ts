@@ -24,6 +24,7 @@ const FIELDS = {
   rooms: { sql: '"unit"."rooms"', typesense: 'rooms' },
   price: { sql: '"unit"."price"', typesense: 'price' },
   floorArea: { sql: '"unit"."floor_area"', typesense: 'floorArea' },
+  floor: { sql: '"unit"."floor"', typesense: 'floor' },
 } satisfies Record<string, FieldRef>;
 
 type Condition =
@@ -77,6 +78,7 @@ function toConditions(filter: UnitFilterInput): Condition[] {
   range(FIELDS.rooms, filter.minRooms, filter.maxRooms);
   range(FIELDS.price, filter.minPrice, filter.maxPrice);
   range(FIELDS.floorArea, filter.minFloorArea, filter.maxFloorArea);
+  range(FIELDS.floor, filter.minFloor, filter.maxFloor);
   return conditions;
 }
 

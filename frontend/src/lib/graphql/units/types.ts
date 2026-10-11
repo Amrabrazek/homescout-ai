@@ -186,6 +186,10 @@ export interface ParsedSearch {
   maxRooms?: number | null;
   minPrice?: number | null;
   maxPrice?: number | null;
+  minFloorArea?: number | null;
+  maxFloorArea?: number | null;
+  minFloor?: number | null;
+  maxFloor?: number | null;
   areas?: string[] | null;
   cities?: string[] | null;
   regions?: string[] | null;

@@ -34,6 +34,12 @@ describe('compileUnitFilter', () => {
     );
   });
 
+  it('filters by floor', () => {
+    const { sql, typesense } = compileUnitFilter({ minFloor: 1 });
+    expect(sql.where).toBe('"unit"."floor" >= :f0');
+    expect(typesense).toBe('floor:>=1');
+  });
+
   it('matches a unit in any of the places when they are of different kinds', () => {
     const { sql, typesense } = compileUnitFilter({
       areas: ['New Cairo'],

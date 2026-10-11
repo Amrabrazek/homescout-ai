@@ -20,10 +20,15 @@ export interface ParsedQuery {
     | 'cities'
     | 'regions'
     | 'propertyTypes'
+    | 'minFloorArea'
+    | 'maxFloorArea'
+    | 'minFloor'
+    | 'maxFloor'
   >;
 }
 
-const NUMBER = String.raw`(\d+(?:\.\d+)?)\s*(million|thousand|mn|m|k)?\b`;
+const NUMBER = String.raw`(\d+(?:\.\d+)?)\s*(million|thousand|mil|mn|m|k)?\b`;
+const MILLIONS = String.raw`(\d+(?:\.\d+)?)\s*(million|mil|mn|m)\b`;
 const UPPER = String.raw`under|below|less than|max(?:imum)?|up to|upto|within|budget(?: of)?|<`;
 const LOWER = String.raw`over|above|more than|min(?:imum)?|at least|starting(?: from)?|>`;
 
@@ -34,6 +39,16 @@ const PRICE_PATTERNS: {
   {
     regex: new RegExp(
       String.raw`\b(?:between|from)\s+${NUMBER}\s+(?:and|to|-)\s+${NUMBER}`,
+      'i'
+    ),
+    apply: (m, f) => {
+      f.minPrice = toPrice(m[1], m[2] ?? m[4]);
+      f.maxPrice = toPrice(m[3], m[4]);
+    },
+  },
+  {
+    regex: new RegExp(
+      String.raw`(?:^|\s)(\d+(?:\.\d+)?)\s*(million|mil|mn|m)?\s*(?:-|–|to)\s*${MILLIONS}`,
       'i'
     ),
     apply: (m, f) => {
@@ -55,6 +70,28 @@ const PRICE_PATTERNS: {
     ),
     apply: (m, f) => (f.minPrice = toPrice(m[1], m[2])),
   },
+];
+
+const SIZE = new RegExp(
+  String.raw`(?:\b(${UPPER}|${LOWER})\s*)?\b(\d{2,4})\s*(?:sqm|sq\.? ?m|m2|m²|square met(?:er|re)s?|met(?:er|re)s?)(?=\s|$)(?!\s+(?:from|to|away))(?:\s*(or (?:more|bigger|larger|above)|plus|\+|or (?:less|smaller)|max))?`,
+  'i'
+);
+
+const HIGH_FLOOR = 5;
+const FLOORS: [RegExp, (f: ParsedQuery['filter'], n?: number) => void][] = [
+  [
+    /\b(?:not|no|above)\s+(?:on\s+)?(?:the\s+)?ground(?:[ -]floors?)?\b/i,
+    (f) => (f.minFloor = 1),
+  ],
+  [/\bground[ -]floors?\b/i, (f) => (f.maxFloor = 0)],
+  [
+    /\b(?:high|higher|upper|top)\s+floors?\b/i,
+    (f) => (f.minFloor = HIGH_FLOOR),
+  ],
+  [
+    /\b(?:floor\s+(\d{1,2})|(\d{1,2})(?:st|nd|rd|th)?\s+floor)\b/i,
+    (f, n) => (f.minFloor = f.maxFloor = n),
+  ],
 ];
 
 const ROOMS =
@@ -80,7 +117,7 @@ const GENERIC_PLACE_WORDS = new Set([
 const PROPERTY_TYPES: [RegExp, PropertyType][] = [
   [/\bserviced apartments?\b/i, PropertyType.SERVICED_APARTMENT],
   [/\bstudios?\b/i, PropertyType.STUDIO],
-  [/\b(?:apartments?|flats?)\b/i, PropertyType.APARTMENT],
+  [/\b(?:apartments?|apts?|flats?)\b/i, PropertyType.APARTMENT],
   [/\bduplex(?:es)?\b/i, PropertyType.DUPLEX],
   [/\bpenthouses?\b/i, PropertyType.PENTHOUSE],
   [/\btown ?houses?\b/i, PropertyType.TOWNHOUSE],
@@ -105,7 +142,27 @@ const STOP_WORDS = new Set([
   'egp',
   'price',
   'priced',
+  'i',
+  'im',
+  'me',
+  'my',
+  'we',
+  'to',
+  'is',
+  'need',
+  'want',
+  'looking',
+  'buy',
+  'some',
+  'any',
+  'something',
+  'anything',
+  'please',
 ]);
+
+/** "no pool", "without a garden": the keyword would rank the opposite first. */
+const NEGATED =
+  /\b(?:no|not|without|except)\s+(?:a\s+|an\s+|the\s+)?[\p{L}\p{N}]+/giu;
 
 /**
  * Pulls rooms, price, property type and location out of free text so they become hard filters
@@ -140,6 +197,29 @@ export function parseSearchQuery(
     }
   );
 
+  rest = rest.replace(
+    SIZE,
+    (_, qualifier?: string, size?: string, suffix?: string) => {
+      const words = `${qualifier ?? ''} ${suffix ?? ''}`;
+      if (
+        new RegExp(String.raw`\b(?:${UPPER})\b|less|smaller|max`, 'i').test(
+          words
+        )
+      )
+        filter.maxFloorArea = Number(size);
+      else filter.minFloorArea = Number(size);
+      return ' ';
+    }
+  );
+
+  for (const [regex, apply] of FLOORS) {
+    const match = rest.match(regex);
+    if (!match) continue;
+    const n = match[1] ?? match[2];
+    apply(filter, n != null ? Number(n) : undefined);
+    rest = rest.replace(match[0], ' ');
+  }
+
   for (const { regex, apply } of PRICE_PATTERNS) {
     const match = rest.match(regex);
     if (!match) continue;
@@ -153,7 +233,7 @@ export function parseSearchQuery(
     rest = rest.replace(regex, ' ');
   }
 
-  const words = rest.split(/\s+/).filter(Boolean);
+  const words = rest.replace(NEGATED, ' ').split(/\s+/).filter(Boolean);
   const remaining = matchLocations(words, vocabulary, filter);
 
   return {
@@ -187,6 +267,7 @@ function toPrice(value: string, unit?: string): number {
     case 'thousand':
       return n * 1_000;
     case 'm':
+    case 'mil':
     case 'mn':
     case 'million':
       return n * 1_000_000;
