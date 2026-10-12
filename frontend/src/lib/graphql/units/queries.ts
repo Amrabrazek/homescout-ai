@@ -168,6 +168,7 @@ export const SIMILAR_UNITS_QUERY = gql`
   query SimilarUnits($unitId: String!, $limit: Int) {
     similarUnits(unitId: $unitId, limit: $limit) {
       score
+      matchScore
       reasons
       unit {
         id

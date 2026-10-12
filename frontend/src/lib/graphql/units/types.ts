@@ -121,6 +121,8 @@ export interface GetUnitQueryVariables {
 export interface SimilarUnit {
   unit: Unit;
   score: number;
+  /** Match % for the buyer; null for anonymous calls. */
+  matchScore: number | null;
   reasons: string[];
 }
 

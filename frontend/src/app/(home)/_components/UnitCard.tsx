@@ -28,9 +28,11 @@ type UnitCardProps = {
     }>;
   };
   saved?: boolean;
+  /** Match % for this buyer, shown on the photo. */
+  matchScore?: number | null;
 };
 
-export default function UnitCard({ unit, saved }: UnitCardProps) {
+export default function UnitCard({ unit, saved, matchScore }: UnitCardProps) {
   const image = unit.images?.[0];
   const isNew = differenceInDays(new Date(), new Date(unit.createdAt)) <= 2;
   const location = [unit.project.name, unit.project.area]
@@ -59,6 +61,11 @@ export default function UnitCard({ unit, saved }: UnitCardProps) {
         {isNew && (
           <span className='absolute left-3 top-3 rounded-md bg-background px-2 py-0.5 text-[11px] font-extrabold tracking-wide'>
             NEW
+          </span>
+        )}
+        {matchScore != null && (
+          <span className='absolute bottom-3 left-3 rounded-full bg-primary px-2.5 py-1 text-xs font-extrabold tabular-nums text-primary-foreground shadow-sm'>
+            {matchScore}% match
           </span>
         )}
         <SaveHeart

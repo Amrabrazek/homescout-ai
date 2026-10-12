@@ -18,7 +18,7 @@ import { CardDescription } from '@/components/ui/card';
 import { formatArea, formatPrice } from '@/lib/utils/formatters';
 import { humanize } from '@/lib/buyer/fit';
 import type { BuyerProfile } from '@/lib/graphql/buyer/types';
-import type { Unit } from '@/lib/graphql/units/types';
+import type { SimilarUnit, Unit } from '@/lib/graphql/units/types';
 import pathsConfig from '@config/paths.config';
 import ContactModal from './ContactModal';
 import { SimilarUnits } from './SimilarUnits';
@@ -30,9 +30,14 @@ import { monthlyInstallment, PaymentPlan } from './PaymentPlan';
 type UnitDetailsProps = {
   unit: Unit;
   profile: BuyerProfile | null;
+  similarUnits: SimilarUnit[];
 };
 
-export default function UnitDetails({ unit, profile }: UnitDetailsProps) {
+export default function UnitDetails({
+  unit,
+  profile,
+  similarUnits,
+}: UnitDetailsProps) {
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const initialSaved = !!profile?.savedUnitIds.includes(unit.id);
   const location = [unit.project.area, unit.project.city]
@@ -198,7 +203,7 @@ export default function UnitDetails({ unit, profile }: UnitDetailsProps) {
         unitName={unit.name}
       />
 
-      <SimilarUnits unitId={unit.id} savedUnitIds={profile?.savedUnitIds} />
+      <SimilarUnits items={similarUnits} savedUnitIds={profile?.savedUnitIds} />
     </div>
   );
 }
