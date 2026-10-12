@@ -71,15 +71,20 @@ export function rankSimilarUnits(
   return diversify(ranked, limit);
 }
 
-function diversify(ranked: RankedUnit[], limit: number): RankedUnit[] {
-  const perProject = new Map<string, number>();
-  const picked: RankedUnit[] = [];
-  const skipped: RankedUnit[] = [];
+/** At most `perProject` per compound first, then the rest by rank. */
+export function diversify<T extends { unit: Unit }>(
+  ranked: T[],
+  limit: number,
+  perProject = MAX_PER_PROJECT
+): T[] {
+  const counts = new Map<string, number>();
+  const picked: T[] = [];
+  const skipped: T[] = [];
   for (const r of ranked) {
-    const count = perProject.get(r.unit.projectId) ?? 0;
-    if (count < MAX_PER_PROJECT) {
+    const count = counts.get(r.unit.projectId) ?? 0;
+    if (count < perProject) {
       picked.push(r);
-      perProject.set(r.unit.projectId, count + 1);
+      counts.set(r.unit.projectId, count + 1);
     } else {
       skipped.push(r);
     }

@@ -18,6 +18,7 @@ import { SearchModule } from './modules/search/search.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { BuyerModule } from './modules/buyer/buyer.module';
 import { ConciergeModule } from './modules/concierge/concierge.module';
+import { FeedModule } from './modules/feed/feed.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { ConciergeModule } from './modules/concierge/concierge.module';
     UploadModule,
     SyncModule,
     BuyerModule,
+    FeedModule,
     ConciergeModule,
   ],
 })

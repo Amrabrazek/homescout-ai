@@ -69,20 +69,6 @@ export class UnitResponse {
   facets?: FacetCount[];
 }
 
-@ObjectType()
-export class SimilarUnit {
-  @Field(() => Unit)
-  unit: Unit;
-
-  @Field(() => Float, {
-    description: 'Blend of vector and attribute closeness, 0 to 1',
-  })
-  score: number;
-
-  @Field(() => [String], { description: 'Short reasons, e.g. "8% cheaper"' })
-  reasons: string[];
-}
-
 @Resolver(() => Unit)
 export class UnitResolver {
   constructor(
@@ -147,13 +133,5 @@ export class UnitResolver {
   async images(@Parent() unit: Unit): Promise<Image[]> {
     if (unit.images) return unit.images;
     return this.unitService.getUnitImages(unit.id);
-  }
-
-  @Query(() => [SimilarUnit])
-  async similarUnits(
-    @Args('unitId') unitId: string,
-    @Args('limit', { type: () => Int, nullable: true }) limit?: number
-  ): Promise<SimilarUnit[]> {
-    return this.unitService.findSimilarUnits(unitId, limit);
   }
 }

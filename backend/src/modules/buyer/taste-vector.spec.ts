@@ -17,6 +17,12 @@ const expectVector = (actual: number[] | null, expected: number[]) => {
   actual!.forEach((value, i) => expect(value).toBeCloseTo(expected[i], 6));
 };
 
+const cosine = (a: number[], b: number[]) => {
+  const dot = a.reduce((sum, v, i) => sum + v * b[i], 0);
+  const norm = (v: number[]) => Math.sqrt(v.reduce((s, x) => s + x * x, 0));
+  return dot / (norm(a) * norm(b));
+};
+
 describe('computeTasteVector', () => {
   it('is null without events', () => {
     expect(computeTasteVector([], now)).toBeNull();
@@ -40,7 +46,7 @@ describe('computeTasteVector', () => {
     expectVector(taste, [1 / 1.3, 0.3 / 1.3]);
   });
 
-  it('pushes away from skipped units', () => {
+  it('leaves skips out; the feed scores them separately', () => {
     const taste = computeTasteVector(
       [
         event('a', BuyerEventType.SAVE, [1, 0]),
@@ -48,7 +54,7 @@ describe('computeTasteVector', () => {
       ],
       now
     );
-    expectVector(taste, [1 / 1.5, -0.5 / 1.5]);
+    expectVector(taste, [1, 0]);
   });
 
   it('halves the weight of an event every 14 days', () => {
@@ -80,6 +86,23 @@ describe('computeTasteVector', () => {
       now
     );
     expect(repeated).toEqual(once);
+  });
+
+  it('keeps a single skip from bending the taste away from a saved unit', () => {
+    // e5-like: every listing shares a large common direction (dim 0), so
+    // unrelated listings are ~0.8 similar. Subtracting a skip also subtracts
+    // that common part, which used to drag the taste away from every listing.
+    const listing = (own: number) =>
+      [Math.sqrt(0.8), 0, 0, 0].map((v, i) => (i === own ? Math.sqrt(0.2) : v));
+    const saved = listing(1);
+    const taste = computeTasteVector(
+      [
+        event('a', BuyerEventType.SAVE, saved),
+        event('c', BuyerEventType.SKIP, listing(2)),
+      ],
+      now
+    );
+    expect(cosine(taste!, saved)).toBeGreaterThan(0.99);
   });
 
   it('is null when only skips remain', () => {

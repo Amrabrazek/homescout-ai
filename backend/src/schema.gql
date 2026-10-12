@@ -113,6 +113,20 @@ type FacetStatsValue {
   sum: Float
 }
 
+type Feed {
+  """No preferences and no activity yet: items are popular, varied units"""
+  coldStart: Boolean!
+  items: [MatchedUnit!]!
+  section: FeedSection!
+}
+
+enum FeedSection {
+  FOR_YOU
+  IN_AREAS
+  IN_BUDGET
+  NEW
+}
+
 enum Finishing {
   CORE_SHELL
   FULLY_FINISHED
@@ -125,6 +139,17 @@ type Image {
   id: ID!
   units: [Unit!]
   url: String!
+}
+
+type MatchedUnit {
+  """Match % for this buyer; null when there is nothing to match"""
+  matchScore: Int
+
+  """
+  Short reasons from the score parts, e.g. "In your budget"
+  """
+  reasons: [String!]!
+  unit: Unit!
 }
 
 type Mutation {
@@ -148,6 +173,7 @@ type ParsedSearch {
   maxRooms: Int
   minPrice: Float
   minRooms: Int
+  propertyTypes: [PropertyType!]
   regions: [String!]
 
   """Words left for keyword and vector search"""
@@ -184,6 +210,17 @@ type Query {
   amenity(id: String!): Amenity
   developer(id: String!): Developer
   developers: [Developer!]!
+
+  """The buyer's home page sections"""
+  forYou(
+    limit: Int! = 8
+    section: FeedSection! = FOR_YOU
+
+    """
+    Start of "new since your last visit"
+    """
+    since: DateTime
+  ): Feed!
   image(id: String!): Image
   images: [Image!]!
   myProfile: BuyerProfile!
@@ -192,6 +229,8 @@ type Query {
   savedUnits: [Unit!]!
   searchFacets(filter: UnitFilterInput): FacetCountResponse!
   searchUnits(filter: UnitFilterInput, limit: Int, offset: Int, sort: UnitSortInput): SearchUnitsResponse!
+
+  """Neighbours of a unit, re-ranked with the buyer when x-buyer-id is sent"""
   similarUnits(limit: Int, unitId: String!): [SimilarUnit!]!
   understandSearch(searchTerm: String!): ParsedSearch!
   unit(id: String!): Unit
@@ -247,12 +286,15 @@ type SearchUnitsResponse {
 }
 
 type SimilarUnit {
+  """Match % for this buyer; null when there is nothing to match"""
+  matchScore: Int
+
   """
-  Short reasons, e.g. "8% cheaper"
+  Short reasons from the score parts, e.g. "In your budget"
   """
   reasons: [String!]!
 
-  """Blend of vector and attribute closeness, 0 to 1"""
+  """Closeness to the unit, blended with the buyer match, 0 to 1"""
   score: Float!
   unit: Unit!
 }
