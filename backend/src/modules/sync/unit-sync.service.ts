@@ -61,52 +61,16 @@ export class UnitSyncService {
   }
 
   private async refreshEmbeddings(units: Unit[]): Promise<number> {
-    if (units.length === 0) return 0;
-    const model = this.embeddings.model;
-    const rows: { unit_id: string; content_hash: string }[] =
-      await this.dataSource.query(
-        `SELECT unit_id, content_hash FROM unit_embeddings
-         WHERE model = $1 AND unit_id = ANY($2::uuid[])`,
-        [model, units.map((u) => u.id)]
+    const embedded = await refreshUnitEmbeddings(
+      this.dataSource,
+      this.embeddings,
+      units
+    );
+    if (embedded)
+      this.logger.log(
+        `Embedded ${embedded} unit(s) with ${this.embeddings.model}`
       );
-    const stored = new Map(rows.map((r) => [r.unit_id, r.content_hash]));
-
-    const stale = units
-      .map((unit) => {
-        const text = buildUnitEmbeddingText(unit);
-        return { unit, text, hash: contentHash(text) };
-      })
-      .filter(({ unit, hash }) => stored.get(unit.id) !== hash);
-    if (stale.length === 0) return 0;
-
-    const vectors = await this.embeddings.embedDocuments(
-      stale.map((s) => s.text)
-    );
-    for (const vector of vectors) {
-      if (vector.length !== this.embeddings.dimensions) {
-        throw new Error(
-          `${model} returned ${vector.length} dims, expected ${this.embeddings.dimensions}`
-        );
-      }
-    }
-
-    await this.dataSource.query(
-      `INSERT INTO unit_embeddings (unit_id, model, embedding, content_hash)
-       SELECT u.id, $1, u.embedding::vector, u.hash
-       FROM unnest($2::uuid[], $3::text[], $4::text[]) AS u(id, embedding, hash)
-       ON CONFLICT (unit_id, model) DO UPDATE
-         SET embedding = EXCLUDED.embedding,
-             content_hash = EXCLUDED.content_hash,
-             updated_at = NOW()`,
-      [
-        model,
-        stale.map((s) => s.unit.id),
-        vectors.map((v) => `[${v.join(',')}]`),
-        stale.map((s) => s.hash),
-      ]
-    );
-    this.logger.log(`Embedded ${stale.length} unit(s) with ${model}`);
-    return stale.length;
+    return embedded;
   }
 
   private async loadEmbeddings(ids: string[]): Promise<Map<string, number[]>> {
@@ -136,4 +100,58 @@ export class UnitSyncService {
     }
     return byUnit;
   }
+}
+
+/**
+ * Embeds the units whose embedding text changed since they were last embedded
+ * with `provider`'s model. Units need project, project.developer and amenities.
+ */
+export async function refreshUnitEmbeddings(
+  dataSource: DataSource,
+  provider: EmbeddingProvider,
+  units: Unit[]
+): Promise<number> {
+  if (units.length === 0) return 0;
+  const model = provider.model;
+  const rows: { unit_id: string; content_hash: string }[] =
+    await dataSource.query(
+      `SELECT unit_id, content_hash FROM unit_embeddings
+       WHERE model = $1 AND unit_id = ANY($2::uuid[])`,
+      [model, units.map((u) => u.id)]
+    );
+  const stored = new Map(rows.map((r) => [r.unit_id, r.content_hash]));
+
+  const stale = units
+    .map((unit) => {
+      const text = buildUnitEmbeddingText(unit);
+      return { unit, text, hash: contentHash(text) };
+    })
+    .filter(({ unit, hash }) => stored.get(unit.id) !== hash);
+  if (stale.length === 0) return 0;
+
+  const vectors = await provider.embedDocuments(stale.map((s) => s.text));
+  for (const vector of vectors) {
+    if (vector.length !== provider.dimensions) {
+      throw new Error(
+        `${model} returned ${vector.length} dims, expected ${provider.dimensions}`
+      );
+    }
+  }
+
+  await dataSource.query(
+    `INSERT INTO unit_embeddings (unit_id, model, embedding, content_hash)
+     SELECT u.id, $1, u.embedding::vector, u.hash
+     FROM unnest($2::uuid[], $3::text[], $4::text[]) AS u(id, embedding, hash)
+     ON CONFLICT (unit_id, model) DO UPDATE
+       SET embedding = EXCLUDED.embedding,
+           content_hash = EXCLUDED.content_hash,
+           updated_at = NOW()`,
+    [
+      model,
+      stale.map((s) => s.unit.id),
+      vectors.map((v) => `[${v.join(',')}]`),
+      stale.map((s) => s.hash),
+    ]
+  );
+  return stale.length;
 }

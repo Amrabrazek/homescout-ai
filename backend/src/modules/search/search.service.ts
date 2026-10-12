@@ -154,23 +154,29 @@ export class SearchService {
       !this.vocabulary ||
       Date.now() - this.vocabulary.at > VOCABULARY_TTL_MS
     ) {
-      const value = this.dataSource
-        .query(
-          `SELECT array_agg(DISTINCT area) FILTER (WHERE area IS NOT NULL) AS areas,
-                  array_agg(DISTINCT city) FILTER (WHERE city IS NOT NULL) AS cities,
-                  array_agg(DISTINCT region) FILTER (WHERE region IS NOT NULL) AS regions
-           FROM projects`
-        )
-        .then(([row]) => ({
-          areas: row?.areas ?? [],
-          cities: row?.cities ?? [],
-          regions: row?.regions ?? [],
-        }));
+      const value = loadLocationVocabulary(this.dataSource);
       value.catch(() => (this.vocabulary = undefined));
       this.vocabulary = { value, at: Date.now() };
     }
     return this.vocabulary.value;
   }
+}
+
+/** Every place name in the data, for the search parsers. */
+export async function loadLocationVocabulary(
+  dataSource: DataSource
+): Promise<LocationVocabulary> {
+  const [row] = await dataSource.query(
+    `SELECT array_agg(DISTINCT area) FILTER (WHERE area IS NOT NULL) AS areas,
+            array_agg(DISTINCT city) FILTER (WHERE city IS NOT NULL) AS cities,
+            array_agg(DISTINCT region) FILTER (WHERE region IS NOT NULL) AS regions
+     FROM projects`
+  );
+  return {
+    areas: row?.areas ?? [],
+    cities: row?.cities ?? [],
+    regions: row?.regions ?? [],
+  };
 }
 
 function toSearchDocument(doc: UnitDocument): SearchUnitDocument {
