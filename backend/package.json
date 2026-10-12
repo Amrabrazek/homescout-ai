@@ -25,7 +25,8 @@
     "reindex": "ts-node -r tsconfig-paths/register src/scripts/reindex.ts",
     "db:migrate": "typeorm-ts-node-commonjs migration:run -d src/data-source.ts",
     "db:migrate:revert": "typeorm-ts-node-commonjs migration:revert -d src/data-source.ts",
-    "db:seed": "ts-node -r tsconfig-paths/register src/scripts/seed.ts"
+    "db:seed": "ts-node -r tsconfig-paths/register src/scripts/seed.ts",
+    "eval": "ts-node -r tsconfig-paths/register src/scripts/eval.ts"
   },
   "keywords": [
     "nestjs",
