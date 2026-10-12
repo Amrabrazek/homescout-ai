@@ -3,7 +3,6 @@ import {
   GET_UNITS,
   GET_FILTER_DATA,
   SEARCH_UNITS,
-  SIMILAR_UNITS_QUERY,
   SEARCH_FACETS,
   UNDERSTAND_SEARCH,
 } from './queries';
@@ -19,8 +18,6 @@ import type {
   FacetCount,
   FacetCountValue,
   UnitsResponse,
-  GetSimilarUnitsQueryResponse,
-  SimilarUnitsQueryVariables,
   ParsedSearch,
 } from './types';
 
@@ -55,19 +52,6 @@ function useTypesenseUnits(filter: UnitFilter, sort?: UnitSort, offset = 0) {
         offset,
       },
       notifyOnNetworkStatusChange: true,
-      fetchPolicy: 'cache-and-network',
-    }
-  );
-}
-
-export function useSimilarUnits(unitId: string, limit = 4) {
-  return useQuery<GetSimilarUnitsQueryResponse, SimilarUnitsQueryVariables>(
-    SIMILAR_UNITS_QUERY,
-    {
-      variables: {
-        unitId,
-        limit,
-      },
       fetchPolicy: 'cache-and-network',
     }
   );

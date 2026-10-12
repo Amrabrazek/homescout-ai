@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import UnitListing from '@/app/(home)/_components/UnitListing';
 import AskHero from './AskHero';
 import FilterBar from './FilterBar';
+import ForYouRails from './ForYouRails';
+import type { HomeFeed } from '@/lib/graphql/feed/types';
 import type {
   UnitFilter,
   UnitSort,
@@ -14,9 +16,10 @@ import type {
 
 type HomeProps = {
   savedUnitIds: string[];
+  feed: HomeFeed | null;
 };
 
-export default function Home({ savedUnitIds }: HomeProps) {
+export default function Home({ savedUnitIds, feed }: HomeProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<UnitFilter>({});
@@ -164,6 +167,9 @@ export default function Home({ savedUnitIds }: HomeProps) {
           handleFilterChange({ ...filters, searchTerm })
         }
       />
+      {feed && !isSearching(filters) && (
+        <ForYouRails feed={feed} savedUnitIds={savedUnitIds} />
+      )}
       <div id='property-search' className='flex flex-col gap-6 pb-16'>
         <FilterBar
           filters={filters}
@@ -180,3 +186,8 @@ export default function Home({ savedUnitIds }: HomeProps) {
     </>
   );
 }
+
+const isSearching = (filters: UnitFilter) =>
+  Object.values(filters).some((value) =>
+    Array.isArray(value) ? value.length > 0 : value != null && value !== ''
+  );

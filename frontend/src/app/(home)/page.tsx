@@ -1,5 +1,6 @@
 import Home from './_components/Home';
 import { getMyProfile } from '@/lib/graphql/buyer/server';
+import { getHomeFeed } from '@/lib/graphql/feed/server';
 
 export const metadata = {
   title: 'Find a home that fits how you live | HomeScout AI',
@@ -29,9 +30,10 @@ async function savedUnitIds(): Promise<string[]> {
 }
 
 export default async function HomePage() {
+  const [saved, feed] = await Promise.all([savedUnitIds(), getHomeFeed()]);
   return (
     <main className='container min-h-screen'>
-      <Home savedUnitIds={await savedUnitIds()} />
+      <Home savedUnitIds={saved} feed={feed} />
     </main>
   );
 }

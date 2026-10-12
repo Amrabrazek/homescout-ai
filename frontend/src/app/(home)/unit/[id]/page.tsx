@@ -4,6 +4,7 @@ import UnitDetails, { UnitDetailSkeleton } from './_components/UnitDetail';
 import { Suspense } from 'react';
 import { getUnitById } from '@/lib/graphql/units/server.loaders';
 import { getMyProfile } from '@/lib/graphql/buyer/server';
+import { getSimilarUnits } from '@/lib/graphql/feed/server';
 
 type Props = {
   params: { id: string };
@@ -36,11 +37,14 @@ export default async function UnitPage({ params }: Props) {
     notFound();
   }
 
-  const profile = await getMyProfile().catch(() => null);
+  const [profile, similarUnits] = await Promise.all([
+    getMyProfile().catch(() => null),
+    getSimilarUnits(unit.id),
+  ]);
 
   return (
     <Suspense fallback={<UnitDetailSkeleton />}>
-      <UnitDetails unit={unit} profile={profile} />
+      <UnitDetails unit={unit} profile={profile} similarUnits={similarUnits} />
     </Suspense>
   );
 }
