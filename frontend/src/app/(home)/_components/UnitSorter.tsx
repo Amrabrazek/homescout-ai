@@ -13,8 +13,11 @@ import {
   UnitSort,
 } from '@/lib/graphql/units/types';
 
+// Best match is search relevance, so it only exists while searching. Without
+// a search the API's default order is newest first.
+const BEST_MATCH = { value: 'best', label: 'Best match', sort: {} };
+
 const OPTIONS: { value: string; label: string; sort: UnitSort }[] = [
-  { value: 'best', label: 'Best match', sort: {} },
   {
     value: 'newest',
     label: 'Newest',
@@ -37,27 +40,34 @@ const OPTIONS: { value: string; label: string; sort: UnitSort }[] = [
   },
 ];
 
-function toValue(sort: UnitSort): string {
+function toValue(sort: UnitSort, searching: boolean): string {
+  if (!sort.field) return searching ? BEST_MATCH.value : 'newest';
   const match = OPTIONS.find(
     (o) =>
       o.sort.field === sort.field &&
       (!o.sort.field ||
         o.sort.direction === (sort.direction ?? o.sort.direction))
   );
-  return match?.value ?? 'best';
+  return match?.value ?? 'newest';
 }
 
 interface UnitSorterProps {
   sort: UnitSort;
   onSortChange: (sort: UnitSort) => void;
+  searching: boolean;
 }
 
-export default function UnitSorter({ sort, onSortChange }: UnitSorterProps) {
+export default function UnitSorter({
+  sort,
+  onSortChange,
+  searching,
+}: UnitSorterProps) {
+  const options = searching ? [BEST_MATCH, ...OPTIONS] : OPTIONS;
   return (
     <Select
-      value={toValue(sort)}
+      value={toValue(sort, searching)}
       onValueChange={(value) =>
-        onSortChange(OPTIONS.find((o) => o.value === value)?.sort ?? {})
+        onSortChange(options.find((o) => o.value === value)?.sort ?? {})
       }
     >
       <SelectTrigger
@@ -68,7 +78,7 @@ export default function UnitSorter({ sort, onSortChange }: UnitSorterProps) {
         <SelectValue />
       </SelectTrigger>
       <SelectContent align='end'>
-        {OPTIONS.map((o) => (
+        {options.map((o) => (
           <SelectItem key={o.value} value={o.value}>
             {o.label}
           </SelectItem>

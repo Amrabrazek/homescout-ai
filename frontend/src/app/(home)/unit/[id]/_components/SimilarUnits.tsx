@@ -1,4 +1,4 @@
-import { UnitRail } from '@/app/(home)/_components/ForYouRails';
+import { UnitRail } from '@/app/(home)/_components/ForYouSection';
 import type { SimilarUnit } from '@/lib/graphql/units/types';
 
 interface SimilarUnitsProps {

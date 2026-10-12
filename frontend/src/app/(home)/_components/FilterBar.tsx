@@ -158,7 +158,11 @@ export default function FilterBar({
           <Share2 />
           <span className='hidden sm:inline'>Share</span>
         </Button>
-        <UnitSorter sort={sort} onSortChange={onSortChange} />
+        <UnitSorter
+          sort={sort}
+          onSortChange={onSortChange}
+          searching={!!filters.searchTerm?.trim()}
+        />
       </div>
     </div>
   );

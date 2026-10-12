@@ -31,8 +31,8 @@ export const MATCHED_UNIT_FIELDS = gql`
 
 export const FOR_YOU = gql`
   ${MATCHED_UNIT_FIELDS}
-  query ForYou($section: FeedSection!, $limit: Int!, $since: DateTime) {
-    forYou(section: $section, limit: $limit, since: $since) {
+  query ForYou($section: FeedSection!, $limit: Int!) {
+    forYou(section: $section, limit: $limit) {
       section
       coldStart
       items {
