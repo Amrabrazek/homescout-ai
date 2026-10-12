@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import UnitListing from '@/app/(home)/_components/UnitListing';
 import AskHero from './AskHero';
 import FilterBar from './FilterBar';
-import ForYouRails from './ForYouRails';
+import ForYouSection from './ForYouSection';
 import type { HomeFeed } from '@/lib/graphql/feed/types';
 import type {
   UnitFilter,
@@ -168,7 +168,7 @@ export default function Home({ savedUnitIds, feed }: HomeProps) {
         }
       />
       {feed && !isSearching(filters) && (
-        <ForYouRails feed={feed} savedUnitIds={savedUnitIds} />
+        <ForYouSection feed={feed} savedUnitIds={savedUnitIds} />
       )}
       <div id='property-search' className='flex flex-col gap-6 pb-16'>
         <FilterBar

@@ -40,10 +40,10 @@ Update this table in the same PR when you add, move or rename one of these place
 | Backend tests | unit: `src/**/*.spec.ts` (`npm test`); API: `test/**/*.e2e-spec.ts` (mocked services) |
 | Brand (colour tokens, font, logo, favicon) | `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`, `frontend/src/components/brand/Logo.tsx`, `frontend/public/favicon.svg` |
 | Home page (ask box, filter bar + sheet, listing, cards) | `frontend/src/app/(home)/_components/` (`AskHero.tsx`, `FilterBar.tsx`, `UnitFilters.tsx`, `UnitListing.tsx`, `UnitCard.tsx`) |
-| Home "For you" rails (sections, dedupe, cold-start nudge, reason chips) | `frontend/src/app/(home)/_components/ForYouRails.tsx`; server fetch in `frontend/src/lib/graphql/feed/server.ts` (also similar homes for the unit page) |
+| Home "For you" section (match %, reason chips, cold-start nudge) | `frontend/src/app/(home)/_components/ForYouSection.tsx`; server fetch in `frontend/src/lib/graphql/feed/server.ts` (also similar homes for the unit page) |
 | Unit page (gallery, payment plan, "why it fits you") | `frontend/src/app/(home)/unit/[id]/`; fit checks in `frontend/src/lib/buyer/fit.ts` |
 | Dashboard (CRUD forms) | `frontend/src/app/dashboard/` |
-| Buyer cookie (`hs_buyer`), visit cookies for "New since your last visit", event API | `frontend/src/middleware.ts`, `frontend/src/app/api/events/route.ts`; server-side buyer calls in `frontend/src/lib/graphql/buyer/server.ts` |
+| Buyer cookie (`hs_buyer`) and event API | `frontend/src/middleware.ts`, `frontend/src/app/api/events/route.ts`; server-side buyer calls in `frontend/src/lib/graphql/buyer/server.ts` |
 | My preferences page | `frontend/src/app/(home)/preferences/` |
 | Concierge agent (route, tools, prompt, model from `LLM_PROVIDER`/`LLM_MODEL`, Langfuse) | `frontend/src/app/api/chat/route.ts`, `frontend/src/lib/concierge/` |
 | Concierge chat UI (floating panel, `/concierge`, tool-result cards) | `frontend/src/components/concierge/`, `frontend/src/app/(home)/concierge/` |

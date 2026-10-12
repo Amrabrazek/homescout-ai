@@ -5,29 +5,28 @@ import type { HomeFeed, MatchedUnit } from '@/lib/graphql/feed/types';
 import UnitCard from './UnitCard';
 import { ReasonChips } from './ReasonChips';
 
-type ForYouRailsProps = {
+type ForYouSectionProps = {
   feed: HomeFeed;
   savedUnitIds: string[];
 };
 
-export default function ForYouRails({ feed, savedUnitIds }: ForYouRailsProps) {
-  const saved = new Set(savedUnitIds);
-  if (feed.rails.length === 0 && !feed.coldStart) return null;
+export default function ForYouSection({
+  feed,
+  savedUnitIds,
+}: ForYouSectionProps) {
+  if (feed.items.length === 0 && !feed.coldStart) return null;
 
   return (
     <div className='flex flex-col gap-10 pb-12'>
       {feed.coldStart && <ConciergeNudge />}
-      {feed.rails.map((rail) => (
-        <section key={rail.section} aria-labelledby={`rail-${rail.section}`}>
-          <h2
-            id={`rail-${rail.section}`}
-            className='mb-4 text-xl font-bold tracking-tight'
-          >
-            {rail.title}
+      {feed.items.length > 0 && (
+        <section aria-labelledby='for-you'>
+          <h2 id='for-you' className='mb-4 text-xl font-bold tracking-tight'>
+            {feed.title}
           </h2>
-          <UnitRail items={rail.items} saved={saved} />
+          <UnitRail items={feed.items} saved={new Set(savedUnitIds)} />
         </section>
-      ))}
+      )}
     </div>
   );
 }

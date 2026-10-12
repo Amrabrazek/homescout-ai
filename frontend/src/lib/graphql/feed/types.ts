@@ -22,13 +22,8 @@ export interface Feed {
   items: MatchedUnit[];
 }
 
-export interface FeedRail {
-  section: FeedSection;
-  title: string;
-  items: MatchedUnit[];
-}
-
 export interface HomeFeed {
   coldStart: boolean;
-  rails: FeedRail[];
+  title: string;
+  items: MatchedUnit[];
 }
