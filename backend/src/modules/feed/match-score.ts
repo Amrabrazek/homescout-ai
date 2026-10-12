@@ -10,6 +10,8 @@ export const MATCH_CONFIG = {
   missPenalty: 0.5,
   /** Over budget (or under min size) by this share scores 0 on that check. */
   tolerance: 0.2,
+  /** Taste loses this share of a unit's (rescaled) likeness to the closest skipped unit. */
+  skipPenalty: 0.5,
   /** Normalised taste similarity at which "Similar to units you saved" shows. */
   tasteReason: 0.6,
   maxReasons: 3,
@@ -27,6 +29,8 @@ export interface MatchCandidate {
   unit: Unit;
   /** Cosine similarity to the buyer's taste vector, null without one. */
   tasteSimilarity: number | null;
+  /** Highest cosine similarity to a unit the buyer skipped. */
+  skipSimilarity?: number | null;
 }
 
 export interface Match {
@@ -92,10 +96,15 @@ export function scoreMatch(
     const hard = checks.reduce((sum, c) => sum + c.score, 0) / checks.length;
     parts.push([MATCH_CONFIG.weights.hard, hard]);
   }
+  const rescale = (similarity: number) =>
+    clamp01((similarity - vectorFloor) / (1 - vectorFloor));
   const taste =
     candidate.tasteSimilarity == null
       ? null
-      : clamp01((candidate.tasteSimilarity - vectorFloor) / (1 - vectorFloor));
+      : clamp01(
+          rescale(candidate.tasteSimilarity) -
+            MATCH_CONFIG.skipPenalty * rescale(candidate.skipSimilarity ?? 0)
+        );
   if (taste != null) parts.push([MATCH_CONFIG.weights.taste, taste]);
   const wanted = profile.amenityIds;
   const has = (unit.amenities ?? []).filter((a) => wanted.includes(a.id));

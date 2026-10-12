@@ -53,7 +53,7 @@ export class FeedService {
     limit: number,
     since?: Date
   ): Promise<Feed> {
-    const { signals, taste } = await this.signals(buyerId);
+    const { signals, taste, skippedIds } = await this.signals(buyerId);
     const coldStart = !hasStatedPreferences(signals.profile) && !taste;
     const feed = (items: FeedItem[]): Feed => ({ section, coldStart, items });
 
@@ -74,13 +74,18 @@ export class FeedService {
       });
       if (rows.length >= limit) break;
     }
-    const units = await this.units.findManyByIds(rows.map((r) => r.id));
+    const ids = rows.map((r) => r.id);
+    const [units, skipSimilarity] = await Promise.all([
+      this.units.findManyByIds(ids),
+      this.units.maxSimilarityTo(ids, skippedIds),
+    ]);
     const similarity = new Map(rows.map((r) => [r.id, r.similarity]));
     const ranked = rankMatches(
       signals,
       units.map((unit) => ({
         unit,
         tasteSimilarity: similarity.get(unit.id) ?? null,
+        skipSimilarity: skipSimilarity.get(unit.id) ?? null,
       })),
       limit,
       this.units.vectorFloor
@@ -110,17 +115,16 @@ export class FeedService {
     });
     if (!buyerId) return neighbours.slice(0, limit).map(plain);
 
-    const { signals, taste } = await this.signals(buyerId);
+    const { signals, taste, skippedIds } = await this.signals(buyerId);
     if (!hasStatedPreferences(signals.profile) && !taste) {
       return neighbours.slice(0, limit).map(plain);
     }
 
-    const tasteSimilarity = taste
-      ? await this.units.similarityTo(
-          neighbours.map((n) => n.unit.id),
-          taste
-        )
-      : new Map<string, number>();
+    const ids = neighbours.map((n) => n.unit.id);
+    const [tasteSimilarity, skipSimilarity] = await Promise.all([
+      taste ? this.units.similarityTo(ids, taste) : new Map<string, number>(),
+      this.units.maxSimilarityTo(ids, skippedIds),
+    ]);
     const weight = MATCH_CONFIG.similarMatchWeight;
     return neighbours
       .map((n) => {
@@ -129,6 +133,7 @@ export class FeedService {
           {
             unit: n.unit,
             tasteSimilarity: tasteSimilarity.get(n.unit.id) ?? null,
+            skipSimilarity: skipSimilarity.get(n.unit.id) ?? null,
           },
           this.units.vectorFloor
         );
@@ -145,16 +150,17 @@ export class FeedService {
   }
 
   private async signals(buyerId: string) {
-    const [profile, taste, activity] = await Promise.all([
+    const [profile, taste, activity, skippedIds] = await Promise.all([
       this.buyers.getProfile(buyerId),
       this.buyers.tasteVector(buyerId),
       this.buyers.activity(buyerId),
+      this.buyers.skippedUnitIds(buyerId),
     ]);
     const signals: BuyerSignals = {
       profile,
       saves: activity.saves,
     };
-    return { signals, taste };
+    return { signals, taste, skippedIds };
   }
 
   /**

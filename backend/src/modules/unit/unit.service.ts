@@ -223,6 +223,24 @@ export class UnitService {
     return new Map(rows.map((r) => [r.unit_id, Number(r.similarity)]));
   }
 
+  /** Per unit, its highest cosine similarity to any of `otherIds`. */
+  async maxSimilarityTo(
+    unitIds: string[],
+    otherIds: string[]
+  ): Promise<Map<string, number>> {
+    if (unitIds.length === 0 || otherIds.length === 0) return new Map();
+    const rows: { unit_id: string; similarity: string }[] =
+      await this.dataSource.query(
+        `SELECT u.unit_id, MAX(1 - (u.embedding <=> o.embedding)) AS similarity
+         FROM unit_embeddings u
+         JOIN unit_embeddings o ON o.model = u.model AND o.unit_id = ANY($2)
+         WHERE u.unit_id = ANY($1) AND u.model = $3
+         GROUP BY u.unit_id`,
+        [unitIds, otherIds, this.embeddings.model]
+      );
+    return new Map(rows.map((r) => [r.unit_id, Number(r.similarity)]));
+  }
+
   /** The cosine similarity a model's unrelated matches sit at. */
   get vectorFloor(): number {
     return 1 - EMBEDDING_MODELS[this.embeddings.model].maxDistance;

@@ -1,9 +1,13 @@
 import { BuyerEventType } from '../../common/enums/buyer-event-type';
 
-export const EVENT_WEIGHTS: Record<BuyerEventType, number> = {
+/**
+ * Skips are left out: every listing embedding shares a large common
+ * direction, so subtracting one pulls the taste away from all listings, not
+ * just from what was skipped. The feed scores skips separately instead.
+ */
+export const EVENT_WEIGHTS: Partial<Record<BuyerEventType, number>> = {
   [BuyerEventType.SAVE]: 1.0,
   [BuyerEventType.VIEW]: 0.3,
-  [BuyerEventType.SKIP]: -0.5,
 };
 
 export const TASTE_HALF_LIFE_DAYS = 14;
@@ -18,10 +22,9 @@ export interface TasteEvent {
 }
 
 /**
- * Time-decayed weighted mean of the embeddings of units the buyer interacted
- * with. Each (unit, event type) counts once, at its latest time, so reloading
- * a unit page doesn't outweigh a save. Returns null when nothing positive is
- * left: the mean of skips alone points away from listings, not towards a taste.
+ * Time-decayed weighted mean of the embeddings of units the buyer saved or
+ * viewed. Each (unit, event type) counts once, at its latest time, so
+ * reloading a unit page doesn't outweigh a save. Null without such events.
  */
 export function computeTasteVector(
   events: TasteEvent[],
@@ -36,21 +39,20 @@ export function computeTasteVector(
 
   let sum: number[] | null = null;
   let totalWeight = 0;
-  let positiveWeight = 0;
   for (const event of latest.values()) {
+    const base = EVENT_WEIGHTS[event.type];
+    if (!base) continue;
     const ageDays =
       Math.max(0, now.getTime() - event.createdAt.getTime()) / DAY_MS;
-    const weight =
-      EVENT_WEIGHTS[event.type] * 0.5 ** (ageDays / TASTE_HALF_LIFE_DAYS);
+    const weight = base * 0.5 ** (ageDays / TASTE_HALF_LIFE_DAYS);
     sum ??= new Array(event.embedding.length).fill(0);
     if (event.embedding.length !== sum.length) {
       throw new Error('Embeddings of different sizes cannot be combined');
     }
     for (let i = 0; i < sum.length; i++) sum[i] += weight * event.embedding[i];
-    totalWeight += Math.abs(weight);
-    if (weight > 0) positiveWeight += weight;
+    totalWeight += weight;
   }
 
-  if (!sum || positiveWeight === 0) return null;
+  if (!sum) return null;
   return sum.map((value) => value / totalWeight);
 }

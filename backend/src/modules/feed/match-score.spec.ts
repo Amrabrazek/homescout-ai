@@ -85,6 +85,25 @@ describe('scoreMatch', () => {
     expect(unrelated.reasons).toEqual([]);
   });
 
+  it('lowers taste for a unit like one the buyer skipped', () => {
+    const s = signals({}, 1);
+    const plain = scoreMatch(s, { unit: unit(), tasteSimilarity: 0.96 }, 0.8);
+    const likeSkip = scoreMatch(
+      s,
+      { unit: unit(), tasteSimilarity: 0.96, skipSimilarity: 0.96 },
+      0.8
+    );
+    const unlikeSkip = scoreMatch(
+      s,
+      { unit: unit(), tasteSimilarity: 0.96, skipSimilarity: 0.8 },
+      0.8
+    );
+    expect(plain.score).toBeCloseTo(0.8);
+    expect(likeSkip.score).toBeCloseTo(0.4);
+    expect(likeSkip.reasons).toEqual([]);
+    expect(unlikeSkip.score).toBeCloseTo(0.8);
+  });
+
   it('says "viewed" when the taste comes from views only', () => {
     const match = scoreMatch(signals({}, 0), {
       unit: unit(),
