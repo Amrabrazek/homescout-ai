@@ -2,6 +2,7 @@ import { FeedEvalResult } from './feed.eval';
 import { ExpectedFilter } from './metrics';
 import { ParseEvalResult } from './parse.eval';
 import { RetrievalEvalResult } from './retrieval.eval';
+import { SimilarEvalResult } from './similar.eval';
 
 export interface SearchReport {
   generatedAt: Date;
@@ -11,6 +12,7 @@ export interface SearchReport {
   /** Models left out of the retrieval comparison, with the reason. */
   skippedModels: { model: string; reason: string }[];
   feed: FeedEvalResult;
+  similar: SimilarEvalResult;
 }
 
 const pct = (value: number | null | undefined) =>
@@ -20,7 +22,7 @@ const ms = (value: number | null) =>
 const cell = (text: string) => text.replace(/\|/g, '\\|');
 
 export function renderSearchReport(report: SearchReport): string {
-  const { parse, retrieval, feed } = report;
+  const { parse, retrieval, feed, similar } = report;
   const total = parse.cases.length;
   const regexPass = parse.cases.filter((c) => c.regex.diff.pass).length;
   const llmPass = parse.cases.filter((c) => c.llm?.diff.pass).length;
@@ -55,6 +57,7 @@ export function renderSearchReport(report: SearchReport): string {
     ),
     `| "For you", stated preferences only | ${pct(avg(feed.personas.map((p) => p.prefsOnly.hard)))} meet preferences · ${pct(avg(feed.personas.map((p) => p.prefsOnly.taste)))} have the taste |`,
     `| "For you", after ${feed.saves} saves (${feed.model}) | ${pct(avg(feed.personas.map((p) => p.withSaves.hard)))} meet preferences · ${pct(avg(feed.personas.map((p) => p.withSaves.taste)))} have the taste${feed.personas.some((p) => !p.tasteVector) ? ' · ⚠ no taste vector (unit embeddings missing)' : ''} |`,
+    `| Similar units, top ${similar.k} (${similar.model}) | share ${pct(similar.overlap)} of the seed's view, finishing and readiness · random from the same pool: ${pct(similar.baseline)}${similar.vectors ? '' : ' · ⚠ no unit embeddings, ranked by numbers only'} |`,
     '',
     '## Query parsing',
     '',
@@ -130,6 +133,15 @@ export function renderSearchReport(report: SearchReport): string {
     ),
     '',
     `**${feed.twoTaste.name}** (no stated preferences, ${feed.saves} saves of each): top ${feed.k} has ${feed.twoTaste.counts.map((c) => `${c.count} ${c.label}`).join(', ')} and ${feed.twoTaste.neither} of neither${feed.twoTaste.tasteVector ? '' : ' ⚠ no taste vector'}. If one taste crowds out the other, or "neither" dominates, multi-interest taste (#50) is worth building.`,
+    '',
+    '## Similar units',
+    '',
+    `For ${similar.seeds} seed units across the price range, the top ${similar.k} similar units are checked for traits the rerank's numbers don't encode, so only the vector can match them. The baseline is the same share over the seed's first-tier pool (same type and region, price ±30%).`,
+    '',
+    ...header(['Trait', `Top ${similar.k}`, 'Same pool, random']),
+    ...similar.perTrait.map((t) =>
+      row([t.label, pct(t.overlap), pct(t.baseline)])
+    ),
     ''
   );
   return lines.join('\n');

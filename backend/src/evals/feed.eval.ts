@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { BuyerEventType } from '../common/enums/buyer-event-type';
 import { BuyerService } from '../modules/buyer/buyer.service';
 import { FeedSection, FeedService } from '../modules/feed/feed.service';
-import { EvalUnit } from './eval-unit';
+import { EvalUnit, spread } from './eval-unit';
 import { PERSONAS, TWO_TASTE_BUYER } from './fixtures/personas';
 import { meetsPreferences, precisionAtK } from './metrics';
 
@@ -140,17 +140,4 @@ async function save(
     await buyers.recordEvent(buyerId, unit.id, BuyerEventType.SAVE);
   }
   return (await buyers.recomputeTaste(buyerId)) != null;
-}
-
-/** n units spread evenly over the list in a stable order, not just the cheapest. */
-function spread(candidates: EvalUnit[], n: number): EvalUnit[] {
-  const sorted = [...candidates].sort(
-    (a, b) =>
-      a.price - b.price || a.floorArea - b.floorArea || a.rooms - b.rooms
-  );
-  if (sorted.length <= n) return sorted;
-  return Array.from(
-    { length: n },
-    (_, i) => sorted[Math.floor(((i + 0.5) * sorted.length) / n)]
-  );
 }

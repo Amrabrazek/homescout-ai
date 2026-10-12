@@ -106,6 +106,15 @@ describe('search eval report', () => {
         { model: 'openai-text-embedding-3-small', reason: 'no key' },
       ],
       feed,
+      similar: {
+        k: 4,
+        seeds: 20,
+        model: 'local-e5-small',
+        vectors: true,
+        overlap: 0.7,
+        baseline: 0.4,
+        perTrait: [{ label: 'view', overlap: 0.7, baseline: 0.4 }],
+      },
     });
     expect(markdown).toContain('| Query parsing, regex + LLM (stub/model) |');
     expect(markdown).toContain('(fell back to regex)');
@@ -118,5 +127,6 @@ describe('search eval report', () => {
     expect(markdown).toContain(
       'openai-text-embedding-3-small | skipped: no key'
     );
+    expect(markdown).toContain('| view | 70% | 40% |');
   });
 });

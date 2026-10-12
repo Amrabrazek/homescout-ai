@@ -10,6 +10,7 @@ import { loadEvalUnits } from '../evals/eval-unit';
 import { runParseEval } from '../evals/parse.eval';
 import { renderSearchReport } from '../evals/report';
 import { runRetrievalEval } from '../evals/retrieval.eval';
+import { runSimilarEval } from '../evals/similar.eval';
 import { BuyerService } from '../modules/buyer/buyer.service';
 import {
   EMBEDDING_MODELS,
@@ -20,6 +21,7 @@ import {
 import { LocalE5Provider } from '../modules/embedding/local-e5.provider';
 import { OpenAIEmbeddingProvider } from '../modules/embedding/openai.provider';
 import { FeedService } from '../modules/feed/feed.service';
+import { UnitService } from '../modules/unit/unit.service';
 import { LlmQueryParser } from '../modules/search/llm-query-parser';
 import { createSearchLlm } from '../modules/search/search-llm';
 import { loadLocationVocabulary } from '../modules/search/search.service';
@@ -31,7 +33,7 @@ const REPORT = resolve(__dirname, '../../../docs/evals/search.md');
 
 /**
  * Search evals: query parsing (regex vs + LLM), semantic ranking per embedding
- * model, and the "For you" feed per persona. Embeds any units a model is
+ * model, the "For you" feed per persona and similar units. Embeds any units a model is
  * missing first, so a fresh database needs no manual step. Writes
  * docs/evals/search.md.
  */
@@ -106,6 +108,14 @@ async function main() {
       active.model
     );
 
+    logger.log(`Running similar units eval with ${active.model}`);
+    const similar = await runSimilarEval(
+      app.get(UnitService),
+      evalUnits,
+      active.model,
+      providers.some((p) => p.model === active.model)
+    );
+
     const markdown = renderSearchReport({
       generatedAt: new Date(),
       units: evalUnits.size,
@@ -113,6 +123,7 @@ async function main() {
       retrieval,
       skippedModels,
       feed,
+      similar,
     });
     mkdirSync(resolve(REPORT, '..'), { recursive: true });
     writeFileSync(REPORT, markdown);

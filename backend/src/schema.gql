@@ -169,8 +169,12 @@ type Mutation {
 type ParsedSearch {
   areas: [String!]
   cities: [String!]
+  maxFloor: Int
+  maxFloorArea: Float
   maxPrice: Float
   maxRooms: Int
+  minFloor: Int
+  minFloorArea: Float
   minPrice: Float
   minRooms: Int
   propertyTypes: [PropertyType!]
@@ -336,9 +340,13 @@ input UnitFilterInput {
   amenityIds: [String!]
   areas: [String!]
   cities: [String!]
+  maxFloor: Int
   maxFloorArea: Float
   maxPrice: Float
   maxRooms: Int
+
+  """Lowest floor (0 = ground)"""
+  minFloor: Int
   minFloorArea: Float
   minPrice: Float
   minRooms: Int

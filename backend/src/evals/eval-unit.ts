@@ -48,3 +48,16 @@ export async function loadEvalUnits(
     ])
   );
 }
+
+/** n units spread evenly over the list in a stable order, not just the cheapest. */
+export function spread(candidates: EvalUnit[], n: number): EvalUnit[] {
+  const sorted = [...candidates].sort(
+    (a, b) =>
+      a.price - b.price || a.floorArea - b.floorArea || a.rooms - b.rooms
+  );
+  if (sorted.length <= n) return sorted;
+  return Array.from(
+    { length: n },
+    (_, i) => sorted[Math.floor(((i + 0.5) * sorted.length) / n)]
+  );
+}

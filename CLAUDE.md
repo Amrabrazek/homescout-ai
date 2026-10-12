@@ -37,7 +37,7 @@ Update this table in the same PR when you add, move or rename one of these place
 | Sample data | `backend/src/scripts/seed/` (`data.ts` catalog, `rules.ts`, `generate.ts`); entry `scripts/seed.ts` |
 | Concierge tool endpoints (`/internal/*` REST, name → filter resolution) | `backend/src/modules/concierge/` (`concierge.service.ts`, `vocabulary.ts`, `unit-card.ts`) |
 | Image uploads | `backend/src/modules/upload/` |
-| Search evals (parse cases, personas, semantic queries; report in `docs/evals/search.md`) | `backend/src/evals/` (`fixtures/`, `metrics.ts`); entry `scripts/eval.ts` |
+| Search evals (parse cases, semantic queries, For you personas, similar units; report in `docs/evals/search.md`) | `backend/src/evals/` (`fixtures/`, `metrics.ts`); entry `scripts/eval.ts` |
 | Backend tests | unit: `src/**/*.spec.ts` (`npm test`); API: `test/**/*.e2e-spec.ts` (mocked services) |
 | Brand (colour tokens, font, logo, favicon) | `frontend/src/app/globals.css`, `frontend/src/app/layout.tsx`, `frontend/src/components/brand/Logo.tsx`, `frontend/public/favicon.svg` |
 | Home page (ask box, filter bar + sheet, listing, cards) | `frontend/src/app/(home)/_components/` (`AskHero.tsx`, `FilterBar.tsx`, `UnitFilters.tsx`, `UnitListing.tsx`, `UnitCard.tsx`) |
