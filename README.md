@@ -1,13 +1,38 @@
+<div align="center">
+
+<img src="frontend/public/favicon.svg" width="64" alt="HomeScout logo" />
+
 # HomeScout AI
 
-**An experiment in where an LLM belongs in search.** Homes in Egypt are the test case: type "family of 4 near AUC,
-max 12M" or "3 owad fel tagamo3 ta7t 15 mil" and HomeScout turns it into real filters, shows what it understood,
-and searches by meaning for the rest.
+**An experiment in where an LLM belongs in search.**<br/>
+Homes in Egypt are the test case.
 
-![HomeScout demo: a free-text query becomes filters, then results](docs/media/demo.gif)
+[![CI](https://github.com/Amrabrazek/homescout-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/Amrabrazek/homescout-ai/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-0b6e5f)](LICENSE)
+![Node 24](https://img.shields.io/badge/node-24-0b6e5f?logo=nodedotjs&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-13-000000?logo=nextdotjs)
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?logo=nestjs&logoColor=white)
+![Postgres + pgvector](https://img.shields.io/badge/Postgres_16-pgvector-4169E1?logo=postgresql&logoColor=white)
+![Typesense](https://img.shields.io/badge/Typesense-D52F6D)
 
-The rule it follows: code does what code can do, and the LLM only gets the words code couldn't parse. Its output
-is validated against the schema, cached, capped, and falls back to regex. Every claim below is measured.
+<img src="docs/media/demo.gif" width="720" alt="HomeScout demo: a free-text query becomes filters, then results" />
+
+</div>
+
+Type "family of 4 near AUC, max 12M" or "3 owad fel tagamo3 ta7t 15 mil" and HomeScout turns it into real filters,
+shows what it understood, and searches by meaning for the rest.
+
+```mermaid
+flowchart LR
+    Q["family of 4 near AUC, max 12M"] --> R["Regex parser<br/>free · instant · tested"]
+    R -->|"max 12M"| F["Hard filters"]
+    R -->|"leftover words only"| L["LLM (Haiku)<br/>validated · cached · capped"]
+    L -->|"2+ beds · New Cairo"| F
+    L -.->|"timeout or bad output"| R
+    F --> S["Hybrid search<br/>keyword + vectors"]
+```
+
+The rule: code does what code can do, and the LLM only gets the words code couldn't parse. Every claim below is measured.
 
 ## Search, measured
 
@@ -34,17 +59,27 @@ Full report, including where embeddings lost: [docs/evals/search.md](docs/evals/
 
 ## Architecture
 
-```
-Next.js 13 ── pages ──GraphQL──▶ NestJS API ──┐
-   ├─ /api/chat (AI SDK, streaming)            │
-   │     └─ tools ──REST /internal/*──────────▶┤
-   ├─ /api/events (view / save / skip) ───────▶┤
-   └─ traces ─▶ Langfuse                        ▼
-                     Postgres 16 + pgvector  (source of truth)
-                     units · unit_embeddings · buyer_profiles · buyer_events · jobs
-                                 ▲                        │
-                 pg-boss worker ─┘  embed (e5 / OpenAI) ──▶ Typesense (search projection)
-Images: MinIO (S3-compatible)
+```mermaid
+flowchart LR
+    subgraph web["Next.js 13"]
+        P["Pages"]
+        C["/api/chat<br/>AI SDK agent"]
+        E["/api/events<br/>view · save · skip"]
+    end
+    API["NestJS API"]
+    PG[("Postgres 16 + pgvector<br/>source of truth")]
+    W["pg-boss worker<br/>embed (e5 / OpenAI)"]
+    TS[("Typesense<br/>search projection")]
+    P -->|GraphQL| API
+    C -->|"tools: REST /internal/*"| API
+    E --> API
+    C -.->|traces| LF["Langfuse"]
+    API --> PG
+    PG -->|"job in the same transaction"| W
+    W --> PG
+    W --> TS
+    API --> TS
+    API --> M[("MinIO<br/>images")]
 ```
 
 ## Engineering decisions
@@ -88,7 +123,9 @@ Every setting has a working local default. To override one, copy `.env.example` 
 docker compose down -v
 ```
 
-## Local development (without Docker for the apps)
+<details>
+<summary><b>Local development (without Docker for the apps)</b></summary>
+
 
 Run the infrastructure in Docker and the apps on your machine:
 
@@ -125,7 +162,11 @@ npm run dev
 
 CI runs lint, typecheck, tests and a production build on every pull request.
 
-## Project structure
+</details>
+
+<details>
+<summary><b>Project structure</b></summary>
+
 
 ```txt
 backend/
@@ -145,6 +186,8 @@ docker-compose.yml         the full local stack
 
 API references: `backend/API_DOCUMENTATION.md`, `backend/API_QUICK_REFERENCE.md`,
 `backend/GRAPHQL_PLAYGROUND_EXAMPLES.md`.
+
+</details>
 
 ## Built with
 
