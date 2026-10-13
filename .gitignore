@@ -52,3 +52,6 @@ temp/
 .turbo 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Agent eval transcripts (frontend/.eval)
+.eval/
