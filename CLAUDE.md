@@ -46,7 +46,8 @@ Update this table in the same PR when you add, move or rename one of these place
 | Dashboard (CRUD forms) | `frontend/src/app/dashboard/` |
 | Buyer cookie (`hs_buyer`) and event API | `frontend/src/middleware.ts`, `frontend/src/app/api/events/route.ts`; server-side buyer calls in `frontend/src/lib/graphql/buyer/server.ts` |
 | My preferences page | `frontend/src/app/(home)/preferences/` |
-| Concierge agent (route, tools, prompt, model from `LLM_PROVIDER`/`LLM_MODEL`, Langfuse) | `frontend/src/app/api/chat/route.ts`, `frontend/src/lib/concierge/` |
+| Concierge agent (route, tools, prompt, model from `LLM_PROVIDER`/`LLM_MODEL`, Langfuse) | `frontend/src/app/api/chat/route.ts`, `frontend/src/lib/concierge/` (`agent.ts` is the shared turn setup) |
+| Agent evals (scripted buyer chats, deterministic checks, LLM helpfulness judge; report in `docs/evals/agent.md`) | `frontend/src/evals/agent/` (`cases.ts`, `checks.ts`, `judge.ts`); entry `frontend/scripts/eval-agent.ts` |
 | Concierge chat UI (floating panel, `/concierge`, tool-result cards) | `frontend/src/components/concierge/`, `frontend/src/app/(home)/concierge/` |
 | GraphQL queries, types, zod schemas | `frontend/src/lib/graphql/<entity>/` |
 
@@ -59,7 +60,8 @@ Update this table in the same PR when you add, move or rename one of these place
 | backend | `npm run reindex` (`-- --if-needed`) | Enqueue every unit: re-embed if changed + rebuild search index |
 | backend | `npm run eval` | Search evals → `docs/evals/search.md` (embeds missing units per model; LLM/OpenAI legs need keys) |
 | backend | `npm run start:dev` | API on :3001 (`/graphql`) |
-| frontend | `npm run lint` · `npm run typecheck` · `npm run build` | Checks (CI runs these) |
+| frontend | `npm run lint` · `npm run typecheck` · `npm test` · `npm run build` | Checks (CI runs these) |
+| frontend | `npm run eval` | Agent evals → `docs/evals/agent.md` (needs the API on :3001 and `ANTHROPIC_API_KEY`; `EVAL_RUNS`, `EVAL_MODELS`, `EVAL_CASES`, `EVAL_JUDGE=off`) |
 | frontend | `npm run dev` | App on :3000 |
 
 Run lint, typecheck and tests for every app you touched before pushing.
