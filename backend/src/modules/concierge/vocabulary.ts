@@ -18,6 +18,24 @@ export interface NamedItem {
   name: string;
 }
 
+/** Nicknames buyers use that no area, city or region name contains. */
+const PLACE_ALIASES: Record<string, string> = {
+  'new capital': 'New Administrative Capital',
+  'the new capital': 'New Administrative Capital',
+  'new admin capital': 'New Administrative Capital',
+  nac: 'New Administrative Capital',
+  tagamoa: 'Fifth Settlement',
+  'el tagamoa': 'Fifth Settlement',
+  '5th settlement': 'Fifth Settlement',
+  sahel: 'North Coast',
+  'el sahel': 'North Coast',
+  'el mostakbal': 'Mostakbal City',
+  '6 october': '6th of October',
+  '6th october': '6th of October',
+  'el sokhna': 'Ain Sokhna',
+  alex: 'Alexandria',
+};
+
 /**
  * Maps what a buyer calls a place to names in the data. An exact area, city or
  * region wins; otherwise a partial name expands to every area containing it
@@ -43,8 +61,9 @@ export function resolveLocations(
   };
 
   for (const raw of names) {
-    const name = normalize(raw);
-    if (!name) continue;
+    const typed = normalize(raw);
+    if (!typed) continue;
+    const name = normalize(PLACE_ALIASES[typed] ?? typed);
 
     const exact = kinds
       .map(([kind, values]) => ({

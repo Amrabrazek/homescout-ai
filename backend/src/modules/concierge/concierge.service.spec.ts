@@ -93,6 +93,22 @@ describe('ConciergeService', () => {
       expect(result.unmatched).toEqual(['Atlantis']);
     });
 
+    it('returns nothing when no place name resolves, instead of searching everywhere', async () => {
+      const { service, searchService } = setup();
+      const result = await service.searchUnits({
+        locations: ['Atlantis'],
+        maxPrice: 10_000_000,
+      });
+
+      expect(searchService.search).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        total: 0,
+        units: [],
+        appliedFilters: {},
+        unmatched: ['Atlantis'],
+      });
+    });
+
     it('falls back to Postgres filters when the search index is down', async () => {
       const { service, searchService, unitService } = setup();
       searchService.search.mockRejectedValueOnce(new Error('ECONNREFUSED'));

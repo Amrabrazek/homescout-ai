@@ -67,6 +67,16 @@ export class ConciergeService {
     ]);
     const places = resolveLocations(input.locations ?? [], rows);
     const amenityMatch = resolveAmenities(input.amenities ?? [], amenities);
+    const unmatched = [...places.unknown, ...amenityMatch.unknown];
+
+    // Every place name failed to resolve: searching without a location would
+    // return homes anywhere in Egypt as if they met the buyer's place.
+    if (
+      input.locations?.length &&
+      places.unknown.length === input.locations.length
+    ) {
+      return { total: 0, units: [], appliedFilters: {}, unmatched };
+    }
 
     const requested: UnitFilterInput = {
       searchTerm: input.query?.trim() || undefined,
@@ -118,7 +128,7 @@ export class ConciergeService {
           (id) => amenities.find((a) => a.id === id).name
         ),
       }),
-      unmatched: [...places.unknown, ...amenityMatch.unknown],
+      unmatched,
     };
   }
 
