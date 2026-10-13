@@ -50,9 +50,24 @@ describe('toUnitCard', () => {
 
 describe('toUnitDetail', () => {
   it('adds amenity names and a shortened description', () => {
-    const detail = toUnitDetail(unit);
+    const detail = toUnitDetail(unit, 0.2);
     expect(detail.amenities).toEqual(['Gym']);
     expect(detail.description).toHaveLength(601);
     expect(detail.floor).toBe(4);
+    expect(detail.paymentPlan).toBeNull();
+  });
+
+  it('adds the payment plan and its value today', () => {
+    const detail = toUnitDetail(
+      { ...unit, downPaymentPct: '10.00', installmentYears: 8 },
+      0.2
+    );
+    expect(detail.paymentPlan).toMatchObject({
+      downPaymentPct: 10,
+      installmentYears: 8,
+      months: 96,
+      discountRate: 0.2,
+    });
+    expect(detail.paymentPlan.shareOfPrice).toBeCloseTo(0.547, 2);
   });
 });

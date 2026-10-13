@@ -1,10 +1,14 @@
-import { CalendarClock, KeyRound } from 'lucide-react';
+import { CalendarClock, KeyRound, TrendingDown } from 'lucide-react';
 import { formatPrice } from '@/lib/utils/formatters';
 import type { Unit } from '@/lib/graphql/units/types';
 
 type PlanFields = Pick<
   Unit,
-  'price' | 'downPaymentPct' | 'installmentYears' | 'deliveryYear'
+  | 'price'
+  | 'downPaymentPct'
+  | 'installmentYears'
+  | 'deliveryYear'
+  | 'planValue'
 >;
 
 /** Monthly installment after the down payment, or null for cash units. */
@@ -60,6 +64,29 @@ export function PaymentPlan({ unit }: { unit: PlanFields }) {
         value={`${years} years · ${years * 12} payments`}
       />
       <Delivery label={delivery} />
+      {unit.planValue && <WorthToday value={unit.planValue} />}
+    </div>
+  );
+}
+
+function WorthToday({ value }: { value: NonNullable<Unit['planValue']> }) {
+  const share = Math.round(value.shareOfPrice * 100);
+  const rate = Math.round(value.discountRate * 100);
+  return (
+    <div className='rounded-xl border border-dashed px-4 py-3'>
+      <div className='flex items-baseline justify-between gap-3'>
+        <span className='flex items-center gap-2 text-sm text-muted-foreground'>
+          <TrendingDown className='h-4 w-4' />
+          Worth today
+        </span>
+        <span className='font-semibold tabular-nums'>
+          {formatPrice(value.presentValue)}
+        </span>
+      </div>
+      <p className='mt-1 text-xs text-muted-foreground'>
+        Paying over time costs {share}% of the price in today&apos;s money,
+        if your cash could earn {rate}% a year elsewhere.
+      </p>
     </div>
   );
 }

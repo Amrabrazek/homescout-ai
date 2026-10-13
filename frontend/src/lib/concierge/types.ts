@@ -35,6 +35,22 @@ export interface UnitDetail extends UnitCard {
   view: string | null;
   amenities: string[];
   description: string | null;
+  /** Null for units without plan data. */
+  paymentPlan: PaymentPlanValue | null;
+}
+
+export interface PaymentPlanValue {
+  downPaymentPct: number;
+  installmentYears: number;
+  downPayment: number;
+  months: number;
+  monthlyInstallment: number;
+  /** What the payments are worth in today's money. */
+  presentValue: number;
+  /** presentValue / price, 0..1. */
+  shareOfPrice: number;
+  /** Yearly discount rate, e.g. 0.2. */
+  discountRate: number;
 }
 
 export interface UnitSearchResult {

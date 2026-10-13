@@ -3,6 +3,7 @@ import {
   PropertyType,
   UnitView,
 } from '../../common/enums/unit-attributes';
+import { paymentPlanValue, PlanValue } from '../unit/payment-plan';
 
 /** The fields both a Unit entity and a search document carry. */
 export interface UnitLike {
@@ -18,6 +19,8 @@ export interface UnitLike {
   finishing?: Finishing;
   view?: UnitView;
   deliveryYear?: number | null;
+  downPaymentPct?: number | string | null;
+  installmentYears?: number | null;
   project?: {
     name: string;
     area?: string | null;
@@ -52,6 +55,10 @@ export interface UnitDetail extends UnitCard {
   view: UnitView | null;
   amenities: string[];
   description: string | null;
+  /** Null for units without plan data. */
+  paymentPlan:
+    | (PlanValue & { downPaymentPct: number; installmentYears: number })
+    | null;
 }
 
 const DESCRIPTION_LIMIT = 600;
@@ -74,8 +81,9 @@ export function toUnitCard(unit: UnitLike): UnitCard {
   };
 }
 
-export function toUnitDetail(unit: UnitLike): UnitDetail {
+export function toUnitDetail(unit: UnitLike, discountRate: number): UnitDetail {
   const description = unit.description?.trim() || null;
+  const plan = paymentPlanValue(unit, discountRate);
   return {
     ...toUnitCard(unit),
     floor: unit.floor ?? null,
@@ -86,5 +94,10 @@ export function toUnitDetail(unit: UnitLike): UnitDetail {
       description && description.length > DESCRIPTION_LIMIT
         ? `${description.slice(0, DESCRIPTION_LIMIT)}…`
         : description,
+    paymentPlan: plan && {
+      downPaymentPct: Number(unit.downPaymentPct ?? 0),
+      installmentYears: unit.installmentYears ?? 0,
+      ...plan,
+    },
   };
 }

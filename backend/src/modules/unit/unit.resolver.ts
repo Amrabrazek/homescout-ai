@@ -10,6 +10,7 @@ import {
   Field,
   Float,
 } from '@nestjs/graphql';
+import { ConfigService } from '@nestjs/config';
 import { Project } from '../../common/entities/project.entity';
 import { Unit } from '../../common/entities/unit.entity';
 import { Amenity } from '../../common/entities/amenity.entity';
@@ -20,6 +21,7 @@ import { UpdateUnitInput } from './dto/update-unit.input';
 import { UnitFilterInput } from './dto/unit-filter.input';
 import { UnitService } from './unit.service';
 import { UnitSortInput } from './dto/unit-sort.input';
+import { discountRateFrom, paymentPlanValue } from './payment-plan';
 
 @ObjectType()
 export class FacetCountValue {
@@ -69,11 +71,35 @@ export class UnitResponse {
   facets?: FacetCount[];
 }
 
+@ObjectType()
+export class PlanValue {
+  @Field(() => Float)
+  downPayment: number;
+
+  @Field(() => Int)
+  months: number;
+
+  @Field(() => Float)
+  monthlyInstallment: number;
+
+  @Field(() => Float, {
+    description: "The plan's payments in today's money",
+  })
+  presentValue: number;
+
+  @Field(() => Float, { description: 'presentValue / price, 0..1' })
+  shareOfPrice: number;
+
+  @Field(() => Float, { description: 'Yearly discount rate, e.g. 0.2' })
+  discountRate: number;
+}
+
 @Resolver(() => Unit)
 export class UnitResolver {
   constructor(
     private unitService: UnitService,
-    private projectService: ProjectService
+    private projectService: ProjectService,
+    private config: ConfigService
   ) {}
 
   @Query(() => UnitResponse)
@@ -133,5 +159,13 @@ export class UnitResolver {
   async images(@Parent() unit: Unit): Promise<Image[]> {
     if (unit.images) return unit.images;
     return this.unitService.getUnitImages(unit.id);
+  }
+
+  @ResolveField(() => PlanValue, { nullable: true })
+  planValue(@Parent() unit: Unit): PlanValue | null {
+    return paymentPlanValue(
+      unit,
+      discountRateFrom(this.config.get('MARKET_DISCOUNT_RATE'))
+    );
   }
 }

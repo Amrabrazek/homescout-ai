@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { BuyerEventType } from '../../common/enums/buyer-event-type';
 import { BuyerService } from '../buyer/buyer.service';
@@ -6,6 +7,7 @@ import { UpdatePreferencesInput } from '../buyer/dto/update-preferences.input';
 import { UnitFilterInput } from '../unit/dto/unit-filter.input';
 import { SearchService } from '../search/search.service';
 import { UnitService } from '../unit/unit.service';
+import { discountRateFrom } from '../unit/payment-plan';
 import { SearchUnitsDto } from './dto/search-units.dto';
 import { UpdateBuyerPreferencesDto } from './dto/update-preferences.dto';
 import { toUnitCard, toUnitDetail, UnitCard, UnitDetail } from './unit-card';
@@ -56,8 +58,13 @@ export class ConciergeService {
     private readonly searchService: SearchService,
     private readonly unitService: UnitService,
     private readonly buyerService: BuyerService,
-    private readonly dataSource: DataSource
+    private readonly dataSource: DataSource,
+    private readonly config: ConfigService
   ) {}
+
+  private get discountRate(): number {
+    return discountRateFrom(this.config.get('MARKET_DISCOUNT_RATE'));
+  }
 
   async searchUnits(input: SearchUnitsDto): Promise<UnitSearchResult> {
     const limit = input.limit ?? DEFAULT_LIMIT;
@@ -123,12 +130,13 @@ export class ConciergeService {
   }
 
   async getUnit(id: string): Promise<UnitDetail> {
-    return toUnitDetail(await this.unitService.findOne(id));
+    return toUnitDetail(await this.unitService.findOne(id), this.discountRate);
   }
 
   async compareUnits(ids: string[]): Promise<UnitDetail[]> {
     const units = await this.unitService.findManyByIds(ids);
-    return units.map(toUnitDetail);
+    const rate = this.discountRate;
+    return units.map((unit) => toUnitDetail(unit, rate));
   }
 
   async similarUnits(id: string, limit = 4): Promise<SimilarUnit[]> {

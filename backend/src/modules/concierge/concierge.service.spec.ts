@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { BuyerEventType } from '../../common/enums/buyer-event-type';
 import { ConciergeService } from './concierge.service';
 
@@ -56,7 +57,8 @@ function setup() {
     searchService as any,
     unitService as any,
     buyerService as any,
-    dataSource as any
+    dataSource as any,
+    new ConfigService({})
   );
   return { service, searchService, unitService, buyerService };
 }
