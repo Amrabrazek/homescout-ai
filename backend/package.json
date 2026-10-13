@@ -35,7 +35,7 @@
     "typescript"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.78",
     "@ai-sdk/openai": "^4.0.91",

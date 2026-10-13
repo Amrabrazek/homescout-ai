@@ -1,31 +1,55 @@
 # HomeScout AI
 
-An AI-powered home finder: browse and filter real units, get similar-unit recommendations from vector
-embeddings, and (coming next) talk to a concierge agent that learns each buyer's preferences.
+**Find a home by describing how you live.** HomeScout is an AI home finder for the Egyptian property market. Type
+"3 bedrooms in New Cairo under 12M" and it turns that into real filters. Ask the concierge "something like the
+unit I saved, but closer to my office" and it searches real units, compares them and explains why each one fits.
 
-This repo is a portfolio project showing how AI fits into a real product workflow, built on a deliberately
-simple, well-structured system.
+It's a portfolio project. The point is to show AI working **inside** a real product, with real data, tests and CI.
+A chat window bolted onto a demo is not the goal.
+
+## What it does
+
+| Feature | How it works |
+|---|---|
+| **Free-text search** | A regex parser turns "3 bedrooms in New Cairo under 12M" into hard filters, and the UI shows what it understood. An LLM handles only the words regex missed (Arabic, "family of 5", landmarks). That path is behind a flag, validated against the schema, cached and capped, and falls back to regex. |
+| **Hybrid search** | Typo-tolerant keyword search plus vector search in Typesense. The listing, the concierge and the feed all share one filter builder. |
+| **Similar units** | Filter by type, region and price band, then cosine top 30 from pgvector, then a weighted rerank on price, size, bedrooms and location, with at most 2 per project. Every result carries its reasons. |
+| **Buyer profile** | An anonymous cookie, stated preferences, and views, saves and skips. A time-decayed taste vector is built from the embeddings of units the buyer engaged with. |
+| **Concierge agent** | Vercel AI SDK with tools that call typed NestJS endpoints (`search_units`, `compare_units`, `find_similar`, `update_preferences`…). Tool results render as UI cards, and the model writes only the "why it fits". Traced in Langfuse. |
+| **"Why it fits you"** | Deterministic checks of each unit against the buyer's stated preferences. It shows misses too, so nothing shown to the buyer is guessed. |
+
+In progress: a personalized **"For you"** feed with match scores, then evals comparing free and paid models.
 
 ## Architecture
 
 ```
-Browser ──▶ Next.js (frontend :3000)
-              │  GraphQL (pages, filters)       │  REST /uploads/images
-              ▼                                 ▼
-           NestJS API (backend :3001) ───────────────────────────────┐
-              │ TypeORM                 │ index + search             │ S3 API
-              ▼                         ▼                            ▼
-      Postgres 16 + pgvector      Typesense (search)         MinIO (images bucket)
-      source of truth             fuzzy + faceted search     public-read object URLs
+Next.js 13 ── pages ──GraphQL──▶ NestJS API ──┐
+   ├─ /api/chat (AI SDK, streaming)            │
+   │     └─ tools ──REST /internal/*──────────▶┤
+   ├─ /api/events (view / save / skip) ───────▶┤
+   └─ traces ─▶ Langfuse                        ▼
+                     Postgres 16 + pgvector  (source of truth)
+                     units · unit_embeddings · buyer_profiles · buyer_events · jobs
+                                 ▲                        │
+                 pg-boss worker ─┘  embed (e5 / OpenAI) ──▶ Typesense (search projection)
+Images: MinIO (S3-compatible)
 ```
 
-| Service    | Port(s)     | Purpose                                              |
-| ---------- | ----------- | ---------------------------------------------------- |
-| frontend   | 3000        | Next.js app                                          |
-| backend    | 3001        | GraphQL API (`/graphql`) and image uploads           |
-| postgres   | 5432        | Data + vector embeddings (pgvector)                  |
-| typesense  | 8108        | Fast, typo-tolerant search with facets               |
-| minio      | 9000 / 9001 | S3-compatible image storage / web console            |
+## Engineering decisions
+
+- **Postgres is the single source of truth.** Typesense is a projection that can be rebuilt at any time
+  (`npm run reindex`), so the search index can never become the only copy of anything.
+- **Sync through a transactional queue.** Every unit write enqueues a pg-boss job in the same transaction. A
+  worker re-embeds the unit only if its text changed, then upserts Typesense, retrying with backoff. Search
+  never sees half-written data.
+- **Deterministic first, LLM second.** Regex parsing is free, fast and testable. The LLM is an optional
+  fallback with strict output validation, a daily call cap and a timeout.
+- **Pluggable embeddings.** `EMBEDDING_MODEL` switches between a free local model (`e5-small`, runs in Node)
+  and OpenAI. Vectors are stored per model, so models can be compared side by side.
+- **Model-agnostic agent.** `LLM_PROVIDER` / `LLM_MODEL` pick the model. Tools are plain REST endpoints with
+  their own tests.
+
+The full roadmap and decision log live in [issue #12](https://github.com/Amrabrazek/nawy-replica/issues/12).
 
 ## Quick start
 
@@ -110,23 +134,12 @@ docker-compose.yml         the full local stack
 API references: `backend/API_DOCUMENTATION.md`, `backend/API_QUICK_REFERENCE.md`,
 `backend/GRAPHQL_PLAYGROUND_EXAMPLES.md`.
 
-## AI features today
+## Built with
 
-- **Embeddings**: pluggable via `EMBEDDING_MODEL`: `local-e5-small` (free, runs in Node, the default) or
-  `openai-text-embedding-3-small` (needs `OPENAI_API_KEY`). Vectors live in Postgres (`unit_embeddings`);
-  several models can coexist. After switching, run `npm run reindex`.
-- **Sync**: creating, editing or deleting a unit enqueues a job (pg-boss) in the same transaction. A worker
-  in the API process re-embeds the unit when its text changed and updates Typesense, retrying with backoff
-  if Typesense is down. Set `WORKER=false` to run the API without it.
-- **Search**: one hybrid search, typo-tolerant keyword plus vector, with filters. Free text such as
-  "New Ciaro 3 bedroms under 8M" is parsed into hard filters (area, rooms, price) first.
-- **Similar units**: nearest neighbours of a unit's embedding (pgvector, or Typesense for `searchSimilarUnits`).
+Next.js 13 · NestJS · TypeORM · GraphQL · Postgres 16 + pgvector · Typesense · pg-boss · MinIO · Vercel AI SDK ·
+Langfuse · Docker Compose · GitHub Actions. Built with [Claude Code](https://claude.com/claude-code); see
+`CLAUDE.md` for the agent's project guide.
 
-## Roadmap
+## License
 
-1. Realistic, diverse sample data (areas, property types, payment plans) and richer filters
-2. Pluggable embeddings (free local model or OpenAI) with a reliable sync worker and hybrid search
-3. Buyer profile: preferences + views, saves and skips
-4. Concierge chat agent that searches real units and explains why they fit
-5. Personalized "For you" feed with match scores
-6. Evals, tracing and a model comparison report
+[MIT](LICENSE)
