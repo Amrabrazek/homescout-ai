@@ -11,6 +11,8 @@ const rows: LocationRow[] = [
   { area: 'Sheikh Zayed', city: 'Giza', region: 'West Cairo' },
   { area: 'New Zayed', city: 'Giza', region: 'West Cairo' },
   { area: 'El Gouna', city: 'Hurghada', region: 'Red Sea' },
+  { area: 'New Administrative Capital', city: 'Cairo', region: 'East Cairo' },
+  { area: 'New Alamein', city: 'North Coast', region: 'North Coast' },
 ];
 
 describe('resolveLocations', () => {
@@ -34,6 +36,15 @@ describe('resolveLocations', () => {
     const result = resolveLocations(['Madinty', 'Atlantis'], rows);
     expect(result.areas).toEqual(['Madinaty']);
     expect(result.unknown).toEqual(['Atlantis']);
+  });
+
+  it('maps nicknames no place name contains', () => {
+    expect(resolveLocations(['New Capital', 'NAC', 'Sahel'], rows)).toEqual({
+      areas: ['New Administrative Capital'],
+      cities: ['North Coast'],
+      regions: [],
+      unknown: [],
+    });
   });
 
   it('does not match a word inside another word', () => {
