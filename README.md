@@ -1,11 +1,23 @@
 # HomeScout AI
 
-**Find a home by describing how you live.** HomeScout is an AI home finder for the Egyptian property market. Type
-"3 bedrooms in New Cairo under 12M" and it turns that into real filters. Ask the concierge "something like the
-unit I saved, but closer to my office" and it searches real units, compares them and explains why each one fits.
+**An experiment in where an LLM belongs in search.** Homes in Egypt are the test case: type "family of 4 near AUC,
+max 12M" or "3 owad fel tagamo3 ta7t 15 mil" and HomeScout turns it into real filters, shows what it understood,
+and searches by meaning for the rest.
 
-It's a portfolio project. The point is to show AI working **inside** a real product, with real data, tests and CI.
-A chat window bolted onto a demo is not the goal.
+![HomeScout demo: a free-text query becomes filters, then results](docs/media/demo.gif)
+
+The rule it follows: code does what code can do, and the LLM only gets the words code couldn't parse. Its output
+is validated against the schema, cached, capped, and falls back to regex. Every claim below is measured.
+
+## Search, measured
+
+| Check | Result |
+|---|---|
+| Query parsing, regex only | 17/30 queries fully right |
+| Query parsing, regex + LLM on the leftovers | 30/30 fully right · p50 2.3 s, p95 3.5 s (only when regex leaves words) |
+| Semantic ranking, local e5 embeddings | 68% relevant in top 10 vs 37% for random order |
+
+Full report, including where embeddings lost: [docs/evals/search.md](docs/evals/search.md) (`npm run eval`).
 
 ## What it does
 
@@ -17,8 +29,8 @@ A chat window bolted onto a demo is not the goal.
 | **Buyer profile** | An anonymous cookie, stated preferences, and views, saves and skips. A time-decayed taste vector is built from the embeddings of units the buyer engaged with. |
 | **Concierge agent** | Vercel AI SDK with tools that call typed NestJS endpoints (`search_units`, `compare_units`, `find_similar`, `update_preferences`…). Tool results render as UI cards, and the model writes only the "why it fits". Traced in Langfuse. |
 | **"Why it fits you"** | Deterministic checks of each unit against the buyer's stated preferences. It shows misses too, so nothing shown to the buyer is guessed. |
-
-In progress: a personalized **"For you"** feed with match scores, then evals comparing free and paid models.
+| **"For you" feed** | Ranks units that meet the buyer's preferences by their taste vector, with a penalty for units like ones they skipped. |
+| **Evals** | `npm run eval` scores parsing, ranking, the feed and similar units against fixed fixtures; agent evals are in progress. |
 
 ## Architecture
 
@@ -49,14 +61,14 @@ Images: MinIO (S3-compatible)
 - **Model-agnostic agent.** `LLM_PROVIDER` / `LLM_MODEL` pick the model. Tools are plain REST endpoints with
   their own tests.
 
-The full roadmap and decision log live in [issue #12](https://github.com/Amrabrazek/nawy-replica/issues/12).
+The full roadmap and decision log live in [issue #12](https://github.com/Amrabrazek/homescout-ai/issues/12).
 
 ## Quick start
 
 Requirements: Docker with Docker Compose.
 
 ```bash
-git clone https://github.com/Amrabrazek/nawy-replica.git homescout-ai
+git clone https://github.com/Amrabrazek/homescout-ai.git homescout-ai
 cd homescout-ai
 docker compose up --build
 ```
