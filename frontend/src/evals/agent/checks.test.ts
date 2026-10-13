@@ -87,6 +87,15 @@ describe('checkGrounded', () => {
     assert.equal(checkGrounded([turn], []).pass, true);
   });
 
+  it('accepts the gap to the budget and the price per m²', () => {
+    const turn = searchTurn(
+      { maxPrice: 6_000_000 },
+      [unit()],
+      'It leaves 600K under budget, about 45K EGP/m².'
+    );
+    assert.equal(checkGrounded([turn], []).pass, true);
+  });
+
   it('fails a price no tool returned', () => {
     const turn = searchTurn({}, [unit()], 'It costs about 4.1M.');
     const result = checkGrounded([turn], []);
@@ -172,6 +181,24 @@ describe('runChecks', () => {
       },
     ];
     assert.equal(runChecks(vague, turns, []).asksWhenVague?.pass, true);
+  });
+
+  it('passes a request for details phrased without a question mark', () => {
+    const turns = [
+      {
+        user: 'help me find a home',
+        reply: 'Could you tell me:\n- **Budget:** your maximum in EGP',
+        toolCalls: [],
+      },
+    ];
+    assert.equal(runChecks(vague, turns, []).asksWhenVague?.pass, true);
+  });
+
+  it('fails a reply that asks nothing', () => {
+    const turns = [
+      { user: 'help me find a home', reply: 'Happy to help.', toolCalls: [] },
+    ];
+    assert.equal(runChecks(vague, turns, []).asksWhenVague?.pass, false);
   });
 
   it('fails a search before asking', () => {
