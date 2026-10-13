@@ -12,6 +12,7 @@ import { judgeHelpfulness } from '@/evals/agent/judge';
 import {
   renderAgentReport,
   renderTranscripts,
+  costUsd,
   type AgentReport,
   type ScoredRun,
 } from '@/evals/agent/report';
@@ -37,6 +38,18 @@ const MODELS = (
 ).split(',');
 const JUDGE = process.env.EVAL_JUDGE ?? 'anthropic:claude-opus-5-5';
 const ONLY = process.env.EVAL_CASES?.split(',');
+/** Stops before starting when the estimate is over this, and mid-run when the real spend passes it. */
+const MAX_USD = Number(process.env.EVAL_MAX_USD || 0.5);
+
+/** Measured USD per conversation on 2026-10-13 (the judge figure is inferred from the bill). */
+const USD_PER_CHAT: Record<string, number> = {
+  'claude-haiku-5-5': 0.0007,
+  'claude-sonnet-5-5': 0.013,
+  'claude-opus-5-5': 0.03,
+};
+const JUDGE_USD_PER_CHAT: Record<string, number> = {
+  'claude-opus-5-5': 0.01,
+};
 
 /**
  * Agent evals: plays scripted buyer conversations against the concierge, runs
@@ -47,6 +60,8 @@ const ONLY = process.env.EVAL_CASES?.split(',');
 async function main() {
   const configs = MODELS.map(parseModel);
   const cases = AGENT_CASES.filter((c) => !ONLY || ONLY.includes(c.id));
+  const judge = JUDGE === 'off' ? null : parseModel(JUDGE);
+  checkBudget(configs, judge, cases.length);
   const projectNames = await loadProjectNames();
   await preflight(configs[0]);
 
@@ -64,29 +79,52 @@ async function main() {
   );
 
   let done = 0;
+  let spent = 0;
+  let overBudget = false;
   const results = await pool(
     jobs,
     CONCURRENCY,
+    () => overBudget,
     async ({ config, testCase, run }) => {
       const conversation = await runConversation(testCase, config, run);
+      for (const turn of conversation.turns)
+        spent += costUsd(config.modelId, turn.usage) ?? 0;
       const scored: ScoredRun = {
         ...conversation,
         checks: conversation.error
           ? {}
           : runChecks(testCase, conversation.turns, projectNames),
       };
-      if (!conversation.error && JUDGE !== 'off') {
-        scored.judge = await judgeHelpfulness(
-          parseModel(JUDGE),
-          conversation.turns
-        ).catch((error) => ({ error: String(error) }));
+      if (!conversation.error && judge) {
+        scored.judge = await judgeHelpfulness(judge, conversation.turns)
+          .then(({ usage, ...score }) => {
+            spent += costUsd(judge.modelId, usage) ?? 0;
+            return score;
+          })
+          .catch((error) => ({ error: String(error) }));
       }
       done += 1;
+      if (spent > MAX_USD && !overBudget) {
+        overBudget = true;
+        console.error(
+          `Stopping: spent ${usd(spent)}, over EVAL_MAX_USD=${MAX_USD}. Finishing the conversations already started.`
+        );
+      }
       if (done % 10 === 0 || done === jobs.length)
         console.log(`  ${done}/${jobs.length}`);
       return scored;
     }
   );
+
+  console.log(`Spent about ${usd(spent)}`);
+  if (overBudget) {
+    mkdirSync(resolve(TRANSCRIPTS, '..'), { recursive: true });
+    writeFileSync(TRANSCRIPTS, renderTranscripts(results.filter(Boolean)));
+    console.error(
+      `Stopped early, so ${REPORT} was not rewritten. Partial transcripts: ${TRANSCRIPTS}`
+    );
+    process.exit(1);
+  }
 
   const report: AgentReport = {
     generatedAt: new Date(),
@@ -108,6 +146,46 @@ async function main() {
   mkdirSync(resolve(TRANSCRIPTS, '..'), { recursive: true });
   writeFileSync(TRANSCRIPTS, renderTranscripts(results));
   console.log(`Wrote ${REPORT}\nTranscripts: ${TRANSCRIPTS}`);
+}
+
+const usd = (value: number) => `$${value.toFixed(value < 0.1 ? 3 : 2)}`;
+
+/** Prints the expected cost and refuses to start a run that would pass EVAL_MAX_USD. */
+function checkBudget(
+  configs: LlmConfig[],
+  judge: LlmConfig | null,
+  caseCount: number
+) {
+  const chats = caseCount * RUNS;
+  const lines: string[] = [];
+  let total = 0;
+  let unknown = false;
+  const add = (label: string, perChat: number | undefined, count: number) => {
+    if (perChat == null) {
+      unknown = true;
+      lines.push(`  ${label}: unknown price`);
+      return;
+    }
+    total += perChat * count;
+    lines.push(
+      `  ${label}: ${count} chats × $${perChat} = ${usd(perChat * count)}`
+    );
+  };
+  for (const config of configs)
+    add(config.modelId, USD_PER_CHAT[config.modelId], chats);
+  if (judge)
+    add(
+      `judge ${judge.modelId}`,
+      JUDGE_USD_PER_CHAT[judge.modelId],
+      chats * configs.length
+    );
+  console.log(
+    `Estimated cost: ${usd(total)}${unknown ? ' plus unknown' : ''} (cap EVAL_MAX_USD=${MAX_USD})\n${lines.join('\n')}`
+  );
+  if (total > MAX_USD)
+    throw new Error(
+      `The estimate is over EVAL_MAX_USD=${MAX_USD}. Cut EVAL_MODELS, EVAL_RUNS or EVAL_CASES, set EVAL_JUDGE=off, or raise EVAL_MAX_USD.`
+    );
 }
 
 function parseModel(spec: string): LlmConfig {
@@ -165,9 +243,11 @@ async function preflight(config: LlmConfig) {
   }
 }
 
+/** Runs work with a fixed concurrency and starts nothing new once stop() is true. */
 async function pool<T, R>(
   items: T[],
   size: number,
+  stop: () => boolean,
   work: (item: T) => Promise<R>
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
@@ -175,7 +255,7 @@ async function pool<T, R>(
   const workers = Array.from(
     { length: Math.min(size, items.length) },
     async () => {
-      while (next < items.length) {
+      while (next < items.length && !stop()) {
         const index = next++;
         results[index] = await work(items[index]);
       }
