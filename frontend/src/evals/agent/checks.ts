@@ -86,9 +86,17 @@ function calls(turn: TurnTranscript, name: string): ToolCall[] {
 function checkAsks(turn: TurnTranscript): CheckResult {
   if (calls(turn, 'search_units').length)
     return { pass: false, detail: 'searched before asking' };
-  if (!turn.reply.includes('?'))
+  if (!asksSomething(turn.reply))
     return { pass: false, detail: 'no question in the reply' };
   return { pass: true };
+}
+
+/** A "?" or a request phrased as a statement ("Could you tell me:" then a list). */
+const ASKS =
+  /\?|\b(could|can|would) you (tell|share|let)\b|\blet me know\b|\btell me\b/i;
+
+function asksSomething(reply: string): boolean {
+  return ASKS.test(reply);
 }
 
 function checkOnTopic(turn: TurnTranscript, forbidden: RegExp[]): CheckResult {
@@ -211,7 +219,8 @@ export function extractPrices(text: string): PriceMention[] {
 /**
  * Every price in a reply must be a number the conversation already holds: a
  * unit price from a tool result, a filter or preference value, a number the
- * buyer wrote, or the gap between two tool prices. Every catalog project named
+ * buyer wrote, the gap between a tool price and another price or budget, or a
+ * unit's price per m². Every catalog project named
  * must have appeared in a tool result.
  */
 export function checkGrounded(
@@ -230,11 +239,14 @@ export function checkGrounded(
       collectNumbers(call.output, known);
     }
   });
-  const unitPrices = turns.flatMap((t) =>
-    t.toolCalls.flatMap((c) => unitsOf(c.output).map((u) => u.price))
+  const units = turns.flatMap((t) =>
+    t.toolCalls.flatMap((c) => unitsOf(c.output))
   );
-  for (const a of unitPrices)
-    for (const b of unitPrices) if (a > b) known.push(a - b);
+  const budgets = [...units.map((u) => u.price), ...known];
+  for (const unit of units) {
+    for (const other of budgets) known.push(Math.abs(other - unit.price));
+    if (unit.floorArea > 0) known.push(unit.price / unit.floorArea);
+  }
 
   for (const turn of turns) {
     for (const mention of extractPrices(turn.reply)) {
