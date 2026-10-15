@@ -55,7 +55,7 @@ export function conciergeTools(api: InternalApi) {
 
     get_unit: tool({
       description:
-        'Full details of one unit: amenities, finishing, view, floor, description.',
+        'Full details of one unit: amenities, finishing, view, floor, description, payment plan and its value today.',
       inputSchema: z.object({ id: unitId }),
       execute: ({ id }) => api<UnitDetail>('GET', `/units/${id}`),
       toModelOutput: ({ output }) => ({

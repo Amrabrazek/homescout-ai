@@ -98,7 +98,19 @@ type Detail = Extract<
   { type: 'tool-compare_units'; state: 'output-available' }
 >['output'][number];
 
+function planLabel(plan: Detail['paymentPlan'] | undefined): string {
+  if (!plan) return '–';
+  if (plan.months === 0) return 'Cash';
+  return `${plan.downPaymentPct}% down, ${plan.installmentYears} yrs`;
+}
+
+function worthToday(plan: Detail['paymentPlan'] | undefined): string {
+  if (plan?.presentValue == null || plan.shareOfPrice == null) return '–';
+  return `${formatEgp(plan.presentValue)} (${Math.round(plan.shareOfPrice * 100)}%)`;
+}
+
 function Comparison({ units }: { units: Detail[] }) {
+  const hasValue = units.some((u) => u.paymentPlan?.presentValue != null);
   const rows: [string, (u: Detail) => string][] = [
     ['Price', (u) => formatEgp(u.price)],
     ['Area', (u) => u.area ?? '–'],
@@ -110,6 +122,15 @@ function Comparison({ units }: { units: Detail[] }) {
     ['Size', (u) => `${u.floorArea} m²`],
     ['Price / m²', (u) => formatEgp(Math.round(u.price / u.floorArea))],
     ['Delivery', (u) => (u.deliveryYear ? String(u.deliveryYear) : 'Ready')],
+    ['Plan', (u) => planLabel(u.paymentPlan)],
+    ...(hasValue
+      ? [
+          [
+            'Worth today',
+            (u: Detail) => worthToday(u.paymentPlan),
+          ] as [string, (u: Detail) => string],
+        ]
+      : []),
     ['Finishing', (u) => u.finishing?.replace(/_/g, ' ') ?? '–'],
     ['Amenities', (u) => u.amenities.join(', ') || '–'],
   ];

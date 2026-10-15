@@ -140,6 +140,11 @@ export const GET_UNIT = gql`
       deliveryYear
       downPaymentPct
       installmentYears
+      planValue {
+        presentValue
+        shareOfPrice
+        discountRate
+      }
       project {
         id
         name

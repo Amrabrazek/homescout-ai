@@ -184,6 +184,20 @@ type ParsedSearch {
   text: String!
 }
 
+type PlanValue {
+  """Yearly discount rate, e.g. 0.2"""
+  discountRate: Float!
+  downPayment: Float!
+  monthlyInstallment: Float!
+  months: Int!
+
+  """The plan's payments in today's money"""
+  presentValue: Float!
+
+  """presentValue / price, 0..1"""
+  shareOfPrice: Float!
+}
+
 type Project {
   area: String
   city: String
@@ -326,6 +340,7 @@ type Unit {
   installmentYears: Int
   name: String!
   number: String!
+  planValue: PlanValue
   price: Float!
   project: Project!
   projectId: String!

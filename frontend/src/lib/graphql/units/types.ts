@@ -36,9 +36,20 @@ export interface Unit {
   deliveryYear?: number | null;
   downPaymentPct?: number | null;
   installmentYears?: number | null;
+  /** Only on the unit page query. Null for units without plan data. */
+  planValue?: PlanValue | null;
   project: Project;
   amenities: Amenity[];
   images: Image[];
+}
+
+export interface PlanValue {
+  /** The plan's payments in today's money. */
+  presentValue: number;
+  /** presentValue / price, 0..1. */
+  shareOfPrice: number;
+  /** Yearly rate, e.g. 0.2. */
+  discountRate: number;
 }
 
 export interface FacetCountValue {
