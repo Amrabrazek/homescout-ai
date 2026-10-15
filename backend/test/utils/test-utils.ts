@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { ConfigService } from '@nestjs/config';
 import { UnitResolver } from '../../src/modules/unit/unit.resolver';
 import { UnitService } from '../../src/modules/unit/unit.service';
 import { ProjectService } from '../../src/modules/project/project.service';
@@ -286,6 +287,7 @@ export async function setupTestApp(): Promise<INestApplication> {
           provide: ProjectService,
           useValue: mockProjectService,
         },
+        { provide: ConfigService, useValue: new ConfigService({}) },
       ],
     }).compile();
 

@@ -111,6 +111,8 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       SEARCH_LLM_ENABLED: ${SEARCH_LLM_ENABLED:-false}
       SEARCH_LLM_DAILY_LIMIT: ${SEARCH_LLM_DAILY_LIMIT:-500}
+      PLAN_VALUE_ENABLED: ${PLAN_VALUE_ENABLED:-true}
+      MARKET_DISCOUNT_RATE: ${MARKET_DISCOUNT_RATE:-0.2}
       WORKER: 'true'
     volumes:
       - model-cache:/models
