@@ -18,6 +18,18 @@ export interface PlanValue {
   discountRate: number;
 }
 
+/**
+ * The rate to value plans at, or null when PLAN_VALUE_ENABLED=false turns
+ * "worth today" off.
+ */
+export function planDiscountRate(config: {
+  get(key: string): unknown;
+}): number | null {
+  const enabled = String(config.get('PLAN_VALUE_ENABLED') ?? 'true');
+  if (enabled.trim().toLowerCase() === 'false') return null;
+  return discountRateFrom(config.get('MARKET_DISCOUNT_RATE') as string);
+}
+
 /** MARKET_DISCOUNT_RATE as a fraction ("0.2" or "20" both mean 20%). */
 export function discountRateFrom(raw?: string | number | null): number {
   const rate = Number(raw);

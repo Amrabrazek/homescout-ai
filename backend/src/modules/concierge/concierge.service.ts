@@ -7,7 +7,7 @@ import { UpdatePreferencesInput } from '../buyer/dto/update-preferences.input';
 import { UnitFilterInput } from '../unit/dto/unit-filter.input';
 import { SearchService } from '../search/search.service';
 import { UnitService } from '../unit/unit.service';
-import { discountRateFrom } from '../unit/payment-plan';
+import { planDiscountRate } from '../unit/payment-plan';
 import { SearchUnitsDto } from './dto/search-units.dto';
 import { UpdateBuyerPreferencesDto } from './dto/update-preferences.dto';
 import { toUnitCard, toUnitDetail, UnitCard, UnitDetail } from './unit-card';
@@ -62,8 +62,8 @@ export class ConciergeService {
     private readonly config: ConfigService
   ) {}
 
-  private get discountRate(): number {
-    return discountRateFrom(this.config.get('MARKET_DISCOUNT_RATE'));
+  private get discountRate(): number | null {
+    return planDiscountRate(this.config);
   }
 
   async searchUnits(input: SearchUnitsDto): Promise<UnitSearchResult> {

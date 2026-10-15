@@ -56,9 +56,17 @@ export interface UnitDetail extends UnitCard {
   amenities: string[];
   description: string | null;
   /** Null for units without plan data. */
-  paymentPlan:
-    | (PlanValue & { downPaymentPct: number; installmentYears: number })
-    | null;
+  paymentPlan: UnitPaymentPlan | null;
+}
+
+/** The value fields are null when PLAN_VALUE_ENABLED=false. */
+export interface UnitPaymentPlan
+  extends Omit<PlanValue, 'presentValue' | 'shareOfPrice' | 'discountRate'> {
+  downPaymentPct: number;
+  installmentYears: number;
+  presentValue: number | null;
+  shareOfPrice: number | null;
+  discountRate: number | null;
 }
 
 const DESCRIPTION_LIMIT = 600;
@@ -81,9 +89,12 @@ export function toUnitCard(unit: UnitLike): UnitCard {
   };
 }
 
-export function toUnitDetail(unit: UnitLike, discountRate: number): UnitDetail {
+export function toUnitDetail(
+  unit: UnitLike,
+  discountRate: number | null
+): UnitDetail {
   const description = unit.description?.trim() || null;
-  const plan = paymentPlanValue(unit, discountRate);
+
   return {
     ...toUnitCard(unit),
     floor: unit.floor ?? null,
@@ -94,10 +105,24 @@ export function toUnitDetail(unit: UnitLike, discountRate: number): UnitDetail {
       description && description.length > DESCRIPTION_LIMIT
         ? `${description.slice(0, DESCRIPTION_LIMIT)}…`
         : description,
-    paymentPlan: plan && {
-      downPaymentPct: Number(unit.downPaymentPct ?? 0),
-      installmentYears: unit.installmentYears ?? 0,
-      ...plan,
-    },
+    paymentPlan: toPaymentPlan(unit, discountRate),
+  };
+}
+
+function toPaymentPlan(
+  unit: UnitLike,
+  discountRate: number | null
+): UnitPaymentPlan | null {
+  const plan = paymentPlanValue(unit, discountRate ?? 0);
+  if (!plan) return null;
+  return {
+    downPaymentPct: Number(unit.downPaymentPct ?? 0),
+    installmentYears: unit.installmentYears ?? 0,
+    ...plan,
+    ...(discountRate == null && {
+      presentValue: null,
+      shareOfPrice: null,
+      discountRate: null,
+    }),
   };
 }

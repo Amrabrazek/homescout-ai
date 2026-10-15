@@ -21,7 +21,7 @@ import { UpdateUnitInput } from './dto/update-unit.input';
 import { UnitFilterInput } from './dto/unit-filter.input';
 import { UnitService } from './unit.service';
 import { UnitSortInput } from './dto/unit-sort.input';
-import { discountRateFrom, paymentPlanValue } from './payment-plan';
+import { paymentPlanValue, planDiscountRate } from './payment-plan';
 
 @ObjectType()
 export class FacetCountValue {
@@ -163,9 +163,7 @@ export class UnitResolver {
 
   @ResolveField(() => PlanValue, { nullable: true })
   planValue(@Parent() unit: Unit): PlanValue | null {
-    return paymentPlanValue(
-      unit,
-      discountRateFrom(this.config.get('MARKET_DISCOUNT_RATE'))
-    );
+    const rate = planDiscountRate(this.config);
+    return rate == null ? null : paymentPlanValue(unit, rate);
   }
 }

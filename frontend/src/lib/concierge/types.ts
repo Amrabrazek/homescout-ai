@@ -45,12 +45,12 @@ export interface PaymentPlanValue {
   downPayment: number;
   months: number;
   monthlyInstallment: number;
-  /** What the payments are worth in today's money. */
-  presentValue: number;
+  /** What the payments are worth in today's money. Null when the flag is off. */
+  presentValue: number | null;
   /** presentValue / price, 0..1. */
-  shareOfPrice: number;
+  shareOfPrice: number | null;
   /** Yearly discount rate, e.g. 0.2. */
-  discountRate: number;
+  discountRate: number | null;
 }
 
 export interface UnitSearchResult {

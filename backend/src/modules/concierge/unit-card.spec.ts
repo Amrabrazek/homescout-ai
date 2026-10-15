@@ -70,4 +70,19 @@ describe('toUnitDetail', () => {
     });
     expect(detail.paymentPlan.shareOfPrice).toBeCloseTo(0.547, 2);
   });
+
+  it('keeps the plan but drops its value when the flag is off', () => {
+    const detail = toUnitDetail(
+      { ...unit, downPaymentPct: '10.00', installmentYears: 8 },
+      null
+    );
+    expect(detail.paymentPlan).toMatchObject({
+      downPaymentPct: 10,
+      months: 96,
+      presentValue: null,
+      shareOfPrice: null,
+      discountRate: null,
+    });
+    expect(detail.paymentPlan.monthlyInstallment).toBeGreaterThan(0);
+  });
 });

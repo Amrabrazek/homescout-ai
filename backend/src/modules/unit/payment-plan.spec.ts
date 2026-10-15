@@ -1,7 +1,9 @@
+import { ConfigService } from '@nestjs/config';
 import {
   DEFAULT_DISCOUNT_RATE,
   discountRateFrom,
   paymentPlanValue,
+  planDiscountRate,
 } from './payment-plan';
 
 describe('paymentPlanValue', () => {
@@ -44,6 +46,21 @@ describe('paymentPlanValue', () => {
         { price: 0, downPaymentPct: 10, installmentYears: 5 },
         0.2
       )
+    ).toBeNull();
+  });
+});
+
+describe('planDiscountRate', () => {
+  it('is on by default and reads the rate', () => {
+    expect(planDiscountRate(new ConfigService({}))).toBe(DEFAULT_DISCOUNT_RATE);
+    expect(
+      planDiscountRate(new ConfigService({ MARKET_DISCOUNT_RATE: '15' }))
+    ).toBe(0.15);
+  });
+
+  it('is null when PLAN_VALUE_ENABLED=false', () => {
+    expect(
+      planDiscountRate(new ConfigService({ PLAN_VALUE_ENABLED: 'false' }))
     ).toBeNull();
   });
 });
