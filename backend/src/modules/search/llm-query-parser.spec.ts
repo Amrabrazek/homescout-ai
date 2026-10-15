@@ -1,6 +1,7 @@
 import { LlmQueryParser, mergeParses, toParsedQuery } from './llm-query-parser';
 import { parseSearchQuery } from './query-parser';
-import { SearchLlm } from './search-llm';
+import { ParseCache } from './parse-cache';
+import { SEARCH_PROMPT_VERSION, SearchLlm } from './search-llm';
 
 const vocabulary = {
   areas: ['New Cairo', 'Sheikh Zayed'],
@@ -126,6 +127,81 @@ describe('LlmQueryParser', () => {
     const llm = fakeLlm({ ...empty, text: 'x' });
     const parser = new LlmQueryParser(llm, 1);
     await parse(parser, `quiet ${'a'.repeat(200)}`);
+    await parse(parser, 'quiet');
+    await expect(parse(parser, 'calm')).resolves.toEqual({
+      text: 'calm',
+      filter: {},
+    });
+    expect(llm.extract).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('LlmQueryParser with a persistent store', () => {
+  function fakeStore(rows: Record<string, unknown> = {}) {
+    return {
+      rows,
+      get: jest.fn(async ({ query }) => rows[query]),
+      set: jest.fn(async ({ query }, output) => {
+        rows[query] = output;
+      }),
+    } satisfies ParseCache & { rows: Record<string, unknown> };
+  }
+
+  it('uses a stored parse without calling the LLM', async () => {
+    const llm = fakeLlm({ ...empty, text: 'llm' });
+    const store = fakeStore({
+      'quiet street': {
+        ...empty,
+        places: ['New Cairo', 'Atlantis'],
+        text: 'quiet',
+      },
+    });
+
+    await expect(
+      parse(new LlmQueryParser(llm, 10, store), 'Quiet street')
+    ).resolves.toEqual({ text: 'quiet', filter: { areas: ['New Cairo'] } });
+    expect(llm.extract).not.toHaveBeenCalled();
+    expect(store.get).toHaveBeenCalledWith({
+      query: 'quiet street',
+      model: 'test/model',
+      promptVersion: SEARCH_PROMPT_VERSION,
+    });
+  });
+
+  it('stores valid LLM output so a fresh parser reuses it', async () => {
+    const llm = fakeLlm({ ...empty, text: 'quiet' });
+    const store = fakeStore();
+
+    await parse(new LlmQueryParser(llm, 10, store), 'quiet street');
+    await parse(new LlmQueryParser(llm, 10, store), 'quiet street');
+    expect(llm.extract).toHaveBeenCalledTimes(1);
+    expect(store.rows['quiet street']).toEqual({ ...empty, text: 'quiet' });
+  });
+
+  it('does not store invalid output', async () => {
+    const store = fakeStore();
+    await parse(new LlmQueryParser(fakeLlm('nope'), 10, store), 'quiet street');
+    expect(store.set).not.toHaveBeenCalled();
+  });
+
+  it('asks the LLM when the store fails or holds invalid output', async () => {
+    const llm = fakeLlm({ ...empty, text: 'quiet' });
+    const broken = fakeStore();
+    broken.get.mockRejectedValue(new Error('db down'));
+    await expect(
+      parse(new LlmQueryParser(llm, 10, broken), 'quiet street')
+    ).resolves.toEqual({ text: 'quiet', filter: {} });
+
+    const stale = fakeStore({ 'quiet street': { text: 42 } });
+    await parse(new LlmQueryParser(llm, 10, stale), 'quiet street');
+    expect(llm.extract).toHaveBeenCalledTimes(2);
+  });
+
+  it('still serves stored parses once the daily budget is spent', async () => {
+    const llm = fakeLlm({ ...empty, text: 'x' });
+    const store = fakeStore({ calm: { ...empty, text: 'calm' } });
+    const parser = new LlmQueryParser(llm, 1, store);
+
     await parse(parser, 'quiet');
     await expect(parse(parser, 'calm')).resolves.toEqual({
       text: 'calm',

@@ -111,6 +111,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       SEARCH_LLM_ENABLED: ${SEARCH_LLM_ENABLED:-false}
       SEARCH_LLM_DAILY_LIMIT: ${SEARCH_LLM_DAILY_LIMIT:-500}
+      SEARCH_PARSE_CACHE_DAYS: ${SEARCH_PARSE_CACHE_DAYS:-30}
       WORKER: 'true'
     volumes:
       - model-cache:/models

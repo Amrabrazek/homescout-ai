@@ -1,7 +1,8 @@
 import { Logger } from '@nestjs/common';
 import { PropertyType } from '../../common/enums/unit-attributes';
+import { ParseCache, ParseCacheKey } from './parse-cache';
 import { LocationVocabulary, ParsedQuery } from './query-parser';
-import { SearchLlm } from './search-llm';
+import { SEARCH_PROMPT_VERSION, SearchLlm } from './search-llm';
 
 export const MAX_LLM_QUERY_LENGTH = 200;
 const TIMEOUT_MS = 4_000;
@@ -15,15 +16,18 @@ const MAX_FLOOR = 200;
  * Second pass after the regex parser. When the regex leaves words over, an LLM
  * reads the whole query and fills the filters the regex missed. Anything that
  * goes wrong (no key, over budget, timeout, invalid output) keeps the regex result.
+ * Parses are cached in memory, then in the optional persistent `store`.
  */
 export class LlmQueryParser {
   private readonly logger = new Logger(LlmQueryParser.name);
   private readonly cache = new Map<string, Promise<ParsedQuery | undefined>>();
   private spent = { day: '', calls: 0 };
+  private readonly stats = { memory: 0, store: 0, llm: 0 };
 
   constructor(
     private readonly llm: SearchLlm | null,
-    private readonly dailyLimit: number
+    private readonly dailyLimit: number,
+    private readonly store?: ParseCache
   ) {}
 
   async refine(
@@ -38,9 +42,9 @@ export class LlmQueryParser {
     let pending = this.cache.get(key);
     if (pending) {
       this.cache.delete(key);
+      this.count('memory');
     } else {
-      if (!this.spend()) return regex;
-      pending = this.ask(query, regex, vocabulary);
+      pending = this.lookupOrAsk(key, query, regex, vocabulary);
     }
     this.cache.set(key, pending);
     if (this.cache.size > CACHE_SIZE)
@@ -52,10 +56,37 @@ export class LlmQueryParser {
     return regex;
   }
 
-  private async ask(
+  private async lookupOrAsk(
+    key: string,
     query: string,
     regex: ParsedQuery,
     vocabulary: LocationVocabulary
+  ): Promise<ParsedQuery | undefined> {
+    const storeKey: ParseCacheKey = {
+      query: key,
+      model: this.llm.model,
+      promptVersion: SEARCH_PROMPT_VERSION,
+    };
+    const stored = await this.store?.get(storeKey).catch((error) => {
+      this.logger.warn(`Parse cache read failed: ${error.message}`);
+      return undefined;
+    });
+    const cached = stored && toParsedQuery(stored, vocabulary);
+    if (cached) {
+      this.count('store');
+      return cached;
+    }
+
+    if (!this.spend()) return undefined;
+    this.count('llm');
+    return this.ask(query, regex, vocabulary, storeKey);
+  }
+
+  private async ask(
+    query: string,
+    regex: ParsedQuery,
+    vocabulary: LocationVocabulary,
+    storeKey: ParseCacheKey
   ): Promise<ParsedQuery | undefined> {
     try {
       const raw = await this.llm.extract(
@@ -74,6 +105,11 @@ export class LlmQueryParser {
       );
       const parsed = toParsedQuery(raw, vocabulary);
       if (!parsed) throw new Error('output did not match the filter schema');
+      this.store
+        ?.set(storeKey, raw)
+        .catch((error) =>
+          this.logger.warn(`Parse cache write failed: ${error.message}`)
+        );
       return parsed;
     } catch (error) {
       this.logger.warn(
@@ -81,6 +117,15 @@ export class LlmQueryParser {
       );
       return undefined;
     }
+  }
+
+  private count(source: 'memory' | 'store' | 'llm'): void {
+    this.stats[source]++;
+    const { memory, store, llm } = this.stats;
+    const hits = memory + store;
+    this.logger.debug(
+      `Parse from ${source}; hit rate ${hits}/${hits + llm} (memory ${memory}, store ${store})`
+    );
   }
 
   private spend(): boolean {

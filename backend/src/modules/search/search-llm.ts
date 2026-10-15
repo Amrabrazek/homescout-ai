@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import type { JSONSchema7 } from 'ai';
 import { PropertyType } from '../../common/enums/unit-attributes';
@@ -78,6 +79,12 @@ const SCHEMA: JSONSchema7 = {
     text: { type: 'string' },
   },
 };
+
+/** Changes whenever the prompt or schema does, so cached parses from an older prompt are not reused. */
+export const SEARCH_PROMPT_VERSION = createHash('sha256')
+  .update(SYSTEM + JSON.stringify(SCHEMA))
+  .digest('hex')
+  .slice(0, 12);
 
 /**
  * Uses the concierge's LLM_PROVIDER / LLM_MODEL. Returns null (regex-only
