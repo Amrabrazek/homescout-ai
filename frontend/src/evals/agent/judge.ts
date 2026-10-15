@@ -1,4 +1,4 @@
-import { generateText } from 'ai';
+import { generateText, type LanguageModelUsage } from 'ai';
 import { languageModel, type LlmConfig } from '@/lib/concierge/model';
 import type { TurnTranscript } from './checks';
 
@@ -24,7 +24,7 @@ export interface JudgeScore {
 export async function judgeHelpfulness(
   config: LlmConfig,
   turns: TurnTranscript[]
-): Promise<JudgeScore> {
+): Promise<JudgeScore & { usage: LanguageModelUsage }> {
   const transcript = turns
     .map((turn) => {
       const tools = turn.toolCalls
@@ -39,13 +39,13 @@ export async function judgeHelpfulness(
     })
     .join('\n\n');
 
-  const { text } = await generateText({
+  const { text, usage } = await generateText({
     model: languageModel(config),
     instructions: HELPFULNESS_RUBRIC,
     prompt: `${transcript}\n\nReply with only JSON: {"score": <1-5>, "reason": "<one sentence>"}`,
     maxOutputTokens: 2000,
   });
-  return parseScore(text);
+  return { ...parseScore(text), usage };
 }
 
 export function parseScore(text: string): JudgeScore {

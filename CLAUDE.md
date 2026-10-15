@@ -61,7 +61,7 @@ Update this table in the same PR when you add, move or rename one of these place
 | backend | `npm run eval` | Search evals → `docs/evals/search.md` (embeds missing units per model; LLM/OpenAI legs need keys) |
 | backend | `npm run start:dev` | API on :3001 (`/graphql`) |
 | frontend | `npm run lint` · `npm run typecheck` · `npm test` · `npm run build` | Checks (CI runs these) |
-| frontend | `npm run eval` | Agent evals → `docs/evals/agent.md` (needs the API on :3001 and `ANTHROPIC_API_KEY`; `EVAL_RUNS`, `EVAL_MODELS`, `EVAL_CASES`, `EVAL_JUDGE=off`) |
+| frontend | `npm run eval` | Agent evals → `docs/evals/agent.md` (needs the API on :3001 and `ANTHROPIC_API_KEY`; `EVAL_RUNS`, `EVAL_MODELS`, `EVAL_CASES`, `EVAL_JUDGE=off`; prints the cost first and stops past `EVAL_MAX_USD`, default $0.50) |
 | frontend | `npm run dev` | App on :3000 |
 
 Run lint, typecheck and tests for every app you touched before pushing.
