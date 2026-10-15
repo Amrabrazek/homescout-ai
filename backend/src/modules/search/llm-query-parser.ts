@@ -12,11 +12,29 @@ const MAX_PRICE = 10_000_000_000;
 const MAX_FLOOR_AREA = 100_000;
 const MAX_FLOOR = 200;
 
+const FILTER_GROUPS: Record<string, (keyof ParsedQuery['filter'])[]> = {
+  rooms: ['minRooms', 'maxRooms'],
+  price: ['minPrice', 'maxPrice'],
+  size: ['minFloorArea', 'maxFloorArea'],
+  floor: ['minFloor', 'maxFloor'],
+  type: ['propertyTypes'],
+  place: ['areas', 'cities', 'regions'],
+};
+
+/** Names of the filter groups the regex already set, e.g. ["price", "type"]. */
+export function foundGroups(filter: ParsedQuery['filter']): string[] {
+  return Object.keys(FILTER_GROUPS).filter((group) =>
+    FILTER_GROUPS[group].some((key) => filter[key] != null)
+  );
+}
+
 /**
  * Second pass after the regex parser. When the regex leaves words over, an LLM
- * reads the whole query and fills the filters the regex missed. Anything that
- * goes wrong (no key, over budget, timeout, invalid output) keeps the regex result.
- * Parses are cached in memory, then in the optional persistent `store`.
+ * reads only those leftover words (plus which filter groups the regex already
+ * set) and fills the filters the regex missed. Because that is all it sees, the
+ * same leftover with the same groups set is cached and reused across queries.
+ * Anything that goes wrong (no key, over budget, timeout, invalid output) keeps
+ * the regex result. Parses are cached in memory, then in the optional `store`.
  */
 export class LlmQueryParser {
   private readonly logger = new Logger(LlmQueryParser.name);
@@ -35,16 +53,26 @@ export class LlmQueryParser {
     regex: ParsedQuery,
     vocabulary: LocationVocabulary
   ): Promise<ParsedQuery> {
-    if (!this.llm || !regex.text || query.length > MAX_LLM_QUERY_LENGTH)
+    const leftover = regex.text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}+]+/gu, ' ')
+      .trim();
+    if (!this.llm || !leftover || query.length > MAX_LLM_QUERY_LENGTH)
       return regex;
 
-    const key = query.toLowerCase().replace(/\s+/g, ' ').trim();
+    const storeKey: ParseCacheKey = {
+      leftover,
+      found: foundGroups(regex.filter).join(','),
+      model: this.llm.model,
+      promptVersion: SEARCH_PROMPT_VERSION,
+    };
+    const key = `${storeKey.found}|${storeKey.leftover}`;
     let pending = this.cache.get(key);
     if (pending) {
       this.cache.delete(key);
       this.count('memory');
     } else {
-      pending = this.lookupOrAsk(key, query, regex, vocabulary);
+      pending = this.lookupOrAsk(storeKey, regex, vocabulary);
     }
     this.cache.set(key, pending);
     if (this.cache.size > CACHE_SIZE)
@@ -57,16 +85,10 @@ export class LlmQueryParser {
   }
 
   private async lookupOrAsk(
-    key: string,
-    query: string,
+    storeKey: ParseCacheKey,
     regex: ParsedQuery,
     vocabulary: LocationVocabulary
   ): Promise<ParsedQuery | undefined> {
-    const storeKey: ParseCacheKey = {
-      query: key,
-      model: this.llm.model,
-      promptVersion: SEARCH_PROMPT_VERSION,
-    };
     const stored = await this.store?.get(storeKey).catch((error) => {
       this.logger.warn(`Parse cache read failed: ${error.message}`);
       return undefined;
@@ -79,11 +101,10 @@ export class LlmQueryParser {
 
     if (!this.spend()) return undefined;
     this.count('llm');
-    return this.ask(query, regex, vocabulary, storeKey);
+    return this.ask(regex, vocabulary, storeKey);
   }
 
   private async ask(
-    query: string,
     regex: ParsedQuery,
     vocabulary: LocationVocabulary,
     storeKey: ParseCacheKey
@@ -91,8 +112,8 @@ export class LlmQueryParser {
     try {
       const raw = await this.llm.extract(
         {
-          query,
-          parsed: regex.filter,
+          leftover: storeKey.leftover,
+          found: foundGroups(regex.filter),
           places: [
             ...new Set([
               ...vocabulary.areas,
@@ -188,16 +209,8 @@ export function toParsedQuery(
  * so the LLM only fills gaps. The LLM's text replaces the leftover words.
  */
 export function mergeParses(regex: ParsedQuery, llm: ParsedQuery): ParsedQuery {
-  const groups: (keyof ParsedQuery['filter'])[][] = [
-    ['minRooms', 'maxRooms'],
-    ['minPrice', 'maxPrice'],
-    ['minFloorArea', 'maxFloorArea'],
-    ['minFloor', 'maxFloor'],
-    ['propertyTypes'],
-    ['areas', 'cities', 'regions'],
-  ];
   const filter: ParsedQuery['filter'] = {};
-  for (const group of groups) {
+  for (const group of Object.values(FILTER_GROUPS)) {
     const source = group.some((key) => regex.filter[key] != null) ? regex : llm;
     for (const key of group)
       if (source.filter[key] != null)

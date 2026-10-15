@@ -1,7 +1,10 @@
 import { DataSource } from 'typeorm';
 
 export interface ParseCacheKey {
-  query: string;
+  /** Normalized words the regex could not parse. */
+  leftover: string;
+  /** Filter groups the regex already set, comma-separated. */
+  found: string;
   model: string;
   promptVersion: string;
 }
@@ -19,26 +22,31 @@ export class PgParseCache implements ParseCache {
     private readonly ttlDays: number
   ) {}
 
-  async get({ query, model, promptVersion }: ParseCacheKey): Promise<unknown> {
+  async get({
+    leftover,
+    found,
+    model,
+    promptVersion,
+  }: ParseCacheKey): Promise<unknown> {
     const [row] = await this.dataSource.query(
       `SELECT output FROM search_parse_cache
-        WHERE query = $1 AND model = $2 AND prompt_version = $3
-          AND created_at > NOW() - make_interval(days => $4)`,
-      [query, model, promptVersion, this.ttlDays]
+        WHERE leftover = $1 AND found = $2 AND model = $3 AND prompt_version = $4
+          AND created_at > NOW() - make_interval(days => $5)`,
+      [leftover, found, model, promptVersion, this.ttlDays]
     );
     return row?.output;
   }
 
   async set(
-    { query, model, promptVersion }: ParseCacheKey,
+    { leftover, found, model, promptVersion }: ParseCacheKey,
     output: unknown
   ): Promise<void> {
     await this.dataSource.query(
-      `INSERT INTO search_parse_cache (query, model, prompt_version, output)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (query, model, prompt_version)
+      `INSERT INTO search_parse_cache (leftover, found, model, prompt_version, output)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (leftover, found, model, prompt_version)
        DO UPDATE SET output = EXCLUDED.output, created_at = NOW()`,
-      [query, model, promptVersion, JSON.stringify(output)]
+      [leftover, found, model, promptVersion, JSON.stringify(output)]
     );
   }
 
