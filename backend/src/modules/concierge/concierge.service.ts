@@ -110,6 +110,17 @@ export class ConciergeService {
       });
       total = result.total;
       units = result.items.map(toUnitCard);
+      // The keywords' vector match has a distance cutoff, so a vague query can
+      // hide units that meet every hard filter. Keywords rank; they never filter.
+      if (text && units.length < limit) {
+        const filtered = await this.searchService.search({ filter, limit });
+        const seen = new Set(units.map((u) => u.id));
+        units = [
+          ...units,
+          ...filtered.items.map(toUnitCard).filter((u) => !seen.has(u.id)),
+        ].slice(0, limit);
+        total = Math.max(total, filtered.total);
+      }
     } catch (error) {
       this.logger.warn(
         `Search index unavailable, using Postgres filters only: ${error.message}`
