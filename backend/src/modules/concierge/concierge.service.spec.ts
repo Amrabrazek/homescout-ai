@@ -111,6 +111,32 @@ describe('ConciergeService', () => {
       });
     });
 
+    it('tops up with filter-only results when the keywords hide matching units', async () => {
+      const { service, searchService } = setup();
+      const other = { ...UNIT, id: 'u2', price: 4_000_000 };
+      searchService.search
+        .mockResolvedValueOnce({ items: [UNIT], total: 1, facets: [] })
+        .mockResolvedValueOnce({ items: [UNIT, other], total: 21, facets: [] });
+
+      const result = await service.searchUnits({
+        query: 'first home for a young couple',
+        maxPrice: 10_000_000,
+      });
+
+      expect(searchService.search).toHaveBeenLastCalledWith({
+        filter: expect.not.objectContaining({ searchTerm: expect.anything() }),
+        limit: 6,
+      });
+      expect(result.units.map((u) => u.id)).toEqual(['u1', 'u2']);
+      expect(result.total).toBe(21);
+    });
+
+    it('does not top up a search without keywords', async () => {
+      const { service, searchService } = setup();
+      await service.searchUnits({ maxPrice: 10_000_000 });
+      expect(searchService.search).toHaveBeenCalledTimes(1);
+    });
+
     it('falls back to Postgres filters when the search index is down', async () => {
       const { service, searchService, unitService } = setup();
       searchService.search.mockRejectedValueOnce(new Error('ECONNREFUSED'));
