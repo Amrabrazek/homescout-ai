@@ -5,7 +5,7 @@ import { LocationVocabulary, ParsedQuery } from './query-parser';
 import { SEARCH_PROMPT_VERSION, SearchLlm } from './search-llm';
 
 export const MAX_LLM_QUERY_LENGTH = 200;
-const TIMEOUT_MS = 4_000;
+const TIMEOUT_MS = 8_000;
 const CACHE_SIZE = 1_000;
 const MAX_ROOMS = 20;
 const MAX_PRICE = 10_000_000_000;
