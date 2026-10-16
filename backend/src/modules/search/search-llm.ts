@@ -1,11 +1,13 @@
+import { createHash } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import type { JSONSchema7 } from 'ai';
 import { PropertyType } from '../../common/enums/unit-attributes';
-import { ParsedQuery } from './query-parser';
 
 export interface SearchLlmRequest {
-  query: string;
-  parsed: ParsedQuery['filter'];
+  /** Only the words the regex could not parse. */
+  leftover: string;
+  /** Filter groups the regex already set from other words, e.g. ["price"]. */
+  found: string[];
   places: string[];
 }
 
@@ -30,7 +32,9 @@ The query may be English, Arabic or Franco-Arabic (Arabic in Latin letters).
 
 Rules:
 - Set a field only when the query states or clearly implies it; otherwise null or [].
-- "Already parsed" fields were extracted by a regex. Keep them; fill only what it missed.
+- You see only the words a regex could not parse. It already set the filter groups listed
+  under "Already set" (rooms, price, size, floor, type, place) from other words; leave
+  those fields null or [].
 - Rooms means bedrooms. "2-3 rooms" is minRooms 2, maxRooms 3. "3+" is minRooms 3.
   A family of N needs about N-2 bedrooms (at least 2).
 - Prices are absolute EGP numbers: "8M" or "8 million" is 8000000.
@@ -79,6 +83,12 @@ const SCHEMA: JSONSchema7 = {
   },
 };
 
+/** Changes whenever the prompt or schema does, so cached parses from an older prompt are not reused. */
+export const SEARCH_PROMPT_VERSION = createHash('sha256')
+  .update(SYSTEM + JSON.stringify(SCHEMA))
+  .digest('hex')
+  .slice(0, 12);
+
 /**
  * Uses the concierge's LLM_PROVIDER / LLM_MODEL. Returns null (regex-only
  * search) unless SEARCH_LLM_ENABLED=true and that provider has an API key.
@@ -94,7 +104,7 @@ export function createSearchLlm(config: ConfigService): SearchLlm | null {
 
   return {
     model: `${provider}/${modelId}`,
-    async extract({ query, parsed, places }, signal) {
+    async extract({ leftover, found, places }, signal) {
       const { generateText, jsonSchema, Output } = await import('ai');
       const model =
         provider === 'openai'
@@ -105,8 +115,8 @@ export function createSearchLlm(config: ConfigService): SearchLlm | null {
         system: SYSTEM,
         prompt: [
           `Places: ${places.join(', ')}`,
-          `Already parsed: ${JSON.stringify(parsed)}`,
-          `<query>${query}</query>`,
+          `Already set: ${found.join(', ') || 'nothing'}`,
+          `<query>${leftover}</query>`,
         ].join('\n'),
         output: Output.object({ schema: jsonSchema(SCHEMA) }),
         maxRetries: 0,

@@ -299,6 +299,9 @@ function matchLocations(
   for (let size = 3; size >= 1; size--) {
     for (let start = 0; start + size <= words.length; start++) {
       if (used.slice(start, start + size).some(Boolean)) continue;
+      // No place name has a bare number, so "new cairo 3" must not eat the 3.
+      if (words.slice(start, start + size).some((w) => /^\d+$/.test(w)))
+        continue;
       const phrase = normalize(words.slice(start, start + size).join(' '));
       if (phrase.length < 4) continue;
 

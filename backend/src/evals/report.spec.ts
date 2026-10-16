@@ -67,8 +67,8 @@ describe('search eval report', () => {
   it('tells LLM answers from silent fallbacks and renders every section', async () => {
     const llm: SearchLlm = {
       model: 'stub/model',
-      extract: jest.fn(async ({ query }) => {
-        if (query.includes('owad')) throw new Error('timeout');
+      extract: jest.fn(async ({ leftover }) => {
+        if (leftover.includes('owad')) throw new Error('timeout');
         return {
           minRooms: 3,
           maxRooms: null,

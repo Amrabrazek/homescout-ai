@@ -21,6 +21,13 @@ describe('parseSearchQuery', () => {
     });
   });
 
+  it('does not swallow a number next to a place name', () => {
+    expect(parseSearchQuery('fe new cairo 3 owad', vocabulary)).toEqual({
+      text: 'fe 3 owad',
+      filter: { areas: ['New Cairo'] },
+    });
+  });
+
   it('keeps descriptive words for keyword and vector search', () => {
     expect(
       parseSearchQuery('family villa with a garden in sheikh zayd', vocabulary)

@@ -1,7 +1,8 @@
 import { Logger } from '@nestjs/common';
 import { PropertyType } from '../../common/enums/unit-attributes';
+import { ParseCache, ParseCacheKey } from './parse-cache';
 import { LocationVocabulary, ParsedQuery } from './query-parser';
-import { SearchLlm } from './search-llm';
+import { SEARCH_PROMPT_VERSION, SearchLlm } from './search-llm';
 
 export const MAX_LLM_QUERY_LENGTH = 200;
 const TIMEOUT_MS = 4_000;
@@ -11,19 +12,40 @@ const MAX_PRICE = 10_000_000_000;
 const MAX_FLOOR_AREA = 100_000;
 const MAX_FLOOR = 200;
 
+const FILTER_GROUPS: Record<string, (keyof ParsedQuery['filter'])[]> = {
+  rooms: ['minRooms', 'maxRooms'],
+  price: ['minPrice', 'maxPrice'],
+  size: ['minFloorArea', 'maxFloorArea'],
+  floor: ['minFloor', 'maxFloor'],
+  type: ['propertyTypes'],
+  place: ['areas', 'cities', 'regions'],
+};
+
+/** Names of the filter groups the regex already set, e.g. ["price", "type"]. */
+export function foundGroups(filter: ParsedQuery['filter']): string[] {
+  return Object.keys(FILTER_GROUPS).filter((group) =>
+    FILTER_GROUPS[group].some((key) => filter[key] != null)
+  );
+}
+
 /**
  * Second pass after the regex parser. When the regex leaves words over, an LLM
- * reads the whole query and fills the filters the regex missed. Anything that
- * goes wrong (no key, over budget, timeout, invalid output) keeps the regex result.
+ * reads only those leftover words (plus which filter groups the regex already
+ * set) and fills the filters the regex missed. Because that is all it sees, the
+ * same leftover with the same groups set is cached and reused across queries.
+ * Anything that goes wrong (no key, over budget, timeout, invalid output) keeps
+ * the regex result. Parses are cached in memory, then in the optional `store`.
  */
 export class LlmQueryParser {
   private readonly logger = new Logger(LlmQueryParser.name);
   private readonly cache = new Map<string, Promise<ParsedQuery | undefined>>();
   private spent = { day: '', calls: 0 };
+  private readonly stats = { memory: 0, store: 0, llm: 0 };
 
   constructor(
     private readonly llm: SearchLlm | null,
-    private readonly dailyLimit: number
+    private readonly dailyLimit: number,
+    private readonly store?: ParseCache
   ) {}
 
   async refine(
@@ -31,16 +53,26 @@ export class LlmQueryParser {
     regex: ParsedQuery,
     vocabulary: LocationVocabulary
   ): Promise<ParsedQuery> {
-    if (!this.llm || !regex.text || query.length > MAX_LLM_QUERY_LENGTH)
+    const leftover = regex.text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}+]+/gu, ' ')
+      .trim();
+    if (!this.llm || !leftover || query.length > MAX_LLM_QUERY_LENGTH)
       return regex;
 
-    const key = query.toLowerCase().replace(/\s+/g, ' ').trim();
+    const storeKey: ParseCacheKey = {
+      leftover,
+      found: foundGroups(regex.filter).join(','),
+      model: this.llm.model,
+      promptVersion: SEARCH_PROMPT_VERSION,
+    };
+    const key = `${storeKey.found}|${storeKey.leftover}`;
     let pending = this.cache.get(key);
     if (pending) {
       this.cache.delete(key);
+      this.count('memory');
     } else {
-      if (!this.spend()) return regex;
-      pending = this.ask(query, regex, vocabulary);
+      pending = this.lookupOrAsk(storeKey, regex, vocabulary);
     }
     this.cache.set(key, pending);
     if (this.cache.size > CACHE_SIZE)
@@ -52,16 +84,36 @@ export class LlmQueryParser {
     return regex;
   }
 
-  private async ask(
-    query: string,
+  private async lookupOrAsk(
+    storeKey: ParseCacheKey,
     regex: ParsedQuery,
     vocabulary: LocationVocabulary
+  ): Promise<ParsedQuery | undefined> {
+    const stored = await this.store?.get(storeKey).catch((error) => {
+      this.logger.warn(`Parse cache read failed: ${error.message}`);
+      return undefined;
+    });
+    const cached = stored && toParsedQuery(stored, vocabulary);
+    if (cached) {
+      this.count('store');
+      return cached;
+    }
+
+    if (!this.spend()) return undefined;
+    this.count('llm');
+    return this.ask(regex, vocabulary, storeKey);
+  }
+
+  private async ask(
+    regex: ParsedQuery,
+    vocabulary: LocationVocabulary,
+    storeKey: ParseCacheKey
   ): Promise<ParsedQuery | undefined> {
     try {
       const raw = await this.llm.extract(
         {
-          query,
-          parsed: regex.filter,
+          leftover: storeKey.leftover,
+          found: foundGroups(regex.filter),
           places: [
             ...new Set([
               ...vocabulary.areas,
@@ -74,6 +126,11 @@ export class LlmQueryParser {
       );
       const parsed = toParsedQuery(raw, vocabulary);
       if (!parsed) throw new Error('output did not match the filter schema');
+      this.store
+        ?.set(storeKey, raw)
+        .catch((error) =>
+          this.logger.warn(`Parse cache write failed: ${error.message}`)
+        );
       return parsed;
     } catch (error) {
       this.logger.warn(
@@ -81,6 +138,15 @@ export class LlmQueryParser {
       );
       return undefined;
     }
+  }
+
+  private count(source: 'memory' | 'store' | 'llm'): void {
+    this.stats[source]++;
+    const { memory, store, llm } = this.stats;
+    const hits = memory + store;
+    this.logger.debug(
+      `Parse from ${source}; hit rate ${hits}/${hits + llm} (memory ${memory}, store ${store})`
+    );
   }
 
   private spend(): boolean {
@@ -143,16 +209,8 @@ export function toParsedQuery(
  * so the LLM only fills gaps. The LLM's text replaces the leftover words.
  */
 export function mergeParses(regex: ParsedQuery, llm: ParsedQuery): ParsedQuery {
-  const groups: (keyof ParsedQuery['filter'])[][] = [
-    ['minRooms', 'maxRooms'],
-    ['minPrice', 'maxPrice'],
-    ['minFloorArea', 'maxFloorArea'],
-    ['minFloor', 'maxFloor'],
-    ['propertyTypes'],
-    ['areas', 'cities', 'regions'],
-  ];
   const filter: ParsedQuery['filter'] = {};
-  for (const group of groups) {
+  for (const group of Object.values(FILTER_GROUPS)) {
     const source = group.some((key) => regex.filter[key] != null) ? regex : llm;
     for (const key of group)
       if (source.filter[key] != null)
