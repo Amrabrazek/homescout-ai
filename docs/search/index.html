@@ -1,0 +1,265 @@
+<!doctype html><html><head><meta charset=utf8><title>Search Without Guesswork · HomeScout</title><meta name="description" content="Rules read the facts, an LLM reads the leftovers, and the rest is ranked. How HomeScout's search reads messy real-estate queries.">
+<meta property="og:type" content="article"><meta property="og:title" content="Rules read the facts, an LLM reads the leftovers, and the rest is ranked">
+<meta property="og:description" content="An interactive write-up of HomeScout's search: regex first, an LLM only for the leftover words, filters for facts, keyword + vector ranking for the rest.">
+<meta property="og:url" content="https://amrabrazek.github.io/homescout-ai/search/"><meta property="og:image" content="https://amrabrazek.github.io/homescout-ai/search/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; a live "query → filters" hero, a results strip, the flow, what the engine receives, tradeoffs, lessons. Brand = HomeScout's Nile green. */
+:root {
+  --bg: hsl(170 20% 98%);
+  --surface: hsl(0 0% 100%);
+  --ink: hsl(214 13% 10%);
+  --muted: hsl(213 9% 41%);
+  --line: hsl(170 14% 89%);
+  --nile: hsl(171 82% 24%);
+  --nile-soft: hsl(167 37% 92%);
+  --sand: hsl(38 70% 92%);
+  --sand-ink: hsl(30 60% 30%);
+  --good: hsl(150 55% 32%);
+  --warn: hsl(32 85% 38%);
+  --bad: hsl(0 65% 45%);
+  --chip-llm: hsl(258 60% 94%);
+  --chip-llm-ink: hsl(258 45% 40%);
+  --display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --body: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: hsl(200 12% 7%); --surface: hsl(200 10% 10%); --ink: hsl(210 10% 94%); --muted: hsl(210 8% 64%);
+  --line: hsl(200 8% 20%); --nile: hsl(168 60% 52%); --nile-soft: hsl(170 35% 16%);
+  --sand: hsl(35 30% 16%); --sand-ink: hsl(38 70% 72%); --good: hsl(150 50% 58%); --warn: hsl(36 85% 62%); --bad: hsl(0 75% 68%);
+  --chip-llm: hsl(258 25% 20%); --chip-llm-ink: hsl(258 70% 82%); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: hsl(200 12% 7%); --surface: hsl(200 10% 10%); --ink: hsl(210 10% 94%); --muted: hsl(210 8% 64%);
+  --line: hsl(200 8% 20%); --nile: hsl(168 60% 52%); --nile-soft: hsl(170 35% 16%);
+  --sand: hsl(35 30% 16%); --sand-ink: hsl(38 70% 72%); --good: hsl(150 50% 58%); --warn: hsl(36 85% 62%); --bad: hsl(0 75% 68%);
+  --chip-llm: hsl(258 25% 20%); --chip-llm-ink: hsl(258 70% 82%); color-scheme: dark; }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 760px; margin: 0 auto; padding-inline: 20px; padding-block: 48px 80px; display: flex; flex-direction: column; gap: 56px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(2rem, 5vw, 2.9rem); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 1.05rem; font-weight: 700; }
+p { margin: 0; max-width: 65ch; }
+a { color: var(--nile); font-weight: 600; }
+a:focus-visible { outline: 2px solid var(--nile); outline-offset: 2px; }
+.eyebrow { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--nile); }
+.lede { color: var(--muted); font-size: 1.1rem; }
+section { display: flex; flex-direction: column; gap: 20px; }
+code, .mono { font-family: var(--mono); font-size: 0.86em; }
+
+/* hero */
+.hero { display: flex; flex-direction: column; gap: 16px; }
+.askbox { background: var(--surface); border: 1.5px solid var(--line); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 18px; box-shadow: 0 10px 30px -18px hsl(171 60% 20% / .35); }
+.askbox .q { font-size: 1.25rem; font-weight: 600; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.askbox .q::before { content: "⌕"; color: var(--nile); font-size: 1.4rem; }
+.picker { display: flex; flex-wrap: wrap; gap: 8px; }
+.picker button { font: 500 0.82rem var(--body); color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.picker button[aria-pressed="true"] { background: var(--nile); color: var(--surface); border-color: var(--nile); }
+.picker button:focus-visible { outline: 2px solid var(--nile); outline-offset: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 0.85rem; font-weight: 600; border-radius: 999px; padding: 5px 12px; display: inline-flex; gap: 6px; align-items: center; border: 1.5px solid transparent; }
+.chip small { font-weight: 500; opacity: .75; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+.chip.rx { background: var(--nile-soft); color: var(--nile); }
+.chip.llm { background: var(--chip-llm); color: var(--chip-llm-ink); border-style: dashed; border-color: var(--chip-llm-ink); }
+.chip.llm::after { content: "✕"; font-size: .75rem; opacity: .7; }
+.chip.kw { background: var(--sand); color: var(--sand-ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; color: var(--muted); }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.note { font-size: 0.85rem; color: var(--muted); }
+
+/* results */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.stat .n { font: 700 1.5rem var(--display); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.stat .n s { color: var(--muted); font-weight: 500; text-decoration: none; font-size: 1.1rem; }
+.stat p { font-size: 0.85rem; color: var(--muted); }
+.stat.rx .n { color: var(--nile); }
+.stat.llm .n { color: var(--chip-llm-ink); }
+.stat.kw .n { color: var(--sand-ink); }
+@media (max-width: 640px) { .stats { grid-template-columns: minmax(0, 1fr); } }
+
+/* flow */
+.flow { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+.fbox { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fbox b { font-size: 0.9rem; }
+.fbox span { font-size: 0.85rem; color: var(--muted); overflow-wrap: anywhere; }
+.fbox.q { font-family: var(--mono); font-size: 0.85rem; }
+.fbox.rx { border-left: 4px solid var(--nile); }
+.fbox.llm { border-left: 4px solid var(--chip-llm-ink); }
+.fbox.kw { border-left: 4px solid var(--sand-ink); }
+.frow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.farrow { font-size: 0.78rem; color: var(--muted); padding: 6px 0 6px 18px; position: relative; }
+.farrow::before { content: "↓"; position: absolute; left: 2px; color: var(--nile); font-weight: 700; }
+@media (max-width: 640px) { .frow { grid-template-columns: minmax(0, 1fr); } }
+
+/* sent */
+.sent td { font-size: 0.85rem; }
+.sent .f { color: var(--nile); font-family: var(--mono); font-size: 0.8rem; }
+.sent .f b { color: var(--chip-llm-ink); font-weight: 600; }
+.sent .k { color: var(--sand-ink); font-family: var(--mono); font-size: 0.8rem; font-weight: 600; }
+.neg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 640px) { .neg { grid-template-columns: minmax(0, 1fr); } }
+
+/* table */
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 0.88rem; }
+th, td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td.c { font-weight: 600; width: 34%; }
+tr.rx td.c { box-shadow: inset 4px 0 var(--nile); }
+tr.llm td.c { box-shadow: inset 4px 0 var(--chip-llm-ink); }
+tr.kw td.c { box-shadow: inset 4px 0 var(--sand-ink); }
+
+/* lessons */
+.gaps { display: flex; flex-direction: column; gap: 16px; }
+.gap { border-left: 3px solid var(--line); padding: 4px 0 4px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.gap.rx { border-color: var(--nile); }
+.gap.llm { border-color: var(--chip-llm-ink); }
+.gap.kw { border-color: var(--sand-ink); }
+.gap p { font-size: 0.92rem; color: var(--muted); }
+.foot { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+@media (prefers-reduced-motion: no-preference) { .chip { animation: pop .25s ease both; } @keyframes pop { from { transform: scale(.94); opacity: .4 } to { transform: none; opacity: 1 } } }
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="eyebrow">Search · LLMs · lessons from a side project</span>
+  <h1>Rules read the facts, an LLM reads the leftovers, and the rest is ranked.</h1>
+  <p class="lede">Users type sentences, not filters. Cheap rules take every fact they can, an LLM gets only the words they missed, and whatever is still not a fact decides the order.</p>
+
+  <div class="askbox" aria-live="polite">
+    <div class="picker" role="group" aria-label="Example queries" id="picker"></div>
+    <div class="q" id="q"></div>
+    <div class="chips" id="chips"></div>
+    <p class="note" id="why"></p>
+  </div>
+  <div class="legend">
+    <span><i class="dot" style="background:var(--nile)"></i>Rules (free)</span>
+    <span><i class="dot" style="background:var(--chip-llm-ink)"></i>LLM guess (dashed, removable)</span>
+    <span><i class="dot" style="background:var(--sand-ink)"></i>Ranked by keyword + meaning</span>
+  </div>
+  <p class="note">Example domain: a real-estate search. The pattern works for any catalog: products, jobs, cars, docs. Code: <a href="https://github.com/Amrabrazek/homescout-ai" target="_blank" rel="noopener">github.com/Amrabrazek/homescout-ai</a></p>
+</header>
+
+<section>
+  <span class="eyebrow">Results</span>
+  <h2>What each step buys</h2>
+  <div class="stats">
+    <div class="stat llm"><span class="n"><s>21 →</s> 34/35</span><p>messy queries read fully right: rules only, then rules + LLM.</p></div>
+    <div class="stat kw"><span class="n"><s>37% →</s> 69%</span><p>of the top 10 homes match what the words ask for: random order, then meaning ranking.</p></div>
+    <div class="stat llm"><span class="n">2.0 s</span><p>median LLM call. A cached phrase skips it entirely.</p></div>
+  </div>
+  <p class="note">From the project's search eval: 35 messy queries (slang, Arabic, landmarks, negation) and 16 lifestyle queries over 2,591 sample homes.</p>
+</section>
+
+<section>
+  <span class="eyebrow">The pattern</span>
+  <h2>Cheapest step first</h2>
+  <div class="flow" aria-label="Search flow with cache">
+    <div class="fbox q">"3br villa in tagamo3 under 20M, quiet street"</div>
+    <div class="farrow">read the facts</div>
+    <div class="fbox rx"><b>1 · Rules (free)</b><span>Regex reads numbers, types and known place names: 3 bed · villa · ≤ 20M. Leftover: "tagamo3 quiet street"</span></div>
+    <div class="farrow">only the leftover goes on</div>
+    <div class="frow">
+      <div class="fbox llm"><b>2a · Cache</b><span>Seen this leftover before? Reuse the answer: no LLM call, no cost. The key is the leftover <em>plus</em> which facts the rules already found, so "tagamo3" next to a price and "tagamo3" alone don't share an answer.</span></div>
+      <div class="fbox llm"><b>2b · LLM (on a miss)</b><span>tagamo3 → New Cairo, as fixed JSON that is checked field by field. The answer is saved for 30 days.</span></div>
+    </div>
+    <div class="farrow">all facts together</div>
+    <div class="fbox rx"><b>3 · Filters (yes / no)</b><span>Villa, 3 bed, New Cairo, ≤ 20M. Homes that miss any fact never show. The LLM's part shows as a removable chip.</span></div>
+    <div class="farrow">the rest: "quiet street"</div>
+    <div class="fbox kw"><b>4 · Rank (closest first)</b><span>Keyword match plus meaning (vector) orders the homes that passed: "calm area" counts for "quiet street".</span></div>
+  </div>
+  <p class="note">Caveat: in the homepage search, a home with no keyword hit and a meaning score past a cutoff is dropped, not just ranked lower. The chat assistant only ranks.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Under the hood</span>
+  <h2>What the search engine receives</h2>
+  <p class="note">Each search sends two things in one request. The <b>filters</b> are the yes / no gate. The <b>search text</b> is matched two ways at once: <b>keyword</b> (the exact words appear in the listing's name, unit number, project, area, city, developer, amenities or description) and <b>vector</b> (the meaning of the text is compared with each listing's stored embedding). Only the search text is embedded, never the whole query, so "20M" can't blur the meaning.</p>
+  <div class="tablewrap">
+    <table class="sent">
+      <thead><tr><th>Buyer types</th><th>Filters (gate)</th><th>Search text (keyword + vector)</th></tr></thead>
+      <tbody>
+        <tr><td>3br villa in new cairo under 20M, quiet street</td><td class="f">area = New Cairo · villa · rooms = 3 · price ≤ 20M</td><td class="k">quiet street</td></tr>
+        <tr><td>3br villa in tagamo3 under 20M, quiet street</td><td class="f">villa · rooms = 3 · price ≤ 20M · <b>area = New Cairo</b></td><td class="k">quiet street</td></tr>
+        <tr><td>apartment, not on the ground floor, no pool, near a park</td><td class="f">apartment · floor ≥ 1 · no Swimming Pool</td><td class="k">park</td></tr>
+        <tr><td>شقة بدون حمام سباحة في التجمع</td><td class="f"><b>apartment · area = New Cairo · no Swimming Pool</b></td><td class="k">(empty: newest first)</td></tr>
+        <tr><td>chalet in north coast</td><td class="f">city = North Coast · chalet</td><td class="k">(empty: no ranking, newest first)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Purple = set by the LLM.</p>
+  <h3>Keyword and vector can't read "no"</h3>
+  <p class="note">Send "no pool" as search text and both halves rank pool homes <em>first</em>: the words match, and the meaning sits right next to "pool". So a "no" never reaches the search text.</p>
+  <div class="neg">
+    <div class="fbox rx"><b>"not on the ground floor"</b><span>Floor is a field, so it becomes floor ≥ 1.</span></div>
+    <div class="fbox rx"><b>"no pool", "without a gym"</b><span>A stored amenity, so it becomes an exclude filter. Pool homes never show.</span></div>
+    <div class="fbox llm"><b>"pool not needed", "no water feature"</b><span>Phrasing a rule can't read safely goes to the LLM. In the eval, Arabic "بدون حمام سباحة" (without a pool) became an exclude filter. If the LLM is off, the phrase is deleted: not hidden, but not boosted either.</span></div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Tradeoffs</span>
+  <h2>Every choice has a cost</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Choice</th><th>Why</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr class="rx"><td class="c">Rules before the LLM</td><td>Most queries are simple. No latency, no bill.</td><td>Two parsers to maintain.</td></tr>
+        <tr class="rx"><td class="c">Numbers as filters, not vectors</td><td>Embeddings blur "under 5M" and "over 5M".</td><td>A wrong filter hides good results.</td></tr>
+        <tr class="rx"><td class="c">A "no" only on what we store</td><td>Only a field can enforce a "no". Rules catch the clear cases; the LLM reads the rest.</td><td>A feature we don't store ("no water feature") is only left out of the search, never hidden. "Without pool and gym" excludes only the pool.</td></tr>
+        <tr class="llm"><td class="c">LLM returns fixed JSON</td><td>Every value is checked. If it fails, use the rules' answer.</td><td>It can only fill fields you defined.</td></tr>
+        <tr class="llm"><td class="c">LLM sees only the leftover words</td><td>The same phrase gets the same answer, so it can be cached.</td><td>Less context. 34/35 test queries pass; the miss is a size ("250m2+") that gets dropped.</td></tr>
+        <tr class="llm"><td class="c">Cache by leftover, not by query</td><td>Whole sentences rarely repeat, but "near AUC" does. A hit skips a 2.0 s call.</td><td>A wrong but valid answer would be reused for 30 days. So every LLM guess shows as a removable chip, and removing it also clears the cached answer.</td></tr>
+        <tr class="kw"><td class="c">Keyword + vector on the same words</td><td>Keyword finds the exact word ("Mivida", "park"). Vector finds the same idea in other words ("calm area" for "quiet street"). Each covers the other's blind spot.</td><td>Vector needs a closeness cutoff. On the homepage, homes past it are dropped, not ranked lower (see the caveat above).</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Takeaways</span>
+  <h2>Five lessons</h2>
+  <div class="gaps">
+    <div class="gap rx"><h3>Don't embed numbers</h3><p>Vectors are for meaning. Prices, sizes and dates belong in filters.</p></div>
+    <div class="gap rx"><h3>A "no" needs a field</h3><p>Search engines and embeddings ignore negation. Turn it into a filter, or keep it out of the search text.</p></div>
+    <div class="gap llm"><h3>LLM as fallback</h3><p>Let code handle the easy cases. Call the model only for what code can't read.</p></div>
+    <div class="gap llm"><h3>Show the guess</h3><p>The LLM will sometimes be wrong. Make its guess visible and one tap to undo, and let the undo fix the cache too.</p></div>
+    <div class="gap kw"><h3>Test with messy queries</h3><p>Clean test queries all passed. Real phrasing found most of the bugs, including a "no swimming pool" that ranked pool homes first.</p></div>
+  </div>
+</section>
+
+<p class="foot">From HomeScout, a portfolio project: NestJS, Postgres + pgvector, Typesense, Claude. Code and evals: <a href="https://github.com/Amrabrazek/homescout-ai" target="_blank" rel="noopener">github.com/Amrabrazek/homescout-ai</a></p>
+</div>
+
+<script>
+const Q = [
+  { label: "Villa + slang", q: "3br villa in tagamo3 under 20 mil with a big garden on a quiet street", rx: [["type","villa"],["beds","3"],["price","≤ 20M"]], llm: [["area","New Cairo"]], kw: ["big garden","quiet street"], why: "Rules read the numbers. \"Tagamo3\" is local slang for a district, so the LLM maps it, and the buyer can remove that guess. \"Quiet street\" can't be a filter, so it's ranked by meaning." },
+  { label: "Family beach house", q: "family of 5, sahel chalet 150 sqm or more, walking distance to the beach", rx: [["type","chalet"],["size","150+ m²"]], llm: [["beds","3+"],["region","North Coast"]], kw: ["walking distance to the beach"], why: "\"Family of 5\" implies bedrooms, and \"sahel\" is what locals call the coast. Only the LLM can infer both." },
+  { label: "Landmark + negation", q: "apt near AUC not ground floor no pool max 8m, modern finishing and lots of light", rx: [["type","apartment"],["floor","1+"],["no","pool"],["price","≤ 8M"]], llm: [["area","New Cairo"]], kw: ["modern finishing","lots of light"], why: "\"Not ground floor\" and \"no pool\" become filters instead of keywords. A university name becomes a district." },
+  { label: "Arabic negation", q: "شقة بدون حمام سباحة في التجمع", rx: [], llm: [["type","apartment"],["area","New Cairo"],["no","Swimming Pool"]], kw: [], why: "\"Apartment without a swimming pool in New Cairo\". The rules read no Arabic, so the LLM reads all of it, and \"without a swimming pool\" becomes an exclude filter. Both this and \"pool not needed\" (the buyer doesn't care, so nothing is excluded) pass in the eval." },
+  { label: "Mixed Arabic", q: "شقة في التجمع 3 bedrooms under 10m garden view", rx: [["beds","3"],["price","≤ 10M"]], llm: [["type","apartment"],["area","New Cairo"]], kw: ["garden view"], why: "Half Arabic, half English, which is how people actually type. Rules take the English numbers, and the LLM reads the Arabic." },
+  { label: "Lifestyle", q: "pet friendly duplex near mall of egypt, 2-3 rooms, 12 to 15 million, close to schools", rx: [["type","duplex"],["beds","2–3"],["price","12M–15M"]], llm: [["area","6th of October"]], kw: ["pet friendly","close to schools"], why: "The lifestyle words carry the most meaning, and only vector ranking can use them." },
+];
+const $ = (id) => document.getElementById(id);
+const chip = (cls, k, v) => `<span class="chip ${cls}"><small>${k}</small>${v}</span>`;
+function show(i) {
+  const d = Q[i];
+  [...$("picker").children].forEach((b, j) => b.setAttribute("aria-pressed", String(j === i)));
+  $("q").textContent = d.q;
+  $("chips").innerHTML = d.rx.map(([k, v]) => chip("rx", k, v)).join("") + d.llm.map(([k, v]) => chip("llm", k, v)).join("") + d.kw.map((v) => chip("kw", "rank by", v)).join("");
+  $("why").textContent = d.why;
+}
+Q.forEach((d, i) => { const b = document.createElement("button"); b.type = "button"; b.id = "q" + i; b.textContent = d.label; b.onclick = () => show(i); $("picker").appendChild(b); });
+show(0);
+</script>
+
+</body></html>
