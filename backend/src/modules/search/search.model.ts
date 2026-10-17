@@ -173,4 +173,10 @@ export class ParsedSearch {
 
   @Field(() => [String], { nullable: true })
   excludeAmenities?: string[];
+
+  @Field(() => [String], {
+    description:
+      'Filter groups the LLM set (a guess the buyer can remove), e.g. ["place"]',
+  })
+  guessed: string[];
 }

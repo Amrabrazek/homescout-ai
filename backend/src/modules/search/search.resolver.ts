@@ -1,4 +1,4 @@
-import { Resolver, Query, Args, Int } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
 import { SearchService } from './search.service';
 import { UnitFilterInput } from '../unit/dto/unit-filter.input';
 import { UnitSortInput } from '../unit/dto/unit-sort.input';
@@ -37,10 +37,12 @@ export class SearchResolver {
 
   @Query(() => ParsedSearch, { name: 'understandSearch' })
   async understandSearch(
-    @Args('searchTerm') searchTerm: string
+    @Args('searchTerm') searchTerm: string,
+    @Args('ignore', { type: () => [String], nullable: true }) ignore?: string[]
   ): Promise<ParsedSearch> {
-    const { text, filter } = await this.searchService.understand({
+    const { text, filter, guessed } = await this.searchService.understand({
       searchTerm,
+      ignoreParsed: ignore,
     });
     return {
       text,
@@ -57,6 +59,16 @@ export class SearchResolver {
       regions: filter.regions,
       propertyTypes: filter.propertyTypes,
       excludeAmenities: filter.excludeAmenities,
+      guessed,
     };
+  }
+
+  @Mutation(() => Boolean, {
+    description:
+      'The buyer removed an LLM-guessed filter: forget the cached parse for this search',
+  })
+  async rejectSearchGuess(@Args('searchTerm') searchTerm: string) {
+    await this.searchService.rejectGuess(searchTerm);
+    return true;
   }
 }

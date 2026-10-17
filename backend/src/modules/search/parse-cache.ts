@@ -13,6 +13,7 @@ export interface ParseCacheKey {
 export interface ParseCache {
   get(key: ParseCacheKey): Promise<unknown>;
   set(key: ParseCacheKey, output: unknown): Promise<void>;
+  delete(key: ParseCacheKey): Promise<void>;
 }
 
 /** Postgres-backed parse cache; rows older than `ttlDays` are ignored and pruned. */
@@ -47,6 +48,19 @@ export class PgParseCache implements ParseCache {
        ON CONFLICT (leftover, found, model, prompt_version)
        DO UPDATE SET output = EXCLUDED.output, created_at = NOW()`,
       [leftover, found, model, promptVersion, JSON.stringify(output)]
+    );
+  }
+
+  async delete({
+    leftover,
+    found,
+    model,
+    promptVersion,
+  }: ParseCacheKey): Promise<void> {
+    await this.dataSource.query(
+      `DELETE FROM search_parse_cache
+        WHERE leftover = $1 AND found = $2 AND model = $3 AND prompt_version = $4`,
+      [leftover, found, model, promptVersion]
     );
   }
 

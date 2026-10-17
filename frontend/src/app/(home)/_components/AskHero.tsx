@@ -4,8 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, MessageCircle, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils/ui';
 import pathsConfig from '@/config/paths.config';
-import { useUnderstandSearch } from '@/lib/graphql/units/hooks';
+import {
+  useRejectSearchGuess,
+  useUnderstandSearch,
+} from '@/lib/graphql/units/hooks';
 import type { ParsedSearch } from '@/lib/graphql/units/types';
 import { formatPriceShort } from '@/lib/utils/formatters';
 import { propertyTypeLabel } from '@/components/concierge/format';
@@ -17,52 +21,82 @@ const EXAMPLES = [
   'Penthouse in Sheikh Zayed',
 ];
 
-function understood(parsed: ParsedSearch): string[] {
-  const chips: string[] = [];
+type Chip = { label: string; group?: string };
+
+/** One chip per parsed filter group, so removing a chip drops that group. */
+function understood(parsed: ParsedSearch): Chip[] {
+  const chips: Chip[] = [];
+  const add = (group: string, label?: string) => {
+    if (label) chips.push({ label, group });
+  };
   const { minRooms, maxRooms, minPrice, maxPrice } = parsed;
-  if (minRooms != null && minRooms === maxRooms) chips.push(`${minRooms} beds`);
+  if (minRooms != null && minRooms === maxRooms)
+    add('rooms', `${minRooms} beds`);
   else if (minRooms != null && maxRooms != null)
-    chips.push(`${minRooms}–${maxRooms} beds`);
-  else if (minRooms != null) chips.push(`${minRooms}+ beds`);
-  else if (maxRooms != null) chips.push(`up to ${maxRooms} beds`);
+    add('rooms', `${minRooms}–${maxRooms} beds`);
+  else if (minRooms != null) add('rooms', `${minRooms}+ beds`);
+  else if (maxRooms != null) add('rooms', `up to ${maxRooms} beds`);
   if (minPrice != null && maxPrice != null)
-    chips.push(
+    add(
+      'price',
       `${formatPriceShort(minPrice)} to ${formatPriceShort(maxPrice)}`
     );
-  else if (maxPrice != null) chips.push(`under ${formatPriceShort(maxPrice)}`);
-  else if (minPrice != null) chips.push(`over ${formatPriceShort(minPrice)}`);
+  else if (maxPrice != null) add('price', `under ${formatPriceShort(maxPrice)}`);
+  else if (minPrice != null) add('price', `over ${formatPriceShort(minPrice)}`);
   const { minFloorArea, maxFloorArea, minFloor, maxFloor } = parsed;
   if (minFloorArea != null && maxFloorArea != null)
-    chips.push(`${minFloorArea}–${maxFloorArea} m²`);
-  else if (minFloorArea != null) chips.push(`${minFloorArea}+ m²`);
-  else if (maxFloorArea != null) chips.push(`up to ${maxFloorArea} m²`);
-  if (maxFloor === 0) chips.push('ground floor');
+    add('size', `${minFloorArea}–${maxFloorArea} m²`);
+  else if (minFloorArea != null) add('size', `${minFloorArea}+ m²`);
+  else if (maxFloorArea != null) add('size', `up to ${maxFloorArea} m²`);
+  if (maxFloor === 0) add('floor', 'ground floor');
   else if (minFloor != null && minFloor === maxFloor)
-    chips.push(`floor ${minFloor}`);
-  else if (minFloor === 1 && maxFloor == null) chips.push('not ground floor');
-  else if (minFloor != null) chips.push(`floor ${minFloor}+`);
-  else if (maxFloor != null) chips.push(`up to floor ${maxFloor}`);
-  chips.push(
-    ...(parsed.propertyTypes ?? []).map((type) =>
-      propertyTypeLabel(type as PropertyType)
-    ),
-    ...(parsed.areas ?? []),
-    ...(parsed.cities ?? []),
-    ...(parsed.regions ?? [])
+    add('floor', `floor ${minFloor}`);
+  else if (minFloor === 1 && maxFloor == null) add('floor', 'not ground floor');
+  else if (minFloor != null) add('floor', `floor ${minFloor}+`);
+  else if (maxFloor != null) add('floor', `up to floor ${maxFloor}`);
+  add(
+    'type',
+    (parsed.propertyTypes ?? [])
+      .map((type) => propertyTypeLabel(type.toLowerCase() as PropertyType))
+      .join(', ')
   );
-  if (chips.length && parsed.text) chips.push(`“${parsed.text}”`);
+  add(
+    'place',
+    [
+      ...(parsed.areas ?? []),
+      ...(parsed.cities ?? []),
+      ...(parsed.regions ?? []),
+    ].join(', ')
+  );
+  if (parsed.excludeAmenities?.length)
+    add('excluded', `no ${parsed.excludeAmenities.join(', ')}`);
+  if (chips.length && parsed.text) chips.push({ label: `“${parsed.text}”` });
   return chips;
 }
 
 type AskHeroProps = {
   searchTerm?: string;
+  /** Parsed filter groups the buyer removed. */
+  ignore?: string[];
   onSearch: (searchTerm: string | undefined) => void;
+  onRemove: (group: string) => void;
 };
 
-export default function AskHero({ searchTerm, onSearch }: AskHeroProps) {
+export default function AskHero({
+  searchTerm,
+  ignore,
+  onSearch,
+  onRemove,
+}: AskHeroProps) {
   const [value, setValue] = useState(searchTerm ?? '');
-  const parsed = useUnderstandSearch(searchTerm);
+  const parsed = useUnderstandSearch(searchTerm, ignore);
+  const rejectGuess = useRejectSearchGuess();
   const chips = parsed ? understood(parsed) : [];
+
+  const remove = (group: string) => {
+    if (searchTerm && parsed?.guessed.includes(group)) rejectGuess(searchTerm);
+    onRemove(group);
+  };
 
   useEffect(() => setValue(searchTerm ?? ''), [searchTerm]);
 
@@ -127,14 +161,38 @@ export default function AskHero({ searchTerm, onSearch }: AskHeroProps) {
               <span className='font-semibold text-muted-foreground'>
                 Understood as
               </span>
-              {chips.map((chip) => (
-                <span
-                  key={chip}
-                  className='rounded-full bg-accent px-3 py-1 font-semibold text-accent-foreground'
-                >
-                  {chip}
-                </span>
-              ))}
+              {chips.map(({ label, group }) => {
+                const guess = !!group && parsed.guessed.includes(group);
+                return (
+                  <span
+                    key={label}
+                    title={
+                      guess
+                        ? 'Guessed by AI. Remove it if it is wrong.'
+                        : undefined
+                    }
+                    className={cn(
+                      'flex items-center gap-1 rounded-full bg-accent py-1 pl-3 font-semibold text-accent-foreground',
+                      group ? 'pr-1' : 'pr-3',
+                      guess && 'border border-dashed border-primary'
+                    )}
+                  >
+                    {guess && <Sparkles className='h-3.5 w-3.5' />}
+                    {label}
+                    {guess && <span className='sr-only'>(AI guess)</span>}
+                    {group && (
+                      <button
+                        type='button'
+                        aria-label={`Remove ${label}`}
+                        onClick={() => remove(group)}
+                        className='grid h-5 w-5 place-items-center rounded-full hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                      >
+                        <X className='h-3.5 w-3.5' />
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
             </>
           ) : (
             !searchTerm && (
