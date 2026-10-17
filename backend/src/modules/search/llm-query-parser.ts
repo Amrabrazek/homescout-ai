@@ -58,7 +58,7 @@ export class LlmQueryParser {
       .replace(/[^\p{L}\p{N}+]+/gu, ' ')
       .trim();
     if (!this.llm || !leftover || query.length > MAX_LLM_QUERY_LENGTH)
-      return regex;
+      return withoutNegations(regex);
 
     const storeKey: ParseCacheKey = {
       leftover,
@@ -81,7 +81,7 @@ export class LlmQueryParser {
     const llm = await pending;
     if (llm) return mergeParses(regex, llm);
     if (this.cache.get(key) === pending) this.cache.delete(key);
-    return regex;
+    return withoutNegations(regex);
   }
 
   private async lookupOrAsk(
@@ -121,6 +121,7 @@ export class LlmQueryParser {
               ...vocabulary.regions,
             ]),
           ],
+          amenities: vocabulary.amenities ?? [],
         },
         AbortSignal.timeout(TIMEOUT_MS)
       );
@@ -194,6 +195,14 @@ export function toParsedQuery(
   );
   if (types.length) filter.propertyTypes = [...new Set(types)];
 
+  const amenities = new Map(
+    (vocabulary.amenities ?? []).map((name) => [name.toLowerCase(), name])
+  );
+  const excluded = strings(value.excludeAmenities)
+    .map((name) => amenities.get(name.trim().toLowerCase()))
+    .filter((name): name is string => !!name);
+  if (excluded.length) filter.excludeAmenities = [...new Set(excluded)];
+
   for (const place of strings(value.places)) {
     const match = findPlace(place, vocabulary);
     if (!match) continue;
@@ -204,9 +213,16 @@ export function toParsedQuery(
   return { text: value.text.trim().slice(0, MAX_LLM_QUERY_LENGTH), filter };
 }
 
+/** The search text to use when no LLM answer replaces the regex leftover. */
+function withoutNegations(parsed: ParsedQuery): ParsedQuery {
+  if (parsed.fallbackText == null) return parsed;
+  const { fallbackText, filter } = parsed;
+  return { text: fallbackText, filter };
+}
+
 /**
  * The regex result wins for every group it found (rooms, price, type, place),
- * so the LLM only fills gaps. The LLM's text replaces the leftover words.
+ * so the LLM only fills gaps; excluded amenities from both are kept. The LLM's text replaces the leftover words.
  */
 export function mergeParses(regex: ParsedQuery, llm: ParsedQuery): ParsedQuery {
   const filter: ParsedQuery['filter'] = {};
@@ -216,6 +232,12 @@ export function mergeParses(regex: ParsedQuery, llm: ParsedQuery): ParsedQuery {
       if (source.filter[key] != null)
         (filter as Record<string, unknown>)[key] = source.filter[key];
   }
+  // Exclusions add up: the regex took "no gym", the LLM may read "بدون حمام سباحة".
+  const excluded = new Set([
+    ...(regex.filter.excludeAmenities ?? []),
+    ...(llm.filter.excludeAmenities ?? []),
+  ]);
+  if (excluded.size) filter.excludeAmenities = [...excluded];
   return { text: llm.text, filter };
 }
 

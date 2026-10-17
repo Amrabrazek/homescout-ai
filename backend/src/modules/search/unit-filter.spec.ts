@@ -61,6 +61,15 @@ describe('compileUnitFilter', () => {
     expect(typesense).toBe('amenityIds:=`a` && amenityIds:=`b`');
   });
 
+  it('excludes units that have any of the excluded amenities', () => {
+    const { sql, typesense } = compileUnitFilter({
+      excludeAmenities: ['Swimming Pool', 'Gym'],
+    });
+    expect(sql.where).toContain('"unit"."id" NOT IN');
+    expect(sql.params).toEqual({ f0: ['Swimming Pool', 'Gym'] });
+    expect(typesense).toBe('amenityNames:!=[`Swimming Pool`,`Gym`]');
+  });
+
   it('keeps free text out of filter_by and strips backticks from values', () => {
     const { sql, typesense } = compileUnitFilter({
       searchTerm: 'villa',

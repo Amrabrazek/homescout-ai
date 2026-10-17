@@ -238,6 +238,20 @@ describe('LlmQueryParser with a persistent store', () => {
     });
     expect(llm.extract).toHaveBeenCalledTimes(1);
   });
+
+  it('hands an unclear negation to the LLM and drops it when the LLM fails', async () => {
+    const llm = fakeLlm({ ...empty, text: 'park' });
+    await expect(
+      parse(new LlmQueryParser(llm, 10), 'no noisy neighbours, near a park')
+    ).resolves.toEqual({ text: 'park', filter: {} });
+    expect(llm.extract.mock.calls[0][0].leftover).toBe(
+      'no noisy neighbours near a park'
+    );
+
+    await expect(
+      parse(new LlmQueryParser(null, 10), 'no noisy neighbours, near a park')
+    ).resolves.toEqual({ text: 'park', filter: {} });
+  });
 });
 
 describe('toParsedQuery', () => {
@@ -266,6 +280,17 @@ describe('toParsedQuery', () => {
   });
 });
 
+describe('toParsedQuery excluded amenities', () => {
+  it('keeps only amenity names from the vocabulary', () => {
+    expect(
+      toParsedQuery(
+        { ...empty, excludeAmenities: ['swimming pool', 'Moat'] },
+        { ...vocabulary, amenities: ['Swimming Pool', 'Gym'] }
+      )?.filter
+    ).toEqual({ excludeAmenities: ['Swimming Pool'] });
+  });
+});
+
 describe('toParsedQuery size and floor', () => {
   it('keeps valid size and floor ranges', () => {
     expect(
@@ -285,5 +310,14 @@ describe('mergeParses', () => {
         { text: 'y', filter: { maxRooms: 4, minPrice: 1e6 } }
       )
     ).toEqual({ text: 'y', filter: { minRooms: 3, minPrice: 1e6 } });
+  });
+
+  it('keeps excluded amenities from both parses', () => {
+    expect(
+      mergeParses(
+        { text: 'x', filter: { excludeAmenities: ['Gym'] } },
+        { text: '', filter: { excludeAmenities: ['Swimming Pool', 'Gym'] } }
+      ).filter
+    ).toEqual({ excludeAmenities: ['Gym', 'Swimming Pool'] });
   });
 });

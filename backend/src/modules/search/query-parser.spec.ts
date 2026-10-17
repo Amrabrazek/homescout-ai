@@ -167,13 +167,77 @@ describe('parseSearchQuery', () => {
     });
   });
 
-  it('drops excluded features and filler words from the search text', () => {
+  it('turns a negated amenity into an exclude filter', () => {
+    const withAmenities = {
+      ...vocabulary,
+      amenities: ['Swimming Pool', 'Gym', 'Private Garden', 'Elevator'],
+    };
+    const parse = (q: string) => parseSearchQuery(q, withAmenities);
+
     expect(
-      parseSearchQuery(
-        'im looking for something with a sea view without a pool',
-        vocabulary
-      ).text
-    ).toBe('sea view');
+      parse('im looking for something with a sea view without a pool')
+    ).toEqual({
+      text: 'sea view',
+      filter: { excludeAmenities: ['Swimming Pool'] },
+    });
+    expect(parse('apartment no swimming pool near a park')).toEqual({
+      text: 'park',
+      filter: {
+        propertyTypes: ['apartment'],
+        excludeAmenities: ['Swimming Pool'],
+      },
+    });
+    expect(parse('no pool or gym').filter.excludeAmenities).toEqual([
+      'Swimming Pool',
+      'Gym',
+    ]);
+    expect(parse('villa no pool new cairo').filter).toEqual({
+      propertyTypes: ['villa'],
+      areas: ['New Cairo'],
+      excludeAmenities: ['Swimming Pool'],
+    });
+    expect(parse('apartment with no lift').filter.excludeAmenities).toEqual([
+      'Elevator',
+    ]);
+  });
+
+  it('leaves other negations to the LLM, with a fallback text without them', () => {
+    const withAmenities = { ...vocabulary, amenities: ['Swimming Pool'] };
+    const parse = (q: string) => parseSearchQuery(q, withAmenities);
+
+    // The regex can't read a "not" after the noun; only the LLM can.
+    expect(parse('villa, pool not needed')).toEqual({
+      text: 'pool not needed',
+      fallbackText: 'pool',
+      filter: { propertyTypes: ['villa'] },
+    });
+    expect(parse('no garden view, near a park')).toEqual({
+      text: 'no garden view, near a park',
+      fallbackText: 'park',
+      filter: {},
+    });
+    expect(parse('no noisy neighbours and a big garden')).toEqual({
+      text: 'no noisy neighbours and a big garden',
+      fallbackText: 'big garden',
+      filter: {},
+    });
+  });
+
+  it('reads "not a ground floor" and "no more than" the right way round', () => {
+    expect(
+      parseSearchQuery('not a ground floor apartment', vocabulary).filter
+    ).toEqual({
+      minFloor: 1,
+      propertyTypes: ['apartment'],
+    });
+    expect(parseSearchQuery('except ground floor', vocabulary).filter).toEqual({
+      minFloor: 1,
+    });
+    expect(
+      parseSearchQuery('no more than 3 bedrooms', vocabulary).filter
+    ).toEqual({
+      maxRooms: 3,
+    });
   });
 
   it('matches cities and regions as well as areas', () => {

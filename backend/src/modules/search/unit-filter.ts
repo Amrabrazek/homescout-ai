@@ -32,6 +32,7 @@ type Condition =
   | { kind: 'anyOf'; options: { field: FieldRef; values: string[] }[] }
   | { kind: 'range'; field: FieldRef; min?: number; max?: number }
   | { kind: 'allAmenities'; ids: string[] }
+  | { kind: 'noAmenities'; names: string[] }
   | { kind: 'text'; term: string };
 
 export function compileUnitFilter(
@@ -75,6 +76,8 @@ function toConditions(filter: UnitFilterInput): Condition[] {
   oneOf(FIELDS.propertyType, filter.propertyTypes);
   if (filter.amenityIds?.length)
     conditions.push({ kind: 'allAmenities', ids: filter.amenityIds });
+  if (filter.excludeAmenities?.length)
+    conditions.push({ kind: 'noAmenities', names: filter.excludeAmenities });
   range(FIELDS.rooms, filter.minRooms, filter.maxRooms);
   range(FIELDS.price, filter.minPrice, filter.maxPrice);
   range(FIELDS.floorArea, filter.minFloorArea, filter.maxFloorArea);
@@ -110,6 +113,11 @@ function toSql(c: Condition, params: Record<string, unknown>): string {
         SELECT unit_id FROM unit_amenities WHERE amenity_id IN (:...${param(c.ids)})
         GROUP BY unit_id HAVING COUNT(DISTINCT amenity_id) = :${param(new Set(c.ids).size)}
       )`;
+    case 'noAmenities':
+      return `"unit"."id" NOT IN (
+        SELECT ua.unit_id FROM unit_amenities ua JOIN amenities a ON a.id = ua.amenity_id
+        WHERE a.name IN (:...${param(c.names)})
+      )`;
   }
 }
 
@@ -132,6 +140,8 @@ function toTypesense(c: Condition): string | undefined {
         : `${c.field.typesense}:<=${c.max}`;
     case 'allAmenities':
       return c.ids.map((id) => `amenityIds:=${quote(id)}`).join(' && ');
+    case 'noAmenities':
+      return `amenityNames:!=[${c.names.map(quote).join(',')}]`;
   }
 }
 
