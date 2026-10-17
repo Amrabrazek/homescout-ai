@@ -38,11 +38,13 @@ The rule: code does what code can do, and the LLM only gets the words code could
 
 | Check | Result |
 |---|---|
-| Query parsing, regex only | 17/30 queries fully right |
-| Query parsing, regex + LLM on the leftovers | 30/30 fully right · p50 2.3 s, p95 3.5 s (only when regex leaves words) |
-| Semantic ranking, local e5 embeddings | 68% relevant in top 10 vs 37% for random order |
+| Query parsing, regex only | 21/35 queries fully right |
+| Query parsing, regex + LLM on the leftovers | 34/35 fully right · p50 2.0 s, p95 4.1 s (only when regex leaves words) |
+| Semantic ranking, local e5 embeddings | 69% relevant in top 10 vs 37% for random order |
 
 Full report, including where embeddings lost: [docs/evals/search.md](docs/evals/search.md) (`npm run eval`).
+
+How the search works, with live examples: [interactive write-up](https://amrabrazek.github.io/homescout-ai/search/) (source: `docs/search/index.html`).
 
 ## What it does
 
