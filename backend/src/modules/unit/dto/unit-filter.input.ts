@@ -22,6 +22,15 @@ export class UnitFilterInput {
 
   @Field(() => [String], {
     nullable: true,
+    description:
+      'Filter groups parsed from searchTerm to drop (rooms, price, size, floor, type, place, excluded)',
+  })
+  @IsString({ each: true })
+  @IsOptional()
+  ignoreParsed?: string[];
+
+  @Field(() => [String], {
+    nullable: true,
     description: 'Filter by multiple project IDs',
   })
   @IsUUID('all', { each: true })

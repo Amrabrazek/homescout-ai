@@ -56,6 +56,7 @@ export default function Home({ savedUnitIds, feed }: HomeProps) {
 
     // Extract filter values
     filters.searchTerm = getParam('searchTerm');
+    filters.ignoreParsed = getArrayParam('ignore');
     filters.projectIds = getArrayParam('projectId');
     filters.amenityIds = getArrayParam('amenityId');
     filters.minRooms = getNumberParam('minRooms');
@@ -96,6 +97,9 @@ export default function Home({ savedUnitIds, feed }: HomeProps) {
     // Add filter params
     if (newFilters.searchTerm) {
       params.set('searchTerm', newFilters.searchTerm);
+      newFilters.ignoreParsed?.forEach((group) =>
+        params.append('ignore', group)
+      );
     }
 
     if (newFilters.projectIds && newFilters.projectIds.length > 0) {
@@ -163,8 +167,15 @@ export default function Home({ savedUnitIds, feed }: HomeProps) {
     <>
       <AskHero
         searchTerm={filters.searchTerm}
+        ignore={filters.ignoreParsed}
         onSearch={(searchTerm) =>
-          handleFilterChange({ ...filters, searchTerm })
+          handleFilterChange({ ...filters, searchTerm, ignoreParsed: undefined })
+        }
+        onRemove={(group) =>
+          handleFilterChange({
+            ...filters,
+            ignoreParsed: [...(filters.ignoreParsed ?? []), group],
+          })
         }
       />
       {feed && !isSearching(filters) && (

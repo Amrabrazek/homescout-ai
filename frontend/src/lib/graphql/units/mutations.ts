@@ -49,3 +49,9 @@ export const CREATE_IMAGE = gql`
     }
   }
 `;
+
+export const REJECT_SEARCH_GUESS = gql`
+  mutation RejectSearchGuess($searchTerm: String!) {
+    rejectSearchGuess(searchTerm: $searchTerm)
+  }
+`;

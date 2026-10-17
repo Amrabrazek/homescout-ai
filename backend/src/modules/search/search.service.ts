@@ -15,7 +15,7 @@ import {
   UnitSortField,
   UnitSortInput,
 } from '../unit/dto/unit-sort.input';
-import { LlmQueryParser } from './llm-query-parser';
+import { LlmQueryParser, PARSED_GROUPS } from './llm-query-parser';
 import { LocationVocabulary, parseSearchQuery } from './query-parser';
 import {
   FacetCountResponse,
@@ -99,26 +99,47 @@ export class SearchService {
 
   /**
    * Turns searchTerm into hard filters plus leftover text. Explicit filters win
-   * over parsed ones.
+   * over parsed ones, and parsed groups the buyer removed (`ignoreParsed`) are
+   * dropped. `guessed` names the groups the LLM set rather than the regex.
    */
   async understand(
     filter: UnitFilterInput = {}
-  ): Promise<{ text: string; filter: UnitFilterInput }> {
-    const { searchTerm, ...explicit } = filter;
-    if (!searchTerm?.trim()) return { text: '', filter: explicit };
+  ): Promise<{ text: string; filter: UnitFilterInput; guessed: string[] }> {
+    const { searchTerm, ignoreParsed, ...explicit } = filter;
+    if (!searchTerm?.trim()) return { text: '', filter: explicit, guessed: [] };
 
     const vocabulary = await this.locations();
-    const parsed = await this.llmParser.refine(
-      searchTerm,
-      parseSearchQuery(searchTerm, vocabulary),
-      vocabulary
+    const regex = parseSearchQuery(searchTerm, vocabulary);
+    const parsed = await this.llmParser.refine(searchTerm, regex, vocabulary);
+    const guessed = Object.keys(PARSED_GROUPS).filter((group) =>
+      PARSED_GROUPS[group].some(
+        (key) =>
+          JSON.stringify(parsed.filter[key]) !==
+          JSON.stringify(regex.filter[key])
+      )
     );
     const merged: UnitFilterInput = { ...parsed.filter };
+    for (const group of ignoreParsed ?? [])
+      for (const key of PARSED_GROUPS[group] ?? []) delete merged[key];
     for (const [key, value] of Object.entries(explicit)) {
       if (value != null && !(Array.isArray(value) && value.length === 0))
         merged[key] = value;
     }
-    return { text: parsed.text, filter: merged };
+    return {
+      text: parsed.text,
+      filter: merged,
+      guessed: guessed.filter((group) => !ignoreParsed?.includes(group)),
+    };
+  }
+
+  /** The buyer removed an LLM guess for this search: stop serving it from the cache. */
+  async rejectGuess(searchTerm: string): Promise<void> {
+    if (!searchTerm.trim()) return;
+    const vocabulary = await this.locations();
+    await this.llmParser.evict(
+      searchTerm,
+      parseSearchQuery(searchTerm, vocabulary)
+    );
   }
 
   private sortBy(

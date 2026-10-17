@@ -1,4 +1,4 @@
-import { useQuery } from '@apollo/client';
+import { useMutation, useQuery } from '@apollo/client';
 import {
   GET_UNITS,
   GET_FILTER_DATA,
@@ -6,6 +6,7 @@ import {
   SEARCH_FACETS,
   UNDERSTAND_SEARCH,
 } from './queries';
+import { REJECT_SEARCH_GUESS } from './mutations';
 import { useState, useEffect, useCallback } from 'react';
 
 import type {
@@ -269,11 +270,21 @@ export function useSearchFacets(filter: UnitFilter) {
   };
 }
 
-export function useUnderstandSearch(searchTerm?: string) {
+export function useUnderstandSearch(searchTerm?: string, ignore?: string[]) {
   const term = searchTerm?.trim() ?? '';
   const { data } = useQuery<{ understandSearch: ParsedSearch }>(
     UNDERSTAND_SEARCH,
-    { variables: { searchTerm: term }, skip: !term }
+    { variables: { searchTerm: term, ignore }, skip: !term }
   );
   return term ? data?.understandSearch : undefined;
+}
+
+/** Tells the API a guessed filter was wrong, so its cached parse is dropped. */
+export function useRejectSearchGuess() {
+  const [reject] = useMutation(REJECT_SEARCH_GUESS);
+  return useCallback(
+    (searchTerm: string) =>
+      reject({ variables: { searchTerm } }).catch(() => undefined),
+    [reject]
+  );
 }

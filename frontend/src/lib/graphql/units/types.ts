@@ -72,6 +72,8 @@ export interface FacetCount {
 
 export interface UnitFilter {
   searchTerm?: string;
+  /** Filter groups parsed from searchTerm that the buyer removed, e.g. ["place"]. */
+  ignoreParsed?: string[];
   projectIds?: string[];
   amenityIds?: string[];
   minRooms?: number;
@@ -207,4 +209,7 @@ export interface ParsedSearch {
   cities?: string[] | null;
   regions?: string[] | null;
   propertyTypes?: string[] | null;
+  excludeAmenities?: string[] | null;
+  /** Groups the LLM set rather than the rules, e.g. ["place"]: shown as guesses. */
+  guessed: string[];
 }

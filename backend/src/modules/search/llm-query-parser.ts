@@ -21,6 +21,12 @@ const FILTER_GROUPS: Record<string, (keyof ParsedQuery['filter'])[]> = {
   place: ['areas', 'cities', 'regions'],
 };
 
+/** Every parsed filter group, including exclusions, by the filter keys it sets. */
+export const PARSED_GROUPS: Record<string, (keyof ParsedQuery['filter'])[]> = {
+  ...FILTER_GROUPS,
+  excluded: ['excludeAmenities'],
+};
+
 /** Names of the filter groups the regex already set, e.g. ["price", "type"]. */
 export function foundGroups(filter: ParsedQuery['filter']): string[] {
   return Object.keys(FILTER_GROUPS).filter((group) =>
@@ -53,20 +59,10 @@ export class LlmQueryParser {
     regex: ParsedQuery,
     vocabulary: LocationVocabulary
   ): Promise<ParsedQuery> {
-    const leftover = regex.text
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}+]+/gu, ' ')
-      .trim();
-    if (!this.llm || !leftover || query.length > MAX_LLM_QUERY_LENGTH)
-      return withoutNegations(regex);
+    const keys = this.keys(query, regex);
+    if (!keys) return withoutNegations(regex);
 
-    const storeKey: ParseCacheKey = {
-      leftover,
-      found: foundGroups(regex.filter).join(','),
-      model: this.llm.model,
-      promptVersion: SEARCH_PROMPT_VERSION,
-    };
-    const key = `${storeKey.found}|${storeKey.leftover}`;
+    const { storeKey, key } = keys;
     let pending = this.cache.get(key);
     if (pending) {
       this.cache.delete(key);
@@ -82,6 +78,36 @@ export class LlmQueryParser {
     if (llm) return mergeParses(regex, llm);
     if (this.cache.get(key) === pending) this.cache.delete(key);
     return withoutNegations(regex);
+  }
+
+  /**
+   * Forgets the cached parse for this query, so a wrong guess a buyer removed
+   * is asked again instead of being served for the rest of its 30 days.
+   */
+  async evict(query: string, regex: ParsedQuery): Promise<void> {
+    const keys = this.keys(query, regex);
+    if (!keys) return;
+    this.cache.delete(keys.key);
+    await this.store?.delete(keys.storeKey);
+  }
+
+  private keys(
+    query: string,
+    regex: ParsedQuery
+  ): { storeKey: ParseCacheKey; key: string } | undefined {
+    const leftover = regex.text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}+]+/gu, ' ')
+      .trim();
+    if (!this.llm || !leftover || query.length > MAX_LLM_QUERY_LENGTH)
+      return undefined;
+    const storeKey: ParseCacheKey = {
+      leftover,
+      found: foundGroups(regex.filter).join(','),
+      model: this.llm.model,
+      promptVersion: SEARCH_PROMPT_VERSION,
+    };
+    return { storeKey, key: `${storeKey.found}|${storeKey.leftover}` };
   }
 
   private async lookupOrAsk(

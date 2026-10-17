@@ -172,6 +172,9 @@ describe('LlmQueryParser with a persistent store', () => {
       set: jest.fn(async ({ found, leftover }, output) => {
         rows[`${found}|${leftover}`] = output;
       }),
+      delete: jest.fn(async ({ found, leftover }) => {
+        delete rows[`${found}|${leftover}`];
+      }),
     } satisfies ParseCache & { rows: Record<string, unknown> };
   }
 
@@ -205,6 +208,21 @@ describe('LlmQueryParser with a persistent store', () => {
     await parse(new LlmQueryParser(llm, 10, store), 'quiet street');
     expect(llm.extract).toHaveBeenCalledTimes(1);
     expect(store.rows['|quiet street']).toEqual({ ...empty, text: 'quiet' });
+  });
+
+  it('asks again after a removed guess is evicted', async () => {
+    const llm = fakeLlm({ ...empty, places: ['New Cairo'], text: '' });
+    const store = fakeStore();
+    const parser = new LlmQueryParser(llm, 10, store);
+
+    await parse(parser, 'villa tagamo3');
+    await parser.evict(
+      'villa tagamo3',
+      parseSearchQuery('villa tagamo3', vocabulary)
+    );
+    expect(store.rows).toEqual({});
+    await parse(parser, 'villa tagamo3');
+    expect(llm.extract).toHaveBeenCalledTimes(2);
   });
 
   it('does not store invalid output', async () => {

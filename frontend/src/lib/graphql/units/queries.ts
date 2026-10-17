@@ -227,8 +227,8 @@ export const SEARCH_FACETS = gql`
 `;
 
 export const UNDERSTAND_SEARCH = gql`
-  query UnderstandSearch($searchTerm: String!) {
-    understandSearch(searchTerm: $searchTerm) {
+  query UnderstandSearch($searchTerm: String!, $ignore: [String!]) {
+    understandSearch(searchTerm: $searchTerm, ignore: $ignore) {
       text
       minRooms
       maxRooms
@@ -242,6 +242,8 @@ export const UNDERSTAND_SEARCH = gql`
       cities
       regions
       propertyTypes
+      excludeAmenities
+      guessed
     }
   }
 `;
