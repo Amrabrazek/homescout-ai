@@ -5,13 +5,14 @@ import { EvalUnit } from './eval-unit';
 type Filter = ParsedQuery['filter'];
 type ScalarKey = Exclude<
   keyof Filter,
-  'areas' | 'cities' | 'regions' | 'propertyTypes'
+  'areas' | 'cities' | 'regions' | 'propertyTypes' | 'excludeAmenities'
 >;
 
 /** A parse's hard filters, with areas, cities and regions as one `places` set. */
 export type ExpectedFilter = Partial<Pick<Filter, ScalarKey>> & {
   propertyTypes?: string[];
   places?: string[];
+  excludeAmenities?: string[];
 };
 
 const SCALAR_KEYS: ScalarKey[] = [
@@ -38,6 +39,8 @@ export function toExpectedShape(filter: Filter): ExpectedFilter {
     ...(filter.regions ?? []),
   ];
   if (places.length) shape.places = [...new Set(places)].sort();
+  if (filter.excludeAmenities?.length)
+    shape.excludeAmenities = [...new Set(filter.excludeAmenities)].sort();
   return shape;
 }
 

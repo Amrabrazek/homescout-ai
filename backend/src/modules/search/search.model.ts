@@ -170,4 +170,7 @@ export class ParsedSearch {
 
   @Field(() => [PropertyType], { nullable: true })
   propertyTypes?: PropertyType[];
+
+  @Field(() => [String], { nullable: true })
+  excludeAmenities?: string[];
 }

@@ -60,7 +60,7 @@ export async function runParseEval(
       const started = performance.now();
       const refined = await llm.parser.refine(query, regex, vocabulary);
       const asked = !!regex.text;
-      const fellBack = asked && refined === regex;
+      const fellBack = asked && refined.filter === regex.filter;
       if (asked && !fellBack) latencies.push(performance.now() - started);
       const shape = toExpectedShape(refined.filter);
       result.llm = {

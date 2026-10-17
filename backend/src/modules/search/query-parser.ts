@@ -5,11 +5,19 @@ export interface LocationVocabulary {
   areas: string[];
   cities: string[];
   regions: string[];
+  /** Amenity names, for "no pool"-style exclusions. */
+  amenities?: string[];
 }
 
 export interface ParsedQuery {
   /** What is left for keyword + vector search after structured hints are removed. */
   text: string;
+  /**
+   * `text` without the negated phrases the regex could not resolve ("pool not
+   * needed", "no noisy neighbours"). They stay in `text` for the LLM; this is
+   * what to search with when the LLM does not run. Set only when it differs.
+   */
+  fallbackText?: string;
   filter: Pick<
     UnitFilterInput,
     | 'minRooms'
@@ -24,6 +32,7 @@ export interface ParsedQuery {
     | 'maxFloorArea'
     | 'minFloor'
     | 'maxFloor'
+    | 'excludeAmenities'
   >;
 }
 
@@ -80,7 +89,7 @@ const SIZE = new RegExp(
 const HIGH_FLOOR = 5;
 const FLOORS: [RegExp, (f: ParsedQuery['filter'], n?: number) => void][] = [
   [
-    /\b(?:not|no|above)\s+(?:on\s+)?(?:the\s+)?ground(?:[ -]floors?)?\b/i,
+    /\b(?:not|no|above|except|other than)\s+(?:on\s+)?(?:(?:the|a|an)\s+)?ground(?:[ -]floors?)?\b/i,
     (f) => (f.minFloor = 1),
   ],
   [/\bground[ -]floors?\b/i, (f) => (f.maxFloor = 0)],
@@ -95,7 +104,7 @@ const FLOORS: [RegExp, (f: ParsedQuery['filter'], n?: number) => void][] = [
 ];
 
 const ROOMS =
-  /(?:\b(at least|min(?:imum)?|up to|max(?:imum)?)\s+)?\b(\d{1,2})(?:\s*(?:-|–|to|or)\s*(\d{1,2}))?\s*(\+)?\s*-?\s*([a-z]+)\b(?:\s+(or more|plus|or less|max)\b)?/gi;
+  /(?:\b(at least|at most|(?:no|not) more than|min(?:imum)?|up to|max(?:imum)?)\s+)?\b(\d{1,2})(?:\s*(?:-|–|to|or)\s*(\d{1,2}))?\s*(\+)?\s*-?\s*([a-z]+)\b(?:\s+(or more|plus|or less|max)\b)?/gi;
 const ROOM_ABBREVIATIONS = new Set(['br', 'bd', 'bdr', 'bed', 'beds', 'bhk']);
 const ROOM_WORDS = ['bedrooms', 'bedroom', 'rooms', 'room'];
 
@@ -136,6 +145,7 @@ const STOP_WORDS = new Set([
   'with',
   'for',
   'and',
+  'but',
   'or',
   'of',
   'near',
@@ -160,9 +170,46 @@ const STOP_WORDS = new Set([
   'please',
 ]);
 
-/** "no pool", "without a garden": the keyword would rank the opposite first. */
-const NEGATED =
-  /\b(?:no|not|without|except)\s+(?:a\s+|an\s+|the\s+)?[\p{L}\p{N}]+/giu;
+const NEGATORS = new Set([
+  'no',
+  'not',
+  'without',
+  'except',
+  'never',
+  'nothing',
+  'dont',
+  'doesnt',
+]);
+const ARTICLES = new Set(['a', 'an', 'the', 'any']);
+/** Words that end a negated phrase: "no pool near a park" negates only "pool". */
+const PHRASE_ENDS = new Set([
+  'and',
+  'but',
+  'with',
+  'near',
+  'in',
+  'at',
+  'on',
+  'for',
+  'by',
+  'close',
+  'under',
+  'over',
+  'around',
+  'please',
+]);
+const AMENITY_ALIASES: Record<string, string> = {
+  pool: 'Swimming Pool',
+  pools: 'Swimming Pool',
+  garden: 'Private Garden',
+  parking: 'Covered Parking',
+  security: '24/7 Security',
+  lift: 'Elevator',
+  ac: 'Central AC',
+  'air conditioning': 'Central AC',
+  pets: 'Pet Friendly',
+  schools: 'Schools Nearby',
+};
 
 /**
  * Pulls rooms, price, property type and location out of free text so they become hard filters
@@ -189,9 +236,10 @@ export function parseSearchQuery(
     ) => {
       if (!isRoomWord(word.toLowerCase())) return whole;
       const qualifier = `${prefix ?? ''} ${suffix ?? ''}`;
+      const atMost = /up to|max|less|at most|no more|not more/i.test(qualifier);
       applyRooms(filter, Number(from), to ? Number(to) : undefined, {
-        atLeast: !!plus || /least|min|more|plus/i.test(qualifier),
-        atMost: /up to|max|less/i.test(qualifier),
+        atLeast: !atMost && (!!plus || /least|min|more|plus/i.test(qualifier)),
+        atMost,
       });
       return ' ';
     }
@@ -233,13 +281,99 @@ export function parseSearchQuery(
     rest = rest.replace(regex, ' ');
   }
 
-  const words = rest.replace(NEGATED, ' ').split(/\s+/).filter(Boolean);
+  const words = rest.split(/\s+/).filter(Boolean);
   const remaining = matchLocations(words, vocabulary, filter);
+  const { kept, fallback, excluded } = resolveNegations(
+    remaining,
+    vocabulary.amenities ?? []
+  );
+  if (excluded.length) filter.excludeAmenities = excluded;
 
-  return {
-    text: remaining.filter((w) => !STOP_WORDS.has(w.toLowerCase())).join(' '),
-    filter,
-  };
+  const toText = (list: string[], keepFiller = false) =>
+    list
+      .filter(
+        (w) => normalize(w) && (keepFiller || !STOP_WORDS.has(normalize(w)))
+      )
+      .join(' ');
+  const fallbackText = toText(fallback);
+  if (kept.length === fallback.length) return { text: fallbackText, filter };
+  // Only the LLM reads this text, and "no need for a pool" needs its filler words.
+  return { text: toText(kept, true), fallbackText, filter };
+}
+
+/**
+ * Keyword and vector search can't read "no": "no pool" would rank pool homes
+ * first. "no/without + an amenity name" at the end of a phrase is certain, so it
+ * becomes an exclude filter. Any other negation is phrasing the regex can't
+ * judge ("pool not needed", "not far from the beach"), so it is kept for the
+ * LLM, and the fallback text drops the phrase up to the next comma or
+ * connector word.
+ */
+function resolveNegations(
+  words: string[],
+  amenityNames: string[]
+): { kept: string[]; fallback: string[]; excluded: string[] } {
+  const names = new Map<string, string>();
+  for (const name of amenityNames) names.set(normalize(name), name);
+  for (const [alias, name] of Object.entries(AMENITY_ALIASES))
+    if (amenityNames.includes(name)) names.set(alias, name);
+  const byLength = [...names.keys()].sort(
+    (a, b) => b.split(' ').length - a.split(' ').length
+  );
+
+  const kept: string[] = [];
+  const fallback: string[] = [];
+  const excluded: string[] = [];
+  const isEnd = (i: number) =>
+    i >= words.length || PHRASE_ENDS.has(normalize(words[i]));
+  const endsWithPunctuation = (word: string) => /[,.;!?]$/.test(word);
+
+  for (let i = 0; i < words.length; i++) {
+    if (!NEGATORS.has(normalize(words[i]))) {
+      kept.push(words[i]);
+      fallback.push(words[i]);
+      continue;
+    }
+
+    // Find the phrase: up to punctuation or a connector word; "or" continues it.
+    let end = i + 1;
+    while (!isEnd(end) && !endsWithPunctuation(words[end - 1] ?? '')) end++;
+    const phrase = words.slice(i + 1, end).map(normalize);
+
+    const found = matchAmenities(phrase, byLength, names);
+    if (found) {
+      for (const name of found)
+        if (!excluded.includes(name)) excluded.push(name);
+    } else {
+      kept.push(...words.slice(i, end));
+    }
+    i = end - 1;
+  }
+  return { kept, fallback, excluded };
+}
+
+/** "the pool or gym" → both names; undefined unless every part is an amenity. */
+function matchAmenities(
+  phrase: string[],
+  byLength: string[],
+  names: Map<string, string>
+): string[] | undefined {
+  const found: string[] = [];
+  let i = 0;
+  while (i < phrase.length) {
+    while (ARTICLES.has(phrase[i])) i++;
+    const key = byLength.find((name) => {
+      const parts = name.split(' ');
+      return parts.every((part, k) => phrase[i + k] === part);
+    });
+    if (!key) return undefined;
+    found.push(names.get(key));
+    i += key.split(' ').length;
+    if (i === phrase.length) break;
+    if (phrase[i] !== 'or' && phrase[i] !== 'nor') return undefined;
+    i++;
+  }
+  return found.length ? found : undefined;
 }
 
 function applyRooms(

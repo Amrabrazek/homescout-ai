@@ -162,7 +162,7 @@ export class SearchService {
   }
 }
 
-/** Every place name in the data, for the search parsers. */
+/** Every place and amenity name in the data, for the search parsers. */
 export async function loadLocationVocabulary(
   dataSource: DataSource
 ): Promise<LocationVocabulary> {
@@ -172,10 +172,14 @@ export async function loadLocationVocabulary(
             array_agg(DISTINCT region) FILTER (WHERE region IS NOT NULL) AS regions
      FROM projects`
   );
+  const amenities: { name: string }[] = await dataSource.query(
+    `SELECT name FROM amenities ORDER BY name`
+  );
   return {
     areas: row?.areas ?? [],
     cities: row?.cities ?? [],
     regions: row?.regions ?? [],
+    amenities: amenities.map((a) => a.name),
   };
 }
 

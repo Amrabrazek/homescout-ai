@@ -33,6 +33,14 @@ export class UnitFilterInput {
   @IsOptional()
   amenityIds?: string[];
 
+  @Field(() => [String], {
+    nullable: true,
+    description: 'Amenity names a unit must not have (e.g. "no pool")',
+  })
+  @IsString({ each: true })
+  @IsOptional()
+  excludeAmenities?: string[];
+
   @Field(() => [String], { nullable: true })
   @IsString({ each: true })
   @IsOptional()

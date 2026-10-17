@@ -209,8 +209,12 @@ export const PARSE_CASES: ParseCase[] = [
   },
   {
     query: 'villa no pool in new zayed',
-    expected: { propertyTypes: [VILLA], places: ['New Zayed'] },
-    note: 'negation adds no filter',
+    expected: {
+      propertyTypes: [VILLA],
+      places: ['New Zayed'],
+      excludeAmenities: ['Swimming Pool'],
+    },
+    note: 'negated amenity becomes an exclude filter',
   },
   {
     query: 'i want 2 rooms near the sea in hurghada less than 6 million',
@@ -273,5 +277,44 @@ export const PARSE_CASES: ParseCase[] = [
       maxPrice: 15 * M,
     },
     note: 'Sahel means North Coast',
+  },
+  {
+    query: 'apartment no swimming pool near a park in new cairo',
+    expected: {
+      propertyTypes: [APARTMENT],
+      places: ['New Cairo'],
+      excludeAmenities: ['Swimming Pool'],
+    },
+    note: 'two-word negated amenity',
+  },
+  {
+    query: 'villa in sheikh zayed, pool not needed',
+    expected: { propertyTypes: [VILLA], places: ['Sheikh Zayed'] },
+    note: '"not needed" means indifferent, not excluded',
+  },
+  {
+    query: 'شقة بدون حمام سباحة في التجمع',
+    expected: {
+      propertyTypes: [APARTMENT],
+      places: ['New Cairo'],
+      excludeAmenities: ['Swimming Pool'],
+    },
+    note: 'Arabic "without a pool"',
+  },
+  {
+    query: '3br not a ground floor apartment in madinaty',
+    expected: {
+      propertyTypes: [APARTMENT],
+      minRooms: 3,
+      maxRooms: 3,
+      minFloor: 1,
+      places: ['Madinaty'],
+    },
+    note: '"not a ground floor" is floor 1 and up',
+  },
+  {
+    query: 'no more than 3 bedrooms in new cairo',
+    expected: { maxRooms: 3, places: ['New Cairo'] },
+    note: '"no more than" is a maximum',
   },
 ];

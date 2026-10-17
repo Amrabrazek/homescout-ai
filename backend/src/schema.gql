@@ -9,7 +9,9 @@ type Amenity {
   units: [Unit!]
 }
 
-"""Distinct units the buyer viewed, saved or skipped"""
+"""
+Distinct units the buyer viewed, saved or skipped
+"""
 type BuyerActivity {
   saves: Int!
   skips: Int!
@@ -28,14 +30,18 @@ What the buyer told us (preferences) plus what we learned from their activity
 type BuyerProfile {
   activity: BuyerActivity!
 
-  """Amenity IDs"""
+  """
+  Amenity IDs
+  """
   amenityIds: [String!]!
   areas: [String!]!
   budgetMax: Float
   budgetMin: Float
   createdAt: DateTime!
 
-  """Whether a taste vector exists for the active embedding model"""
+  """
+  Whether a taste vector exists for the active embedding model
+  """
   hasTasteVector: Boolean!
   id: ID!
   minRooms: Int
@@ -114,7 +120,9 @@ type FacetStatsValue {
 }
 
 type Feed {
-  """No preferences and no activity yet: items are popular, varied units"""
+  """
+  No preferences and no activity yet: items are popular, varied units
+  """
   coldStart: Boolean!
   items: [MatchedUnit!]!
   section: FeedSection!
@@ -142,7 +150,9 @@ type Image {
 }
 
 type MatchedUnit {
-  """Match % for this buyer; null when there is nothing to match"""
+  """
+  Match % for this buyer; null when there is nothing to match
+  """
   matchScore: Int
 
   """
@@ -180,21 +190,29 @@ type ParsedSearch {
   propertyTypes: [PropertyType!]
   regions: [String!]
 
-  """Words left for keyword and vector search"""
+  """
+  Words left for keyword and vector search
+  """
   text: String!
 }
 
 type PlanValue {
-  """Yearly discount rate, e.g. 0.2"""
+  """
+  Yearly discount rate, e.g. 0.2
+  """
   discountRate: Float!
   downPayment: Float!
   monthlyInstallment: Float!
   months: Int!
 
-  """The plan's payments in today's money"""
+  """
+  The plan's payments in today's money
+  """
   presentValue: Float!
 
-  """presentValue / price, 0..1"""
+  """
+  presentValue / price, 0..1
+  """
   shareOfPrice: Float!
 }
 
@@ -229,7 +247,9 @@ type Query {
   developer(id: String!): Developer
   developers: [Developer!]!
 
-  """The buyer's home page sections"""
+  """
+  The buyer's home page sections
+  """
   forYou(
     limit: Int! = 8
     section: FeedSection! = FOR_YOU
@@ -243,16 +263,33 @@ type Query {
   images: [Image!]!
   myProfile: BuyerProfile!
   project(id: String!): Project!
-  projects(developerId: String, limit: Int, offset: Int, searchTerm: String): [Project!]!
+  projects(
+    developerId: String
+    limit: Int
+    offset: Int
+    searchTerm: String
+  ): [Project!]!
   savedUnits: [Unit!]!
   searchFacets(filter: UnitFilterInput): FacetCountResponse!
-  searchUnits(filter: UnitFilterInput, limit: Int, offset: Int, sort: UnitSortInput): SearchUnitsResponse!
+  searchUnits(
+    filter: UnitFilterInput
+    limit: Int
+    offset: Int
+    sort: UnitSortInput
+  ): SearchUnitsResponse!
 
-  """Neighbours of a unit, re-ranked with the buyer when x-buyer-id is sent"""
+  """
+  Neighbours of a unit, re-ranked with the buyer when x-buyer-id is sent
+  """
   similarUnits(limit: Int, unitId: String!): [SimilarUnit!]!
   understandSearch(searchTerm: String!): ParsedSearch!
   unit(id: String!): Unit
-  units(filter: UnitFilterInput, limit: Int, offset: Int, sort: UnitSortInput): UnitResponse!
+  units(
+    filter: UnitFilterInput
+    limit: Int
+    offset: Int
+    sort: UnitSortInput
+  ): UnitResponse!
 }
 
 type SearchAmenity {
@@ -304,7 +341,9 @@ type SearchUnitsResponse {
 }
 
 type SimilarUnit {
-  """Match % for this buyer; null when there is nothing to match"""
+  """
+  Match % for this buyer; null when there is nothing to match
+  """
   matchScore: Int
 
   """
@@ -312,12 +351,16 @@ type SimilarUnit {
   """
   reasons: [String!]!
 
-  """Closeness to the unit, blended with the buyer match, 0 to 1"""
+  """
+  Closeness to the unit, blended with the buyer match, 0 to 1
+  """
   score: Float!
   unit: Unit!
 }
 
-"""Sort direction (ascending or descending)"""
+"""
+Sort direction (ascending or descending)
+"""
 enum SortDirection {
   ASC
   DESC
@@ -328,7 +371,9 @@ type Unit {
   bathrooms: Int!
   createdAt: DateTime!
 
-  """Expected delivery year; null means ready to move"""
+  """
+  Expected delivery year; null means ready to move
+  """
   deliveryYear: Int
   description: String
   downPaymentPct: Float
@@ -360,13 +405,17 @@ input UnitFilterInput {
   maxPrice: Float
   maxRooms: Int
 
-  """Lowest floor (0 = ground)"""
+  """
+  Lowest floor (0 = ground)
+  """
   minFloor: Int
   minFloorArea: Float
   minPrice: Float
   minRooms: Int
 
-  """Filter by multiple project IDs"""
+  """
+  Filter by multiple project IDs
+  """
   projectIds: [String!]
   propertyTypes: [PropertyType!]
   regions: [String!]
@@ -391,7 +440,9 @@ type UnitResponse {
   total: Int!
 }
 
-"""Fields that can be used to sort units"""
+"""
+Fields that can be used to sort units
+"""
 enum UnitSortField {
   CREATED_AT
   DEFAULT
@@ -400,7 +451,9 @@ enum UnitSortField {
 }
 
 input UnitSortInput {
-  """Sort direction; defaults to DESC for createdAt, ASC otherwise"""
+  """
+  Sort direction; defaults to DESC for createdAt, ASC otherwise
+  """
   direction: SortDirection
 
   """
@@ -417,7 +470,9 @@ enum UnitView {
   STREET
 }
 
-"""Only the fields sent are changed; send null to clear one"""
+"""
+Only the fields sent are changed; send null to clear one
+"""
 input UpdatePreferencesInput {
   amenityIds: [String!]
   areas: [String!]
