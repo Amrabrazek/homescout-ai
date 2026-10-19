@@ -59,12 +59,14 @@ export function runChecks(
 
   if (testCase.search) {
     results.constraints = checkConstraints(last, testCase.search);
+  }
+  if (testCase.search && testCase.kind !== 'returning') {
     results.savesPreferences = calls(last, 'update_preferences').length
       ? { pass: true }
       : { pass: false, detail: 'never called update_preferences' };
   }
   if (testCase.asksFirst) results.asksWhenVague = checkAsks(first);
-  if (testCase.kind === 'persona') {
+  if (testCase.kind === 'persona' || testCase.kind === 'returning') {
     results.actsWhenClear = calls(first, 'search_units').length
       ? { pass: true }
       : { pass: false, detail: 'asked instead of searching' };

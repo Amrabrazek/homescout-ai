@@ -12,7 +12,26 @@ export interface ExpectedSearch {
 }
 
 export type CaseKind =
-  'persona' | 'vague' | 'grounding' | 'off-topic' | 'two-turn';
+  | 'persona'
+  | 'vague'
+  | 'grounding'
+  | 'off-topic'
+  | 'two-turn'
+  | 'returning';
+
+/** What a returning buyer already has before the chat starts. */
+export interface BuyerSetup {
+  /** Sent to PATCH /internal/preferences. */
+  preferences: {
+    budgetMax?: number;
+    locations?: string[];
+    propertyTypes?: PropertyType[];
+    minRooms?: number;
+    amenities?: string[];
+  };
+  /** Saves the first N units a search with these preferences returns. */
+  saves?: number;
+}
 
 export interface AgentCase {
   id: string;
@@ -21,6 +40,8 @@ export interface AgentCase {
   note: string;
   /** Buyer messages, sent one after another. */
   turns: string[];
+  /** Applied to the fresh buyer before the first turn. */
+  setup?: BuyerSetup;
   /** The last turn's search must apply these. */
   search?: ExpectedSearch;
   /** The first turn must ask a question and not search. */
@@ -283,6 +304,48 @@ export const AGENT_CASES: AgentCase[] = [
       places: ['Ain Sokhna'],
       propertyTypes: ['chalet'],
       maxPrice: 7_000_000,
+    },
+  },
+
+  {
+    id: 'returning-vague',
+    kind: 'returning',
+    note: 'saved prefs cover everything, the message says nothing',
+    setup: {
+      preferences: {
+        budgetMax: 9_000_000,
+        locations: ['New Cairo'],
+        propertyTypes: ['apartment'],
+        minRooms: 2,
+      },
+      saves: 2,
+    },
+    turns: ['Hi again! Anything new for me?'],
+    search: {
+      places: ['New Cairo'],
+      propertyTypes: ['apartment'],
+      minRooms: 2,
+      maxPrice: 9_000_000,
+    },
+  },
+  {
+    id: 'returning-partial',
+    kind: 'returning',
+    note: 'adds one need, budget and place only in saved prefs',
+    setup: {
+      preferences: {
+        budgetMax: 20_000_000,
+        locations: ['Sheikh Zayed'],
+        propertyTypes: ['townhouse'],
+      },
+      saves: 1,
+    },
+    turns: ['Show me some options with a swimming pool.'],
+    search: {
+      places: ['Sheikh Zayed'],
+      propertyTypes: ['townhouse'],
+      maxPrice: 20_000_000,
+      amenities: ['Swimming Pool'],
     },
   },
 ];
