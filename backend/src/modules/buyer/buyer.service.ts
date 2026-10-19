@@ -111,6 +111,23 @@ export class BuyerService {
     return rows.map((r) => r.unit_id);
   }
 
+  /** The units of one event type, most recent first. */
+  async recentUnitIds(
+    buyerId: string,
+    type: BuyerEventType,
+    limit: number
+  ): Promise<string[]> {
+    const rows: { unit_id: string }[] = await this.dataSource.query(
+      `SELECT unit_id FROM buyer_events
+       WHERE buyer_id = $1 AND type = $2
+       GROUP BY unit_id
+       ORDER BY MAX(created_at) DESC
+       LIMIT $3`,
+      [buyerId, type, limit]
+    );
+    return rows.map((r) => r.unit_id);
+  }
+
   async skippedUnitIds(buyerId: string): Promise<string[]> {
     const rows: { unit_id: string }[] = await this.dataSource.query(
       `SELECT DISTINCT unit_id FROM buyer_events WHERE buyer_id = $1 AND type = $2`,

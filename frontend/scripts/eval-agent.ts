@@ -93,7 +93,12 @@ async function main() {
         ...conversation,
         checks: conversation.error
           ? {}
-          : runChecks(testCase, conversation.turns, projectNames),
+          : runChecks(
+              testCase,
+              conversation.turns,
+              projectNames,
+              conversation.context
+            ),
       };
       if (!conversation.error && judge) {
         scored.judge = await judgeHelpfulness(judge, conversation.turns)

@@ -17,6 +17,7 @@ describe('ConciergeController', () => {
     saveUnit: jest.fn(async () => undefined),
     getPreferences: jest.fn(async () => ({ areas: [] })),
     updatePreferences: jest.fn(async () => ({ areas: [] })),
+    buyerContext: jest.fn(async () => ({ saved: [] })),
   };
 
   beforeAll(async () => {
@@ -115,5 +116,14 @@ describe('ConciergeController', () => {
       budgetMax: null,
       locations: ['New Cairo'],
     });
+  });
+
+  it('returns the context of the buyer in the header', async () => {
+    await request(app.getHttpServer()).get('/internal/context').expect(400);
+    await request(app.getHttpServer())
+      .get('/internal/context')
+      .set('x-buyer-id', BUYER)
+      .expect(200, { saved: [] });
+    expect(concierge.buyerContext).toHaveBeenCalledWith(BUYER);
   });
 });

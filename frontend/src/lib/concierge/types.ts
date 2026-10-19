@@ -76,3 +76,21 @@ export interface BuyerPreferences {
   savedUnitIds: string[];
   unmatched?: string[];
 }
+
+export interface ContextUnit {
+  id: string;
+  name: string;
+  project: string | null;
+  area: string | null;
+  propertyType: PropertyType | null;
+  rooms: number;
+  price: number;
+}
+
+/** GET /internal/context: what the concierge knows before the chat starts. */
+export interface BuyerContext {
+  preferences: Omit<BuyerPreferences, 'savedUnitIds' | 'unmatched'>;
+  saved: ContextUnit[];
+  viewed: ContextUnit[];
+  skipped: ContextUnit[];
+}

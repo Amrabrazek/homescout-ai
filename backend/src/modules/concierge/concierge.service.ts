@@ -10,7 +10,13 @@ import { UnitService } from '../unit/unit.service';
 import { planDiscountRate } from '../unit/payment-plan';
 import { SearchUnitsDto } from './dto/search-units.dto';
 import { UpdateBuyerPreferencesDto } from './dto/update-preferences.dto';
-import { toUnitCard, toUnitDetail, UnitCard, UnitDetail } from './unit-card';
+import {
+  toUnitCard,
+  toUnitDetail,
+  UnitCard,
+  UnitDetail,
+  UnitLike,
+} from './unit-card';
 import {
   expandToAreas,
   LocationRow,
@@ -44,7 +50,28 @@ export interface BuyerPreferences {
   savedUnitIds: string[];
 }
 
+/** Enough to name a unit and reopen it with get_unit. */
+export interface ContextUnit {
+  id: string;
+  name: string;
+  project: string | null;
+  area: string | null;
+  propertyType: string | null;
+  rooms: number;
+  price: number;
+}
+
+export interface BuyerContext {
+  preferences: Omit<BuyerPreferences, 'savedUnitIds'>;
+  saved: ContextUnit[];
+  viewed: ContextUnit[];
+  skipped: ContextUnit[];
+}
+
 const DEFAULT_LIMIT = 6;
+const CONTEXT_SAVED = 5;
+const CONTEXT_VIEWED = 5;
+const CONTEXT_SKIPPED = 3;
 
 /**
  * The concierge agent's tools. Results are compact and come straight from the
@@ -188,6 +215,50 @@ export class ConciergeService {
     };
   }
 
+  /**
+   * What the concierge knows about the buyer before the chat starts. Viewed
+   * leaves out units already saved or skipped, so each unit shows up once.
+   */
+  async buyerContext(buyerId: string): Promise<BuyerContext> {
+    const [{ savedUnitIds, ...preferences }, saved, viewed, skipped] =
+      await Promise.all([
+        this.getPreferences(buyerId),
+        this.buyerService.recentUnitIds(
+          buyerId,
+          BuyerEventType.SAVE,
+          CONTEXT_SAVED
+        ),
+        this.buyerService.recentUnitIds(
+          buyerId,
+          BuyerEventType.VIEW,
+          CONTEXT_VIEWED + CONTEXT_SAVED + CONTEXT_SKIPPED
+        ),
+        this.buyerService.recentUnitIds(
+          buyerId,
+          BuyerEventType.SKIP,
+          CONTEXT_SKIPPED
+        ),
+      ]);
+    const decided = new Set([...savedUnitIds, ...skipped]);
+    const viewedOnly = viewed
+      .filter((id) => !decided.has(id))
+      .slice(0, CONTEXT_VIEWED);
+    const units = await this.unitService.findManyByIds([
+      ...saved,
+      ...viewedOnly,
+      ...skipped,
+    ]);
+    const byId = new Map(units.map((u) => [u.id, toContextUnit(u)]));
+    const pick = (ids: string[]) =>
+      ids.map((id) => byId.get(id)).filter((u): u is ContextUnit => !!u);
+    return {
+      preferences,
+      saved: pick(saved),
+      viewed: pick(viewedOnly),
+      skipped: pick(skipped),
+    };
+  }
+
   /** Lists replace the stored ones; send null to clear a value. */
   async updatePreferences(
     buyerId: string,
@@ -229,6 +300,19 @@ export class ConciergeService {
   private amenities(): Promise<NamedItem[]> {
     return this.dataSource.query(`SELECT id, name FROM amenities`);
   }
+}
+
+function toContextUnit(unit: UnitLike): ContextUnit {
+  const card = toUnitCard(unit);
+  return {
+    id: card.id,
+    name: card.name,
+    project: card.project,
+    area: card.area,
+    propertyType: card.propertyType,
+    rooms: card.rooms,
+    price: card.price,
+  };
 }
 
 function withoutEmpty<T extends object>(value: T): Partial<T> {

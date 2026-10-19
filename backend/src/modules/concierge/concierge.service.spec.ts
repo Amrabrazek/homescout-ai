@@ -32,7 +32,9 @@ function setup() {
   const unitService = {
     findAllWithCount: jest.fn(async () => [[UNIT], 1]),
     findOne: jest.fn(async () => UNIT),
-    findManyByIds: jest.fn(async () => [UNIT]),
+    findManyByIds: jest.fn<Promise<(typeof UNIT)[]>, [string[]]>(async () => [
+      UNIT,
+    ]),
     findSimilarUnits: jest.fn(async () => [
       { unit: UNIT, score: 0.9, reasons: ['Same area'] },
     ]),
@@ -45,6 +47,7 @@ function setup() {
       amenityIds: ['a-school', 'gone'],
     })),
     savedUnitIds: jest.fn(async () => ['u1']),
+    recentUnitIds: jest.fn<Promise<string[]>, [string, string]>(async () => []),
     updatePreferences: jest.fn(async () => undefined),
     recordEvent: jest.fn(async () => undefined),
   };
@@ -208,5 +211,39 @@ describe('ConciergeService', () => {
       'u1',
       BuyerEventType.SAVE
     );
+  });
+
+  it('builds the buyer context without repeating a unit across lists', async () => {
+    const { service, buyerService, unitService } = setup();
+    const ids: Record<string, string[]> = {
+      [BuyerEventType.SAVE]: ['u1'],
+      [BuyerEventType.VIEW]: ['u1', 'u2', 'u3'],
+      [BuyerEventType.SKIP]: ['u3'],
+    };
+    buyerService.recentUnitIds.mockImplementation(
+      async (_buyer: string, type: string) => ids[type]
+    );
+    unitService.findManyByIds.mockImplementation(async (wanted: string[]) =>
+      wanted.map((id) => ({ ...UNIT, id }))
+    );
+
+    const context = await service.buyerContext('b1');
+
+    expect(unitService.findManyByIds).toHaveBeenCalledWith(['u1', 'u2', 'u3']);
+    expect(context.preferences).not.toHaveProperty('savedUnitIds');
+    expect(context.preferences.budgetMax).toBe(10_000_000);
+    expect(context.saved.map((u) => u.id)).toEqual(['u1']);
+    expect(context.viewed.map((u) => u.id)).toEqual(['u2']);
+    expect(context.skipped).toEqual([
+      {
+        id: 'u3',
+        name: 'Apartment',
+        project: 'P',
+        area: 'New Cairo',
+        propertyType: null,
+        rooms: 3,
+        price: 9_000_000,
+      },
+    ]);
   });
 });
