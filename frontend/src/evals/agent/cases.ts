@@ -9,6 +9,8 @@ export interface ExpectedSearch {
   maxPrice?: number;
   /** Checked on the args only: unit cards don't list amenities. */
   amenities?: string[];
+  /** No amenity filter at all: a remembered fact must not become a hidden one. */
+  noAmenities?: boolean;
 }
 
 export type CaseKind =
@@ -17,7 +19,8 @@ export type CaseKind =
   | 'grounding'
   | 'off-topic'
   | 'two-turn'
-  | 'returning';
+  | 'returning'
+  | 'remembered';
 
 /** What a returning buyer already has before the chat starts. */
 export interface BuyerSetup {
@@ -42,6 +45,10 @@ export interface AgentCase {
   turns: string[];
   /** Applied to the fresh buyer before the first turn. */
   setup?: BuyerSetup;
+  /** An earlier chat with the same buyer; `turns` then run in a new chat that keeps only what the buyer's account holds. */
+  earlierChat?: string[];
+  /** The earlier chat must call remember_fact, and must not add an amenity before the buyer agrees to it. */
+  remembers?: boolean;
   /** The last turn's search must apply these. */
   search?: ExpectedSearch;
   /** The first turn must ask a question and not search. */
@@ -346,6 +353,51 @@ export const AGENT_CASES: AgentCase[] = [
       propertyTypes: ['townhouse'],
       maxPrice: 20_000_000,
       amenities: ['Swimming Pool'],
+    },
+  },
+  {
+    id: 'remembered-kids',
+    kind: 'remembered',
+    note: 'kids mentioned last chat; schools only after the buyer says yes',
+    setup: {
+      preferences: {
+        budgetMax: 12_000_000,
+        locations: ['New Cairo'],
+        propertyTypes: ['apartment'],
+      },
+    },
+    earlierChat: [
+      'Just so you know, I have two kids, both in primary school.',
+      'Yes please, add that.',
+    ],
+    remembers: true,
+    turns: ['Show me what you have for me today.'],
+    search: {
+      places: ['New Cairo'],
+      propertyTypes: ['apartment'],
+      maxPrice: 12_000_000,
+      amenities: ['Schools Nearby'],
+    },
+  },
+  {
+    id: 'remembered-wfh',
+    kind: 'remembered',
+    note: 'a fact no filter holds stays context, not a filter',
+    setup: {
+      preferences: {
+        budgetMax: 8_000_000,
+        locations: ['Sheikh Zayed'],
+        propertyTypes: ['apartment'],
+      },
+    },
+    earlierChat: ['By the way, I work from home most days.'],
+    remembers: true,
+    turns: ['Anything new for me?'],
+    search: {
+      places: ['Sheikh Zayed'],
+      propertyTypes: ['apartment'],
+      maxPrice: 8_000_000,
+      noAmenities: true,
     },
   },
 ];

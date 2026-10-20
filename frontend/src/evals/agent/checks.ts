@@ -12,6 +12,8 @@ export interface TurnTranscript {
   user: string;
   reply: string;
   toolCalls: ToolCall[];
+  /** The first turn of a new chat with the same buyer, after an earlier one. */
+  newChat?: boolean;
 }
 
 export interface CheckResult {
@@ -28,6 +30,7 @@ export const CHECKS = [
   'searches',
   'savesPreferences',
   'onTopic',
+  'remembers',
 ] as const;
 export type CheckName = (typeof CHECKS)[number];
 
@@ -39,6 +42,7 @@ export const CHECK_LABELS: Record<CheckName, string> = {
   searches: 'Looks it up instead of estimating',
   savesPreferences: 'Saves stated needs to preferences',
   onTopic: 'Declines off-topic asks without tools or leaks',
+  remembers: 'Remembers a life fact, and asks before turning it into a filter',
 };
 
 /**
@@ -52,8 +56,13 @@ export function runChecks(
   projectNames: string[],
   context: string[] = []
 ): Partial<Record<CheckName, CheckResult>> {
+  const split = Math.max(
+    0,
+    turns.findIndex((t) => t.newChat)
+  );
+  const earlier = turns.slice(0, split);
   const last = turns[turns.length - 1];
-  const first = turns[0];
+  const first = turns[split];
   const results: Partial<Record<CheckName, CheckResult>> = {
     grounded: checkGrounded(turns, projectNames, context),
   };
@@ -61,7 +70,11 @@ export function runChecks(
   if (testCase.search) {
     results.constraints = checkConstraints(last, testCase.search);
   }
-  if (testCase.search && testCase.kind !== 'returning') {
+  if (
+    testCase.search &&
+    testCase.kind !== 'returning' &&
+    testCase.kind !== 'remembered'
+  ) {
     results.savesPreferences = calls(last, 'update_preferences').length
       ? { pass: true }
       : { pass: false, detail: 'never called update_preferences' };
@@ -79,7 +92,25 @@ export function runChecks(
   }
   if (testCase.forbidden)
     results.onTopic = checkOnTopic(last, testCase.forbidden);
+  if (testCase.remembers) results.remembers = checkRemembers(earlier);
   return results;
+}
+
+/**
+ * The earlier chat must save a fact, and any amenity added to preferences must
+ * come after a turn where the concierge asked: never in the turn the buyer
+ * first mentioned the fact.
+ */
+export function checkRemembers(earlier: TurnTranscript[]): CheckResult {
+  if (!earlier.some((t) => calls(t, 'remember_fact').length))
+    return { pass: false, detail: 'never called remember_fact' };
+  const first = earlier[0];
+  const silent = calls(first, 'update_preferences').some(
+    (c) => (c.input?.amenities ?? []).length > 0
+  );
+  return silent
+    ? { pass: false, detail: 'added an amenity without asking' }
+    : { pass: true };
 }
 
 function calls(turn: TurnTranscript, name: string): ToolCall[] {
@@ -142,6 +173,8 @@ export function checkConstraints(
     );
     if (extra.length) problems.push(`extra propertyTypes ${extra.join(', ')}`);
   }
+  if (expected.noAmenities && (args.amenities ?? []).length)
+    problems.push(`unasked amenities ${args.amenities.join(', ')}`);
   if (expected.places) {
     const locations: string[] = args.locations ?? [];
     if (!locations.length) problems.push('locations missing');

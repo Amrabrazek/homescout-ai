@@ -48,6 +48,9 @@ function setup() {
     })),
     savedUnitIds: jest.fn(async () => ['u1']),
     recentUnitIds: jest.fn<Promise<string[]>, [string, string]>(async () => []),
+    facts: jest.fn(async () => [
+      { id: '7', buyerId: 'b1', text: 'Has two kids', createdAt: new Date() },
+    ]),
     updatePreferences: jest.fn(async () => undefined),
     recordEvent: jest.fn(async () => undefined),
   };
@@ -234,6 +237,7 @@ describe('ConciergeService', () => {
     expect(context.preferences.budgetMax).toBe(10_000_000);
     expect(context.saved.map((u) => u.id)).toEqual(['u1']);
     expect(context.viewed.map((u) => u.id)).toEqual(['u2']);
+    expect(context.facts).toEqual([{ id: '7', text: 'Has two kids' }]);
     expect(context.skipped).toEqual([
       {
         id: 'u3',

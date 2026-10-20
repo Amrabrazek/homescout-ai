@@ -2,6 +2,7 @@ import { ParseUUIDPipe } from '@nestjs/common';
 import {
   Args,
   Field,
+  ID,
   Int,
   Mutation,
   ObjectType,
@@ -10,6 +11,7 @@ import {
   ResolveField,
   Resolver,
 } from '@nestjs/graphql';
+import { BuyerFact } from '../../common/entities/buyer-fact.entity';
 import { BuyerProfile } from '../../common/entities/buyer-profile.entity';
 import { Unit } from '../../common/entities/unit.entity';
 import { BuyerEventType } from '../../common/enums/buyer-event-type';
@@ -73,6 +75,16 @@ export class BuyerResolver {
     return true;
   }
 
+  @Mutation(() => Boolean, {
+    description: 'Deletes one fact the concierge remembered',
+  })
+  forgetFact(
+    @BuyerId() buyerId: string,
+    @Args('id', { type: () => ID }) id: string
+  ): Promise<boolean> {
+    return this.buyers.forgetFact(buyerId, id);
+  }
+
   @Mutation(() => BuyerProfile)
   resetProfile(@BuyerId() buyerId: string): Promise<BuyerProfile> {
     return this.buyers.reset(buyerId);
@@ -81,6 +93,13 @@ export class BuyerResolver {
   @ResolveField(() => [String])
   savedUnitIds(@Parent() profile: BuyerProfile): Promise<string[]> {
     return this.buyers.savedUnitIds(profile.id);
+  }
+
+  @ResolveField(() => [BuyerFact], {
+    description: 'What the concierge remembers, oldest first',
+  })
+  facts(@Parent() profile: BuyerProfile): Promise<BuyerFact[]> {
+    return this.buyers.facts(profile.id);
   }
 
   @ResolveField(() => BuyerActivity)

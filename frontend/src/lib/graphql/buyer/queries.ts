@@ -17,6 +17,10 @@ const BUYER_PROFILE_FIELDS = gql`
       saves
       skips
     }
+    facts {
+      id
+      text
+    }
   }
 `;
 
@@ -98,6 +102,12 @@ export const RESET_PROFILE = gql`
 export const RECORD_BUYER_EVENT = gql`
   mutation RecordBuyerEvent($unitId: String!, $type: BuyerEventType!) {
     recordBuyerEvent(unitId: $unitId, type: $type)
+  }
+`;
+
+export const FORGET_FACT = gql`
+  mutation ForgetFact($id: ID!) {
+    forgetFact(id: $id)
   }
 `;
 

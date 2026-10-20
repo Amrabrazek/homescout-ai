@@ -66,6 +66,7 @@ export interface BuyerContext {
   saved: ContextUnit[];
   viewed: ContextUnit[];
   skipped: ContextUnit[];
+  facts: { id: string; text: string }[];
 }
 
 const DEFAULT_LIMIT = 6;
@@ -220,7 +221,7 @@ export class ConciergeService {
    * leaves out units already saved or skipped, so each unit shows up once.
    */
   async buyerContext(buyerId: string): Promise<BuyerContext> {
-    const [{ savedUnitIds, ...preferences }, saved, viewed, skipped] =
+    const [{ savedUnitIds, ...preferences }, saved, viewed, skipped, facts] =
       await Promise.all([
         this.getPreferences(buyerId),
         this.buyerService.recentUnitIds(
@@ -238,6 +239,7 @@ export class ConciergeService {
           BuyerEventType.SKIP,
           CONTEXT_SKIPPED
         ),
+        this.buyerService.facts(buyerId),
       ]);
     const decided = new Set([...savedUnitIds, ...skipped]);
     const viewedOnly = viewed
@@ -256,6 +258,7 @@ export class ConciergeService {
       saved: pick(saved),
       viewed: pick(viewedOnly),
       skipped: pick(skipped),
+      facts: facts.map(({ id, text }) => ({ id, text })),
     };
   }
 

@@ -2,7 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { asBuyer } from './server';
-import { RESET_PROFILE, UNSAVE_UNIT, UPDATE_PREFERENCES } from './queries';
+import {
+  FORGET_FACT,
+  RESET_PROFILE,
+  UNSAVE_UNIT,
+  UPDATE_PREFERENCES,
+} from './queries';
 import { PreferencesFormInput, preferencesSchema } from './schema';
 import type { BuyerProfile } from './types';
 
@@ -46,5 +51,15 @@ export async function unsaveUnit(unitId: string): Promise<Result<true>> {
     return { success: true, data: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to unsave' };
+  }
+}
+
+export async function forgetFact(id: string): Promise<Result<true>> {
+  try {
+    await asBuyer({ mutation: FORGET_FACT }, { id });
+    revalidatePath('/preferences');
+    return { success: true, data: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to forget' };
   }
 }

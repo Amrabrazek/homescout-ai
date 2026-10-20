@@ -15,6 +15,7 @@ const empty = {
   saved: [],
   viewed: [],
   skipped: [],
+  facts: [],
 };
 
 const unit = {
@@ -32,7 +33,10 @@ describe('aboutBuyer', () => {
     const text = aboutBuyer(empty);
     assert.match(text, /^## About this buyer\n/);
     assert.match(text, /Saved preferences: none yet\./);
-    assert.doesNotMatch(text, /Saved units|Recently viewed|Not interested/);
+    assert.doesNotMatch(
+      text,
+      /Saved units|Recently viewed|Not interested|Remembered facts/
+    );
   });
 
   it('lists preferences and units with their IDs', () => {
@@ -47,6 +51,7 @@ describe('aboutBuyer', () => {
       saved: [unit],
       viewed: [],
       skipped: [{ ...unit, id: 'u2', project: null }],
+      facts: [],
     });
     assert.match(
       text,
@@ -69,5 +74,19 @@ describe('aboutBuyer', () => {
       preferences: { ...empty.preferences, budgetMin: 5_500_000, budgetMax: 8_000_000 },
     });
     assert.match(text, /budget 5\.5M to 8M EGP/);
+  });
+
+  it('lists remembered facts with their ids', () => {
+    const text = aboutBuyer({
+      ...empty,
+      facts: [
+        { id: '4', text: 'Has two kids' },
+        { id: '9', text: 'Works from home' },
+      ],
+    });
+    assert.match(
+      text,
+      /Remembered facts \(what the buyer told you in earlier chats\):\n- Has two kids \(fact id 4\)\n- Works from home \(fact id 9\)/
+    );
   });
 });
