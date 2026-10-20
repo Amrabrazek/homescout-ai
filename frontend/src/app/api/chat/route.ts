@@ -4,6 +4,7 @@ import { getBuyerId } from '@/lib/graphql/buyer/server';
 import { conciergeAgent } from '@/lib/concierge/agent';
 import { internalApi } from '@/lib/concierge/api';
 import { loadAboutBuyer } from '@/lib/concierge/context';
+import { withoutEarlierReasoning } from '@/lib/concierge/history';
 import { llmConfig } from '@/lib/concierge/model';
 import { langfuse } from '@/lib/concierge/telemetry';
 import type { ConciergeMessage } from '@/lib/concierge/tools';
@@ -51,7 +52,9 @@ export async function POST(request: NextRequest) {
 
   const result = streamText({
     ...agent,
-    messages: await convertToModelMessages(messages, { tools }),
+    messages: withoutEarlierReasoning(
+      await convertToModelMessages(messages, { tools })
+    ),
     onStepFinish: (step) => {
       const endTime = new Date();
       trace?.generation({

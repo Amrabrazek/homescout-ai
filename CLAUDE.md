@@ -48,7 +48,7 @@ Update this table in the same PR when you add, move or rename one of these place
 | Dashboard (CRUD forms) | `frontend/src/app/dashboard/` |
 | Buyer cookie (`hs_buyer`) and event API | `frontend/src/middleware.ts`, `frontend/src/app/api/events/route.ts`; server-side buyer calls in `frontend/src/lib/graphql/buyer/server.ts` |
 | My preferences page | `frontend/src/app/(home)/preferences/` |
-| Concierge agent (route, tools, prompt, model from `LLM_PROVIDER`/`LLM_MODEL`, Langfuse) | `frontend/src/app/api/chat/route.ts`, `frontend/src/lib/concierge/` (`agent.ts` is the shared turn setup; `context.ts` builds the per-turn "About this buyer" system block after the cached prompt) |
+| Concierge agent (route, tools, prompt, model from `LLM_PROVIDER`/`LLM_MODEL`, Langfuse) | `frontend/src/app/api/chat/route.ts`, `frontend/src/lib/concierge/` (`agent.ts` is the shared turn setup; `context.ts` builds the per-turn "About this buyer" system block after the cached prompt; `history.ts` drops earlier-turn reasoning, since that block changes mid-chat) |
 | Agent evals (scripted buyer chats, deterministic checks, LLM helpfulness judge; report in `docs/evals/agent.md`) | `frontend/src/evals/agent/` (`cases.ts`, `checks.ts`, `judge.ts`); entry `frontend/scripts/eval-agent.ts` |
 | Concierge chat UI (floating panel, `/concierge`, tool-result cards) | `frontend/src/components/concierge/`, `frontend/src/app/(home)/concierge/` |
 | GraphQL queries, types, zod schemas | `frontend/src/lib/graphql/<entity>/` |

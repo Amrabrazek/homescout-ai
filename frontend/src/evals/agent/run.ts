@@ -3,6 +3,7 @@ import { generateText, type LanguageModelUsage, type ModelMessage } from 'ai';
 import { conciergeAgent } from '@/lib/concierge/agent';
 import { internalApi, type InternalApi } from '@/lib/concierge/api';
 import { loadAboutBuyer } from '@/lib/concierge/context';
+import { withoutEarlierReasoning } from '@/lib/concierge/history';
 import type { LlmConfig } from '@/lib/concierge/model';
 import type { UnitSearchResult } from '@/lib/concierge/types';
 import type { AgentCase, BuyerSetup } from './cases';
@@ -69,7 +70,10 @@ export async function runConversation(
     if (aboutBuyer) context.push(aboutBuyer);
     const agent = conciergeAgent(config, api, aboutBuyer);
     const started = performance.now();
-    const result = await generateText({ ...agent, messages });
+    const result = await generateText({
+      ...agent,
+      messages: withoutEarlierReasoning(messages),
+    });
     const ms = performance.now() - started;
     messages.push(...result.responseMessages);
     return {
