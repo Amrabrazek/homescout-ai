@@ -1,6 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
+import { BuyerService } from '../buyer/buyer.service';
 import { ConciergeController } from './concierge.controller';
 import { ConciergeService } from './concierge.service';
 
@@ -19,11 +20,18 @@ describe('ConciergeController', () => {
     updatePreferences: jest.fn(async () => ({ areas: [] })),
     buyerContext: jest.fn(async () => ({ saved: [] })),
   };
+  const buyers = {
+    rememberFact: jest.fn(async () => ({ id: '1', text: 'Has two kids' })),
+    forgetFact: jest.fn(async (_buyer: string, id: string) => id === '1'),
+  };
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       controllers: [ConciergeController],
-      providers: [{ provide: ConciergeService, useValue: concierge }],
+      providers: [
+        { provide: ConciergeService, useValue: concierge },
+        { provide: BuyerService, useValue: buyers },
+      ],
     }).compile();
     app = module.createNestApplication();
     app.useGlobalPipes(
@@ -125,5 +133,32 @@ describe('ConciergeController', () => {
       .set('x-buyer-id', BUYER)
       .expect(200, { saved: [] });
     expect(concierge.buyerContext).toHaveBeenCalledWith(BUYER);
+  });
+
+  it('remembers a fact for the buyer in the header', async () => {
+    await request(app.getHttpServer())
+      .post('/internal/facts')
+      .set('x-buyer-id', BUYER)
+      .send({ text: 'Has two kids' })
+      .expect(201, { id: '1', text: 'Has two kids' });
+    expect(buyers.rememberFact).toHaveBeenCalledWith(BUYER, 'Has two kids');
+
+    await request(app.getHttpServer())
+      .post('/internal/facts')
+      .set('x-buyer-id', BUYER)
+      .send({ text: 'x'.repeat(201) })
+      .expect(400);
+  });
+
+  it('forgets a fact, or 404s when the buyer has none with that ID', async () => {
+    await request(app.getHttpServer())
+      .delete('/internal/facts/1')
+      .set('x-buyer-id', BUYER)
+      .expect(204);
+    expect(buyers.forgetFact).toHaveBeenCalledWith(BUYER, '1');
+    await request(app.getHttpServer())
+      .delete('/internal/facts/2')
+      .set('x-buyer-id', BUYER)
+      .expect(404);
   });
 });

@@ -22,6 +22,13 @@ enum BuyerEventType {
   VIEW
 }
 
+"""Something the buyer told the concierge that no preference field holds"""
+type BuyerFact {
+  createdAt: DateTime!
+  id: ID!
+  text: String!
+}
+
 """
 What the buyer told us (preferences) plus what we learned from their activity
 """
@@ -34,6 +41,9 @@ type BuyerProfile {
   budgetMax: Float
   budgetMin: Float
   createdAt: DateTime!
+
+  """What the concierge remembers, oldest first"""
+  facts: [BuyerFact!]!
 
   """Whether a taste vector exists for the active embedding model"""
   hasTasteVector: Boolean!
@@ -159,6 +169,9 @@ type Mutation {
   createProject(createProjectInput: CreateProjectInput!): Project!
   createUnit(createUnitInput: CreateUnitInput!): Unit!
   deleteUnit(id: String!): Unit!
+
+  """Deletes one fact the concierge remembered"""
+  forgetFact(id: ID!): Boolean!
   recordBuyerEvent(type: BuyerEventType!, unitId: String!): Boolean!
 
   """

@@ -4,6 +4,7 @@ import type { AgentCase } from './cases';
 import {
   checkConstraints,
   checkGrounded,
+  checkRemembers,
   extractPrices,
   runChecks,
   type TurnTranscript,
@@ -227,6 +228,52 @@ describe('runChecks', () => {
     };
     const turns = [{ user: 'who won', reply: 'Argentina won.', toolCalls: [] }];
     assert.equal(runChecks(offTopic, turns, []).onTopic?.pass, false);
+  });
+});
+
+describe('remembered facts', () => {
+  const said = (
+    toolCalls: TurnTranscript['toolCalls'],
+    user = 'I have two kids'
+  ): TurnTranscript => ({ user, reply: 'Noted!', toolCalls });
+  const remember = { name: 'remember_fact', input: { text: 'Has two kids' } };
+  const schools = {
+    name: 'update_preferences',
+    input: { amenities: ['Schools Nearby'] },
+  };
+
+  it('passes when the fact is saved and schools come after a yes', () => {
+    const result = checkRemembers([said([remember]), said([schools], 'Yes')]);
+    assert.deepEqual(result, { pass: true });
+  });
+
+  it('fails when nothing was remembered', () => {
+    assert.equal(checkRemembers([said([])]).pass, false);
+  });
+
+  it('fails when an amenity is added in the same turn as the fact', () => {
+    const result = checkRemembers([said([remember, schools])]);
+    assert.equal(result.detail, 'added an amenity without asking');
+  });
+
+  it('runs on the earlier chat only and checks the new chat search', () => {
+    const remembered: AgentCase = {
+      id: 'r',
+      kind: 'remembered',
+      note: '',
+      earlierChat: ['I work from home'],
+      remembers: true,
+      turns: ['Anything new?'],
+      search: { noAmenities: true },
+    };
+    const newChat = {
+      ...searchTurn({ amenities: ['Gym'] }, [unit()]),
+      newChat: true,
+    };
+    const checks = runChecks(remembered, [said([remember]), newChat], []);
+    assert.equal(checks.remembers?.pass, true);
+    assert.equal(checks.constraints?.detail, 'unasked amenities Gym');
+    assert.equal(checks.savesPreferences, undefined);
   });
 });
 

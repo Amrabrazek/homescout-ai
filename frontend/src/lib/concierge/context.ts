@@ -1,5 +1,5 @@
 import type { InternalApi } from './api';
-import type { BuyerContext, ContextUnit } from './types';
+import type { BuyerContext, BuyerFact, ContextUnit } from './types';
 
 export const ABOUT_BUYER_HEADING = '## About this buyer';
 
@@ -22,6 +22,7 @@ export function aboutBuyer({
   saved,
   viewed,
   skipped,
+  facts,
 }: BuyerContext): string {
   const prefs = [
     budget(p.budgetMin, p.budgetMax),
@@ -41,6 +42,7 @@ export function aboutBuyer({
     units('Saved units', saved),
     units('Recently viewed', viewed),
     units('Not interested (skipped, do not suggest again)', skipped),
+    remembered(facts),
   ]
     .filter(Boolean)
     .join('\n');
@@ -60,6 +62,14 @@ function units(title: string, list: ContextUnit[]): string | null {
       .join(', ')
   );
   return [`${title}:`, ...lines].join('\n');
+}
+
+function remembered(facts: BuyerFact[]): string | null {
+  if (!facts.length) return null;
+  return [
+    'Remembered facts (what the buyer told you in earlier chats):',
+    ...facts.map((f) => `- ${f.text} (fact id ${f.id})`),
+  ].join('\n');
 }
 
 function budget(min: number | null, max: number | null): string | null {

@@ -34,6 +34,8 @@ export interface BuyerProfile {
   savedUnitIds: string[];
   hasTasteVector: boolean;
   activity: BuyerActivity;
+  /** What the concierge remembers from earlier chats, oldest first. */
+  facts: { id: string; text: string }[];
 }
 
 export interface PreferenceOptions {

@@ -25,7 +25,9 @@ export function ConciergeChat({ className }: { className?: string }) {
       const changed = message.parts.some(
         (p) =>
           (p.type === 'tool-update_preferences' ||
-            p.type === 'tool-save_unit') &&
+            p.type === 'tool-save_unit' ||
+            p.type === 'tool-remember_fact' ||
+            p.type === 'tool-forget_fact') &&
           p.state === 'output-available'
       );
       if (changed) router.refresh();

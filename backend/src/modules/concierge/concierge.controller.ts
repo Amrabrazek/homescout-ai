@@ -2,8 +2,10 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   HttpCode,
+  NotFoundException,
   Param,
   ParseIntPipe,
   ParseUUIDPipe,
@@ -11,7 +13,9 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { BuyerFact } from '../../common/entities/buyer-fact.entity';
 import { BuyerId } from '../buyer/buyer-id.decorator';
+import { BuyerService } from '../buyer/buyer.service';
 import {
   BuyerContext,
   BuyerPreferences,
@@ -19,6 +23,7 @@ import {
   SimilarUnit,
   UnitSearchResult,
 } from './concierge.service';
+import { RememberFactDto } from './dto/remember-fact.dto';
 import { CompareUnitsDto } from './dto/compare-units.dto';
 import { SearchUnitsDto } from './dto/search-units.dto';
 import { UpdateBuyerPreferencesDto } from './dto/update-preferences.dto';
@@ -30,7 +35,10 @@ import { UnitDetail } from './unit-card';
  */
 @Controller('internal')
 export class ConciergeController {
-  constructor(private readonly concierge: ConciergeService) {}
+  constructor(
+    private readonly concierge: ConciergeService,
+    private readonly buyers: BuyerService
+  ) {}
 
   @Post('units/search')
   @HttpCode(200)
@@ -82,5 +90,25 @@ export class ConciergeController {
     @Body() input: UpdateBuyerPreferencesDto
   ): Promise<BuyerPreferences & { unmatched: string[] }> {
     return this.concierge.updatePreferences(buyerId, input);
+  }
+
+  @Post('facts')
+  async rememberFact(
+    @BuyerId() buyerId: string,
+    @Body() input: RememberFactDto
+  ): Promise<Pick<BuyerFact, 'id' | 'text'>> {
+    const { id, text } = await this.buyers.rememberFact(buyerId, input.text);
+    return { id, text };
+  }
+
+  @Delete('facts/:id')
+  @HttpCode(204)
+  async forgetFact(
+    @BuyerId() buyerId: string,
+    @Param('id') id: string
+  ): Promise<void> {
+    if (!(await this.buyers.forgetFact(buyerId, id))) {
+      throw new NotFoundException(`No fact with ID ${id}`);
+    }
   }
 }

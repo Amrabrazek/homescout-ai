@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { Eye, Heart, RotateCcw, ThumbsDown } from 'lucide-react';
+import { Brain, Eye, Heart, RotateCcw, ThumbsDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormField, FormItem } from '@/components/ui/form';
 import { FormInputField } from '@/components/ui/form-fields';
@@ -26,6 +26,7 @@ import pathsConfig from '@config/paths.config';
 import { cn } from '@/lib/utils/ui';
 import { humanize } from '@/lib/buyer/fit';
 import {
+  forgetFact,
   resetProfile,
   unsaveUnit,
   updatePreferences,
@@ -98,6 +99,12 @@ export function PreferencesPanel({
     else toast.error(result.error);
   };
 
+  const onForget = async (id: string) => {
+    const result = await forgetFact(id);
+    if (result.success) router.refresh();
+    else toast.error(result.error);
+  };
+
   const { views, saves, skips } = profile.activity;
   const dirty = form.formState.isDirty;
 
@@ -123,7 +130,8 @@ export function PreferencesPanel({
             <AlertDialogHeader>
               <AlertDialogTitle>Start over?</AlertDialogTitle>
               <AlertDialogDescription>
-                This clears your preferences, saved homes and viewing history.
+                This clears your preferences, saved homes, viewing history and
+                what the concierge remembers.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -228,7 +236,7 @@ export function PreferencesPanel({
           </form>
         </Form>
 
-        <aside className='order-1 lg:sticky lg:top-24 lg:order-2 lg:self-start'>
+        <aside className='order-1 space-y-4 lg:sticky lg:top-24 lg:order-2 lg:self-start'>
           <div className='rounded-2xl bg-accent/60 p-5'>
             <h2 className='font-bold'>What we learned</h2>
             <div className='mt-4 grid grid-cols-3 gap-2'>
@@ -247,6 +255,37 @@ export function PreferencesPanel({
             >
               Browse homes
             </Link>
+          </div>
+          <div className='rounded-2xl border p-5'>
+            <h2 className='flex items-center gap-2 font-bold'>
+              <Brain className='h-4 w-4 text-primary' />
+              What the concierge remembers
+            </h2>
+            {profile.facts.length === 0 ? (
+              <p className='mt-3 text-sm text-muted-foreground'>
+                Nothing yet. Things you tell the concierge about your life, like
+                who you live with, show up here.
+              </p>
+            ) : (
+              <ul className='mt-3 space-y-1'>
+                {profile.facts.map((fact) => (
+                  <li
+                    key={fact.id}
+                    className='flex items-start justify-between gap-2 text-sm'
+                  >
+                    <span className='py-1'>{fact.text}</span>
+                    <button
+                      type='button'
+                      onClick={() => onForget(fact.id)}
+                      aria-label={`Forget "${fact.text}"`}
+                      className='shrink-0 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground'
+                    >
+                      <X className='h-3.5 w-3.5' />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </aside>
       </div>

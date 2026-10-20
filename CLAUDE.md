@@ -31,12 +31,12 @@ Update this table in the same PR when you add, move or rename one of these place
 | Embedding providers + unit embedding text | `backend/src/modules/embedding/` (`EMBEDDING_MODEL`) |
 | Sync worker (pg-boss: embed + Typesense) | `backend/src/modules/sync/`; enqueue happens in `unit.service.ts` transactions |
 | Job queues (one shared pg-boss instance) | `backend/src/common/queue/pg-boss.service.ts` |
-| Buyer profile, events, taste vector | `backend/src/modules/buyer/` (`buyer.service.ts`, `taste-vector.ts` math, `buyer-taste.worker.ts`); buyer comes from the `x-buyer-id` header |
+| Buyer profile, events, taste vector, remembered facts (`buyer_facts`, max 20) | `backend/src/modules/buyer/` (`buyer.service.ts`, `taste-vector.ts` math, `buyer-taste.worker.ts`); buyer comes from the `x-buyer-id` header |
 | Payment plan value today (`PLAN_VALUE_ENABLED` flag, `MARKET_DISCOUNT_RATE`) | `backend/src/modules/unit/payment-plan.ts`; GraphQL `Unit.planValue`, concierge `paymentPlan` in `unit-card.ts` |
 | Similar units (filter tiers, rerank, reasons) | `backend/src/modules/unit/similar-units.ts`; candidate query in `unit.service.ts` `findSimilarUnits`; the `similarUnits` query (taste-aware with `x-buyer-id`) is in `modules/feed/feed.resolver.ts` |
 | "For you" feed (match %, reason chips, sections, cold start; weights in `MATCH_CONFIG`) | `backend/src/modules/feed/` (`match-score.ts` pure scoring, `feed.service.ts`); candidates in `unit.service.ts` `feedCandidates` |
 | Sample data | `backend/src/scripts/seed/` (`data.ts` catalog, `rules.ts`, `generate.ts`); entry `scripts/seed.ts` |
-| Concierge tool endpoints (`/internal/*` REST, name → filter resolution, `/internal/context` buyer context) | `backend/src/modules/concierge/` (`concierge.service.ts`, `vocabulary.ts`, `unit-card.ts`) |
+| Concierge tool endpoints (`/internal/*` REST, name → filter resolution, `/internal/context` buyer context incl. facts, `/internal/facts`) | `backend/src/modules/concierge/` (`concierge.service.ts`, `vocabulary.ts`, `unit-card.ts`) |
 | Image uploads | `backend/src/modules/upload/` |
 | Search evals (parse cases, semantic queries, For you personas, similar units; report in `docs/evals/search.md`) | `backend/src/evals/` (`fixtures/`, `metrics.ts`); entry `scripts/eval.ts` |
 | Search write-up page (GitHub Pages, served from `docs/`) | `docs/search/index.html` (`og.png` is the link preview) |

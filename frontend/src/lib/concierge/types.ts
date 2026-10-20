@@ -93,4 +93,11 @@ export interface BuyerContext {
   saved: ContextUnit[];
   viewed: ContextUnit[];
   skipped: ContextUnit[];
+  facts: BuyerFact[];
+}
+
+/** Something the buyer said that no preference field holds. */
+export interface BuyerFact {
+  id: string;
+  text: string;
 }

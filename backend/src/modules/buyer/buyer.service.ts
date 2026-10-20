@@ -1,6 +1,12 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
+import { BuyerFact } from '../../common/entities/buyer-fact.entity';
 import { BuyerProfile } from '../../common/entities/buyer-profile.entity';
 import { Unit } from '../../common/entities/unit.entity';
 import { BuyerEventType } from '../../common/enums/buyer-event-type';
@@ -20,6 +26,7 @@ export interface BuyerActivity {
 }
 
 const FOREIGN_KEY_VIOLATION = '23503';
+export const MAX_BUYER_FACTS = 20;
 
 @Injectable()
 export class BuyerService {
@@ -144,6 +151,61 @@ export class BuyerService {
       [buyerId, BuyerEventType.SAVE, BuyerEventType.SKIP]
     );
     return rows.map((r) => r.unit_id);
+  }
+
+  /** Oldest first, so a fact keeps its place in the list. */
+  async facts(buyerId: string): Promise<BuyerFact[]> {
+    const rows: { id: string; text: string; created_at: Date }[] =
+      await this.dataSource.query(
+        `SELECT id, text, created_at FROM buyer_facts
+         WHERE buyer_id = $1 ORDER BY created_at, id`,
+        [buyerId]
+      );
+    return rows.map((r) => ({
+      id: String(r.id),
+      buyerId,
+      text: r.text,
+      createdAt: new Date(r.created_at),
+    }));
+  }
+
+  /** Saving the same text twice returns the stored fact. */
+  async rememberFact(buyerId: string, text: string): Promise<BuyerFact> {
+    const clean = text.trim().replace(/\s+/g, ' ');
+    const facts = await this.facts(buyerId);
+    const same = facts.find(
+      (f) => f.text.toLowerCase() === clean.toLowerCase()
+    );
+    if (same) return same;
+    // A full list is refused rather than trimmed, so nothing the buyer can see
+    // on their preferences page disappears without them deleting it.
+    if (facts.length >= MAX_BUYER_FACTS) {
+      throw new BadRequestException(
+        `The buyer already has ${MAX_BUYER_FACTS} facts. Forget one before adding another.`
+      );
+    }
+    await this.ensureProfile(this.dataSource.manager, buyerId);
+    const [row] = await this.dataSource.query(
+      `INSERT INTO buyer_facts (buyer_id, text) VALUES ($1, $2)
+       RETURNING id, created_at`,
+      [buyerId, clean]
+    );
+    return {
+      id: String(row.id),
+      buyerId,
+      text: clean,
+      createdAt: new Date(row.created_at),
+    };
+  }
+
+  /** False when the buyer has no fact with this ID. */
+  async forgetFact(buyerId: string, factId: string): Promise<boolean> {
+    if (!/^\d+$/.test(factId)) return false;
+    const [, deleted] = await this.dataSource.query(
+      `DELETE FROM buyer_facts WHERE buyer_id = $1 AND id = $2`,
+      [buyerId, factId]
+    );
+    return deleted > 0;
   }
 
   async savedUnits(buyerId: string): Promise<Unit[]> {

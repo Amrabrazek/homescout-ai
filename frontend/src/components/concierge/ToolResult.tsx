@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Loader2, Settings2 } from 'lucide-react';
+import { Brain, Loader2, Settings2 } from 'lucide-react';
 import pathsConfig from '@/config/paths.config';
 import type { ConciergeMessage } from '@/lib/concierge/tools';
 import { ChatUnitCard } from './ChatUnitCard';
@@ -18,6 +18,8 @@ const PENDING: Record<string, string> = {
   'tool-get_preferences': 'Checking your preferences…',
   'tool-update_preferences': 'Updating your preferences…',
   'tool-save_unit': 'Saving…',
+  'tool-remember_fact': 'Remembering…',
+  'tool-forget_fact': 'Forgetting…',
 };
 
 export function isToolPart(part: Part): part is ToolPart {
@@ -87,6 +89,19 @@ export function ToolResult({ part }: { part: ToolPart }) {
           </Link>
           .
         </p>
+      );
+    case 'tool-remember_fact':
+    case 'tool-forget_fact':
+      return (
+        <Link
+          href={pathsConfig.home.preferences}
+          className='inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground hover:bg-muted/70'
+        >
+          <Brain className='h-3 w-3' />
+          {part.type === 'tool-remember_fact'
+            ? `Remembered: ${part.output.text}`
+            : 'Forgot a fact'}
+        </Link>
       );
     default:
       return null;

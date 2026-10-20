@@ -3,6 +3,7 @@ import { z } from 'zod/v4';
 import type { InternalApi } from './api';
 import {
   PROPERTY_TYPES,
+  type BuyerFact,
   type BuyerPreferences,
   type SimilarUnit,
   type UnitCard,
@@ -114,6 +115,23 @@ export function conciergeTools(api: InternalApi) {
       }),
       execute: (input) =>
         api<BuyerPreferences>('PATCH', '/preferences', input),
+    }),
+
+    remember_fact: tool({
+      description:
+        'Remember something the buyer said about their life or needs that no preference field holds (household, work, lifestyle), so later chats know it. One short third-person sentence, e.g. "Has two kids".',
+      inputSchema: z.object({ text: z.string().min(1).max(200) }),
+      execute: ({ text }) => api<BuyerFact>('POST', '/facts', { text }),
+    }),
+
+    forget_fact: tool({
+      description:
+        'Delete a remembered fact by its id from "About this buyer", when it is wrong, outdated or the buyer asks you to forget it.',
+      inputSchema: z.object({ id: z.string().describe('A fact id') }),
+      execute: async ({ id }) => {
+        await api<void>('DELETE', `/facts/${encodeURIComponent(id)}`);
+        return { forgotten: true, id };
+      },
     }),
 
     save_unit: tool({

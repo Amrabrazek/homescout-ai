@@ -42,22 +42,14 @@ export async function runConversation(
 
   try {
     if (testCase.setup) await applySetup(api, testCase.setup);
-    for (const user of testCase.turns) {
-      messages.push({ role: 'user', content: user });
-      const aboutBuyer = await loadAboutBuyer(api);
-      if (aboutBuyer) context.push(aboutBuyer);
-      const agent = conciergeAgent(config, api, aboutBuyer);
-      const started = performance.now();
-      const result = await generateText({ ...agent, messages });
-      const ms = performance.now() - started;
-      messages.push(...result.responseMessages);
-      turns.push({
-        user,
-        reply: result.text,
-        toolCalls: toolCallsOf(result.steps),
-        ms,
-        usage: result.usage,
-      });
+    const chats = testCase.earlierChat
+      ? [testCase.earlierChat, testCase.turns]
+      : [testCase.turns];
+    for (let chat = 0; chat < chats.length; chat++) {
+      // A new chat starts with no messages: only the buyer's account carries over.
+      messages.length = 0;
+      for (let i = 0; i < chats[chat].length; i++)
+        turns.push(await playTurn(chats[chat][i], chat > 0 && i === 0));
     }
     return { caseId: testCase.id, model, run, turns, context };
   } catch (error) {
@@ -68,6 +60,25 @@ export async function runConversation(
       turns,
       context,
       error: String(error),
+    };
+  }
+
+  async function playTurn(user: string, newChat: boolean): Promise<TurnRun> {
+    messages.push({ role: 'user', content: user });
+    const aboutBuyer = await loadAboutBuyer(api);
+    if (aboutBuyer) context.push(aboutBuyer);
+    const agent = conciergeAgent(config, api, aboutBuyer);
+    const started = performance.now();
+    const result = await generateText({ ...agent, messages });
+    const ms = performance.now() - started;
+    messages.push(...result.responseMessages);
+    return {
+      user,
+      reply: result.text,
+      toolCalls: toolCallsOf(result.steps),
+      ms,
+      usage: result.usage,
+      ...(newChat ? { newChat } : {}),
     };
   }
 }
