@@ -96,6 +96,17 @@ describe('checkGrounded', () => {
     assert.equal(checkGrounded([turn], []).pass, true);
   });
 
+  it('counts the buyer context as known data', () => {
+    const turn: TurnTranscript = {
+      user: 'Anything new?',
+      reply: 'Your saved Mivida unit is 13.8M.',
+      toolCalls: [],
+    };
+    const context = ['Saved units:\n- 3-Bedroom Apartment, Mivida, 13.83M EGP'];
+    assert.equal(checkGrounded([turn], ['Mivida']).pass, false);
+    assert.equal(checkGrounded([turn], ['Mivida'], context).pass, true);
+  });
+
   it('fails a price no tool returned', () => {
     const turn = searchTurn({}, [unit()], 'It costs about 4.1M.');
     const result = checkGrounded([turn], []);

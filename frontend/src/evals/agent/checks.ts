@@ -49,22 +49,25 @@ export const CHECK_LABELS: Record<CheckName, string> = {
 export function runChecks(
   testCase: AgentCase,
   turns: TurnTranscript[],
-  projectNames: string[]
+  projectNames: string[],
+  context: string[] = []
 ): Partial<Record<CheckName, CheckResult>> {
   const last = turns[turns.length - 1];
   const first = turns[0];
   const results: Partial<Record<CheckName, CheckResult>> = {
-    grounded: checkGrounded(turns, projectNames),
+    grounded: checkGrounded(turns, projectNames, context),
   };
 
   if (testCase.search) {
     results.constraints = checkConstraints(last, testCase.search);
+  }
+  if (testCase.search && testCase.kind !== 'returning') {
     results.savesPreferences = calls(last, 'update_preferences').length
       ? { pass: true }
       : { pass: false, detail: 'never called update_preferences' };
   }
   if (testCase.asksFirst) results.asksWhenVague = checkAsks(first);
-  if (testCase.kind === 'persona') {
+  if (testCase.kind === 'persona' || testCase.kind === 'returning') {
     results.actsWhenClear = calls(first, 'search_units').length
       ? { pass: true }
       : { pass: false, detail: 'asked instead of searching' };
@@ -221,15 +224,20 @@ export function extractPrices(text: string): PriceMention[] {
  * unit price from a tool result, a filter or preference value, a number the
  * buyer wrote, the gap between a tool price and another price or budget, or a
  * unit's price per m². Every catalog project named
- * must have appeared in a tool result.
+ * must have appeared in a tool result. The "About this buyer" blocks in
+ * `context` count as tool results.
  */
 export function checkGrounded(
   turns: TurnTranscript[],
-  projectNames: string[]
+  projectNames: string[],
+  context: string[] = []
 ): CheckResult {
   const problems: string[] = [];
   const known: number[] = [];
-  const toolText: string[] = [];
+  const toolText: string[] = [...context];
+
+  for (const block of context)
+    for (const mention of extractPrices(block)) known.push(mention.value);
 
   turns.forEach((turn) => {
     for (const mention of extractPrices(turn.user)) known.push(mention.value);

@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { BuyerId } from '../buyer/buyer-id.decorator';
 import {
+  BuyerContext,
   BuyerPreferences,
   ConciergeService,
   SimilarUnit,
@@ -68,6 +69,11 @@ export class ConciergeController {
   @Get('preferences')
   getPreferences(@BuyerId() buyerId: string): Promise<BuyerPreferences> {
     return this.concierge.getPreferences(buyerId);
+  }
+
+  @Get('context')
+  getContext(@BuyerId() buyerId: string): Promise<BuyerContext> {
+    return this.concierge.buyerContext(buyerId);
   }
 
   @Patch('preferences')

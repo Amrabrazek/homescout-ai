@@ -10,16 +10,24 @@ const MAX_OUTPUT_TOKENS = 8000;
 /**
  * Everything one concierge turn needs except the messages. The chat route
  * streams it and the agent evals run it with generateText, so both test the
- * same prompt, tools and limits.
+ * same prompt, tools and limits. `aboutBuyer` comes after the cache
+ * breakpoint, so it changes per buyer without breaking the cached prefix.
  */
-export function conciergeAgent(config: LlmConfig, api: InternalApi) {
+export function conciergeAgent(
+  config: LlmConfig,
+  api: InternalApi,
+  aboutBuyer?: string | null
+) {
   return {
     model: languageModel(config),
-    instructions: {
-      role: 'system' as const,
-      content: CONCIERGE_SYSTEM_PROMPT,
-      providerOptions: cachedSystemOptions(config.provider),
-    },
+    instructions: [
+      {
+        role: 'system' as const,
+        content: CONCIERGE_SYSTEM_PROMPT,
+        providerOptions: cachedSystemOptions(config.provider),
+      },
+      ...(aboutBuyer ? [{ role: 'system' as const, content: aboutBuyer }] : []),
+    ],
     tools: conciergeTools(api),
     maxOutputTokens: MAX_OUTPUT_TOKENS,
     stopWhen: isStepCount(MAX_STEPS),

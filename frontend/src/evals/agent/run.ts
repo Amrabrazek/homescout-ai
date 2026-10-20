@@ -1,9 +1,11 @@
 import { randomUUID } from 'crypto';
 import { generateText, type LanguageModelUsage, type ModelMessage } from 'ai';
 import { conciergeAgent } from '@/lib/concierge/agent';
-import { internalApi } from '@/lib/concierge/api';
+import { internalApi, type InternalApi } from '@/lib/concierge/api';
+import { loadAboutBuyer } from '@/lib/concierge/context';
 import type { LlmConfig } from '@/lib/concierge/model';
-import type { AgentCase } from './cases';
+import type { UnitSearchResult } from '@/lib/concierge/types';
+import type { AgentCase, BuyerSetup } from './cases';
 import type { ToolCall, TurnTranscript } from './checks';
 
 export interface TurnRun extends TurnTranscript {
@@ -16,6 +18,8 @@ export interface ConversationRun {
   model: string;
   run: number;
   turns: TurnRun[];
+  /** The "About this buyer" block of each turn, which counts as known data for the grounding check. */
+  context: string[];
   /** Set when the API call itself failed; the run counts as failed. */
   error?: string;
 }
@@ -30,14 +34,19 @@ export async function runConversation(
   config: LlmConfig,
   run: number
 ): Promise<ConversationRun> {
-  const agent = conciergeAgent(config, internalApi(randomUUID()));
+  const api = internalApi(randomUUID());
   const messages: ModelMessage[] = [];
   const turns: TurnRun[] = [];
+  const context: string[] = [];
   const model = `${config.provider}/${config.modelId}`;
 
   try {
+    if (testCase.setup) await applySetup(api, testCase.setup);
     for (const user of testCase.turns) {
       messages.push({ role: 'user', content: user });
+      const aboutBuyer = await loadAboutBuyer(api);
+      if (aboutBuyer) context.push(aboutBuyer);
+      const agent = conciergeAgent(config, api, aboutBuyer);
       const started = performance.now();
       const result = await generateText({ ...agent, messages });
       const ms = performance.now() - started;
@@ -50,10 +59,32 @@ export async function runConversation(
         usage: result.usage,
       });
     }
-    return { caseId: testCase.id, model, run, turns };
+    return { caseId: testCase.id, model, run, turns, context };
   } catch (error) {
-    return { caseId: testCase.id, model, run, turns, error: String(error) };
+    return {
+      caseId: testCase.id,
+      model,
+      run,
+      turns,
+      context,
+      error: String(error),
+    };
   }
+}
+
+/** Gives the fresh buyer saved preferences and saved units, as a returning buyer would have. */
+async function applySetup(api: InternalApi, setup: BuyerSetup) {
+  const { preferences, saves = 0 } = setup;
+  await api('PATCH', '/preferences', preferences);
+  if (!saves) return;
+  const { units } = await api<UnitSearchResult>('POST', '/units/search', {
+    locations: preferences.locations,
+    propertyTypes: preferences.propertyTypes,
+    minRooms: preferences.minRooms,
+    maxPrice: preferences.budgetMax,
+    limit: saves,
+  });
+  for (const unit of units) await api('POST', `/units/${unit.id}/save`);
 }
 
 function toolCallsOf(steps: { content: any[] }[]): ToolCall[] {

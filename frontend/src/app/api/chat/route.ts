@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getBuyerId } from '@/lib/graphql/buyer/server';
 import { conciergeAgent } from '@/lib/concierge/agent';
 import { internalApi } from '@/lib/concierge/api';
+import { loadAboutBuyer } from '@/lib/concierge/context';
 import { llmConfig } from '@/lib/concierge/model';
 import { langfuse } from '@/lib/concierge/telemetry';
 import type { ConciergeMessage } from '@/lib/concierge/tools';
@@ -20,7 +21,8 @@ export async function POST(request: NextRequest) {
   }
 
   const config = llmConfig();
-  const agent = conciergeAgent(config, internalApi(buyerId));
+  const api = internalApi(buyerId);
+  const agent = conciergeAgent(config, api, await loadAboutBuyer(api));
   const { tools } = agent;
   const body = await request.json().catch(() => null);
   const parsed = await safeValidateUIMessages<ConciergeMessage>({
