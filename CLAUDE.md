@@ -37,6 +37,7 @@ Update this table in the same PR when you add, move or rename one of these place
 | "For you" feed (match %, reason chips, sections, cold start; weights in `MATCH_CONFIG`) | `backend/src/modules/feed/` (`match-score.ts` pure scoring, `feed.service.ts`); candidates in `unit.service.ts` `feedCandidates` |
 | Sample data | `backend/src/scripts/seed/` (`data.ts` catalog, `rules.ts`, `generate.ts`); entry `scripts/seed.ts` |
 | Concierge tool endpoints (`/internal/*` REST, name → filter resolution, `/internal/context` buyer context incl. facts, `/internal/facts`) | `backend/src/modules/concierge/` (`concierge.service.ts`, `vocabulary.ts`, `unit-card.ts`) |
+| Saved concierge chats (`conversations` table, `/internal/conversations`, last-chat summary made lazily by `/internal/context?conversation=`) | `backend/src/modules/concierge/` (`conversation.service.ts`, `chat-summary.ts`); shared LLM model in `backend/src/common/llm/llm-model.ts` |
 | Image uploads | `backend/src/modules/upload/` |
 | Search evals (parse cases, semantic queries, For you personas, similar units; report in `docs/evals/search.md`) | `backend/src/evals/` (`fixtures/`, `metrics.ts`); entry `scripts/eval.ts` |
 | Search write-up page (GitHub Pages, served from `docs/`) | `docs/search/index.html` (`og.png` is the link preview) |
@@ -48,9 +49,9 @@ Update this table in the same PR when you add, move or rename one of these place
 | Dashboard (CRUD forms) | `frontend/src/app/dashboard/` |
 | Buyer cookie (`hs_buyer`) and event API | `frontend/src/middleware.ts`, `frontend/src/app/api/events/route.ts`; server-side buyer calls in `frontend/src/lib/graphql/buyer/server.ts` |
 | My preferences page | `frontend/src/app/(home)/preferences/` |
-| Concierge agent (route, tools, prompt, model from `LLM_PROVIDER`/`LLM_MODEL`, Langfuse) | `frontend/src/app/api/chat/route.ts`, `frontend/src/lib/concierge/` (`agent.ts` is the shared turn setup; `context.ts` builds the per-turn "About this buyer" system block after the cached prompt; `history.ts` drops earlier-turn reasoning, since that block changes mid-chat) |
+| Concierge agent (route, tools, prompt, model from `LLM_PROVIDER`/`LLM_MODEL`, Langfuse) | `frontend/src/app/api/chat/route.ts`, `frontend/src/lib/concierge/` (`agent.ts` is the shared turn setup; `context.ts` builds the per-turn "About this buyer" system block after the cached prompt; `history.ts` drops earlier-turn reasoning, since that block changes mid-chat; `chats.ts` loads and saves the chat, as the browser sends only the new message) |
 | Agent evals (scripted buyer chats, deterministic checks, LLM helpfulness judge; report in `docs/evals/agent.md`) | `frontend/src/evals/agent/` (`cases.ts`, `checks.ts`, `judge.ts`); entry `frontend/scripts/eval-agent.ts` |
-| Concierge chat UI (floating panel, `/concierge`, tool-result cards) | `frontend/src/components/concierge/`, `frontend/src/app/(home)/concierge/` |
+| Concierge chat UI (floating panel, `/concierge`, tool-result cards, resume + New chat in `chat.ts`) | `frontend/src/components/concierge/`, `frontend/src/app/(home)/concierge/` |
 | GraphQL queries, types, zod schemas | `frontend/src/lib/graphql/<entity>/` |
 
 ## Commands

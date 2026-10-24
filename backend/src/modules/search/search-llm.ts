@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import type { JSONSchema7 } from 'ai';
 import { PropertyType } from '../../common/enums/unit-attributes';
+import { llmModel } from '../../common/llm/llm-model';
 
 export interface SearchLlmRequest {
   /** Only the words the regex could not parse. */
@@ -17,16 +18,6 @@ export interface SearchLlm {
   readonly model: string;
   extract(request: SearchLlmRequest, signal: AbortSignal): Promise<unknown>;
 }
-
-const DEFAULT_MODELS = {
-  anthropic: 'claude-haiku-5-5',
-  openai: 'gpt-5-mini',
-} as const;
-
-const API_KEYS: Record<keyof typeof DEFAULT_MODELS, string> = {
-  anthropic: 'ANTHROPIC_API_KEY',
-  openai: 'OPENAI_API_KEY',
-};
 
 const SYSTEM = `You turn a home-search query (Egypt, prices in EGP) into filters.
 The query may be English, Arabic or Franco-Arabic (Arabic in Latin letters).
@@ -102,23 +93,15 @@ export const SEARCH_PROMPT_VERSION = createHash('sha256')
  */
 export function createSearchLlm(config: ConfigService): SearchLlm | null {
   if (config.get<string>('SEARCH_LLM_ENABLED') !== 'true') return null;
-  const provider = (
-    config.get<string>('LLM_PROVIDER') || 'anthropic'
-  ).toLowerCase() as keyof typeof DEFAULT_MODELS;
-  if (!(provider in DEFAULT_MODELS)) return null;
-  if (!config.get<string>(API_KEYS[provider])) return null;
-  const modelId = config.get<string>('LLM_MODEL') || DEFAULT_MODELS[provider];
+  const llm = llmModel(config);
+  if (!llm) return null;
 
   return {
-    model: `${provider}/${modelId}`,
+    model: llm.name,
     async extract({ leftover, found, places, amenities }, signal) {
       const { generateText, jsonSchema, Output } = await import('ai');
-      const model =
-        provider === 'openai'
-          ? (await import('@ai-sdk/openai')).createOpenAI()(modelId)
-          : (await import('@ai-sdk/anthropic')).createAnthropic()(modelId);
       const { output } = await generateText({
-        model,
+        model: await llm.load(),
         system: SYSTEM,
         prompt: [
           `Places: ${places.join(', ')}`,

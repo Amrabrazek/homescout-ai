@@ -4,6 +4,7 @@ import * as request from 'supertest';
 import { BuyerService } from '../buyer/buyer.service';
 import { ConciergeController } from './concierge.controller';
 import { ConciergeService } from './concierge.service';
+import { ConversationService } from './conversation.service';
 
 const BUYER = '11111111-2222-4333-8444-555555555555';
 const UNIT = '0486b96d-90fc-45d7-8cc5-64982eca2a14';
@@ -25,12 +26,22 @@ describe('ConciergeController', () => {
     forgetFact: jest.fn(async (_buyer: string, id: string) => id === '1'),
   };
 
+  const conversations = {
+    lastChat: jest.fn(async () => null),
+    latest: jest.fn(async () => null),
+    get: jest.fn(async (_buyer: string, id: string) =>
+      id === 'chat-1' ? { id, messages: [] } : null
+    ),
+    save: jest.fn(async (_buyer: string, id: string) => id === 'chat-1'),
+  };
+
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       controllers: [ConciergeController],
       providers: [
         { provide: ConciergeService, useValue: concierge },
         { provide: BuyerService, useValue: buyers },
+        { provide: ConversationService, useValue: conversations },
       ],
     }).compile();
     app = module.createNestApplication();
@@ -131,8 +142,53 @@ describe('ConciergeController', () => {
     await request(app.getHttpServer())
       .get('/internal/context')
       .set('x-buyer-id', BUYER)
-      .expect(200, { saved: [] });
+      .expect(200, { saved: [], lastChat: null });
     expect(concierge.buyerContext).toHaveBeenCalledWith(BUYER);
+    expect(conversations.lastChat).toHaveBeenCalledWith(BUYER, undefined);
+
+    await request(app.getHttpServer())
+      .get('/internal/context?conversation=chat-2')
+      .set('x-buyer-id', BUYER)
+      .expect(200);
+    expect(conversations.lastChat).toHaveBeenCalledWith(BUYER, 'chat-2');
+  });
+
+  it('saves and loads a chat by ID for the buyer in the header', async () => {
+    const messages = [{ id: 'm1', role: 'user', parts: [] }];
+    await request(app.getHttpServer())
+      .put('/internal/conversations/chat-1')
+      .set('x-buyer-id', BUYER)
+      .send({ messages })
+      .expect(204);
+    expect(conversations.save).toHaveBeenCalledWith(BUYER, 'chat-1', messages);
+    await request(app.getHttpServer())
+      .put('/internal/conversations/chat-2')
+      .set('x-buyer-id', BUYER)
+      .send({ messages })
+      .expect(404);
+    await request(app.getHttpServer())
+      .put('/internal/conversations/bad%20id')
+      .set('x-buyer-id', BUYER)
+      .send({ messages })
+      .expect(400);
+    await request(app.getHttpServer())
+      .put('/internal/conversations/chat-1')
+      .set('x-buyer-id', BUYER)
+      .send({ messages: ['text'] })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .get('/internal/conversations/chat-1')
+      .set('x-buyer-id', BUYER)
+      .expect(200, { id: 'chat-1', messages: [] });
+    await request(app.getHttpServer())
+      .get('/internal/conversations/chat-2')
+      .set('x-buyer-id', BUYER)
+      .expect(404);
+    await request(app.getHttpServer())
+      .get('/internal/conversations/latest')
+      .set('x-buyer-id', BUYER)
+      .expect(200, {});
   });
 
   it('remembers a fact for the buyer in the header', async () => {

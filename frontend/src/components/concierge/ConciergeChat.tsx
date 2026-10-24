@@ -7,7 +7,12 @@ import { RotateCcw, SendHorizontal, Sparkles, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils/ui';
-import { conciergeChat } from './chat';
+import {
+  resumeLatestChat,
+  startNewChat,
+  useConciergeChat,
+  useOnChatFinish,
+} from './chat';
 import { ChatMarkdown } from './ChatMarkdown';
 import { isToolPart, ToolResult } from './ToolResult';
 
@@ -19,23 +24,27 @@ const STARTERS = [
 
 export function ConciergeChat({ className }: { className?: string }) {
   const router = useRouter();
-  const { messages, sendMessage, status, stop, error, setMessages } = useChat({
-    chat: conciergeChat,
-    onFinish: ({ message }) => {
-      const changed = message.parts.some(
-        (p) =>
-          (p.type === 'tool-update_preferences' ||
-            p.type === 'tool-save_unit' ||
-            p.type === 'tool-remember_fact' ||
-            p.type === 'tool-forget_fact') &&
-          p.state === 'output-available'
-      );
-      if (changed) router.refresh();
-    },
+  const { messages, sendMessage, status, stop, error } = useChat({
+    chat: useConciergeChat(),
+  });
+  useOnChatFinish((message) => {
+    const changed = message.parts.some(
+      (p) =>
+        (p.type === 'tool-update_preferences' ||
+          p.type === 'tool-save_unit' ||
+          p.type === 'tool-remember_fact' ||
+          p.type === 'tool-forget_fact') &&
+        p.state === 'output-available'
+    );
+    if (changed) router.refresh();
   });
   const [input, setInput] = useState('');
   const bottom = useRef<HTMLDivElement>(null);
   const busy = status === 'submitted' || status === 'streaming';
+
+  useEffect(() => {
+    resumeLatestChat();
+  }, []);
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -117,7 +126,7 @@ export function ConciergeChat({ className }: { className?: string }) {
             type='button'
             variant='ghost'
             size='icon'
-            onClick={() => setMessages([])}
+            onClick={startNewChat}
             disabled={busy}
             aria-label='New chat'
             title='New chat'

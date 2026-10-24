@@ -1,5 +1,5 @@
 import type { InternalApi } from './api';
-import type { BuyerContext, BuyerFact, ContextUnit } from './types';
+import type { BuyerContext, BuyerFact, ContextUnit, LastChat } from './types';
 
 export const ABOUT_BUYER_HEADING = '## About this buyer';
 
@@ -8,9 +8,13 @@ export const ABOUT_BUYER_HEADING = '## About this buyer';
  * cached static prompt, so buyer data never breaks the prompt cache. Null when
  * the API can't be reached: the chat still works, the model just starts blind.
  */
-export async function loadAboutBuyer(api: InternalApi): Promise<string | null> {
+export async function loadAboutBuyer(
+  api: InternalApi,
+  chatId?: string
+): Promise<string | null> {
+  const query = chatId ? `?conversation=${encodeURIComponent(chatId)}` : '';
   try {
-    return aboutBuyer(await api<BuyerContext>('GET', '/context'));
+    return aboutBuyer(await api<BuyerContext>('GET', `/context${query}`));
   } catch (error) {
     console.warn('Buyer context unavailable', error);
     return null;
@@ -23,6 +27,7 @@ export function aboutBuyer({
   viewed,
   skipped,
   facts,
+  lastChat,
 }: BuyerContext): string {
   const prefs = [
     budget(p.budgetMin, p.budgetMax),
@@ -43,6 +48,7 @@ export function aboutBuyer({
     units('Recently viewed', viewed),
     units('Not interested (skipped, do not suggest again)', skipped),
     remembered(facts),
+    previousChat(lastChat),
   ]
     .filter(Boolean)
     .join('\n');
@@ -69,6 +75,14 @@ function remembered(facts: BuyerFact[]): string | null {
   return [
     'Remembered facts (what the buyer told you in earlier chats):',
     ...facts.map((f) => `- ${f.text} (fact id ${f.id})`),
+  ].join('\n');
+}
+
+function previousChat(lastChat?: LastChat | null): string | null {
+  if (!lastChat) return null;
+  return [
+    `Last chat (${lastChat.updatedAt.slice(0, 10)}, summarized; prices and availability may have changed, so check with a tool before quoting):`,
+    lastChat.summary,
   ].join('\n');
 }
 

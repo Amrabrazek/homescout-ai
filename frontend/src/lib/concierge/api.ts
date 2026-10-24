@@ -14,7 +14,7 @@ export class InternalApiError extends Error {
 /** Calls the NestJS /internal endpoints as one buyer. */
 export function internalApi(buyerId: string) {
   return async function call<T>(
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     body?: unknown
   ): Promise<T> {
