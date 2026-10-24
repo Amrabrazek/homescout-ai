@@ -4,6 +4,7 @@ import type { AgentCase } from './cases';
 import {
   checkConstraints,
   checkGrounded,
+  checkRecallsCompared,
   checkRemembers,
   extractPrices,
   runChecks,
@@ -327,5 +328,54 @@ describe('report helpers', () => {
       reason: 'ok',
     });
     assert.throws(() => parseScore('{"score": 9}'));
+  });
+});
+
+describe('checkRecallsCompared', () => {
+  const earlier: TurnTranscript[] = [
+    {
+      user: 'compare the first and third',
+      reply: 'Here they are side by side.',
+      toolCalls: [
+        {
+          name: 'compare_units',
+          input: { ids: ['u1', 'u3'] },
+          output: [unit(), unit({ id: 'u3', project: 'Mivida' })],
+        },
+      ],
+    },
+  ];
+  const answer = (
+    reply: string,
+    toolCalls: TurnTranscript['toolCalls'] = []
+  ) => ({
+    user: 'which ones were they?',
+    reply,
+    toolCalls,
+  });
+
+  it('passes when every compared project is named without a search', () => {
+    assert.deepEqual(
+      checkRecallsCompared(earlier, answer('A Badya flat and one in Mivida.')),
+      { pass: true }
+    );
+  });
+
+  it('fails a missing project, a search, or no earlier comparison', () => {
+    assert.equal(
+      checkRecallsCompared(earlier, answer('One was in Badya.')).detail,
+      'did not name Mivida'
+    );
+    assert.equal(
+      checkRecallsCompared(
+        earlier,
+        answer('Badya and Mivida.', [{ name: 'search_units', input: {} }])
+      ).detail,
+      'searched instead of recalling'
+    );
+    assert.equal(
+      checkRecallsCompared([], answer('Badya and Mivida.')).pass,
+      false
+    );
   });
 });

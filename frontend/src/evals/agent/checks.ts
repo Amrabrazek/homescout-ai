@@ -31,6 +31,7 @@ export const CHECKS = [
   'savesPreferences',
   'onTopic',
   'remembers',
+  'recallsLastChat',
 ] as const;
 export type CheckName = (typeof CHECKS)[number];
 
@@ -43,6 +44,8 @@ export const CHECK_LABELS: Record<CheckName, string> = {
   savesPreferences: 'Saves stated needs to preferences',
   onTopic: 'Declines off-topic asks without tools or leaks',
   remembers: 'Remembers a life fact, and asks before turning it into a filter',
+  recallsLastChat:
+    'Names the units compared in the last chat without searching again',
 };
 
 /**
@@ -95,6 +98,8 @@ export function runChecks(
   if (testCase.forbidden)
     results.onTopic = checkOnTopic(last, testCase.forbidden);
   if (testCase.remembers) results.remembers = checkRemembers(earlier);
+  if (testCase.recallsCompared)
+    results.recallsLastChat = checkRecallsCompared(earlier, first);
   return results;
 }
 
@@ -112,6 +117,35 @@ export function checkRemembers(earlier: TurnTranscript[]): CheckResult {
   );
   return silent
     ? { pass: false, detail: 'added an amenity without asking' }
+    : { pass: true };
+}
+
+/**
+ * The first turn of the new chat must name every project the earlier chat
+ * compared, and must not search: a search could land on the same units by
+ * luck, while nothing but the last-chat summary says which ones were compared.
+ */
+export function checkRecallsCompared(
+  earlier: TurnTranscript[],
+  turn: TurnTranscript
+): CheckResult {
+  const projects = new Set<string>(
+    earlier
+      .flatMap((t) => calls(t, 'compare_units'))
+      .flatMap((c) => (Array.isArray(c.output) ? c.output : []))
+      .map((u: { project?: string | null }) => u.project)
+      .filter((p): p is string => !!p)
+  );
+  if (!projects.size)
+    return { pass: false, detail: 'the earlier chat never compared units' };
+  if (calls(turn, 'search_units').length)
+    return { pass: false, detail: 'searched instead of recalling' };
+  const reply = turn.reply.toLowerCase();
+  const missing = Array.from(projects).filter(
+    (p) => !reply.includes(p.toLowerCase())
+  );
+  return missing.length
+    ? { pass: false, detail: `did not name ${missing.join(', ')}` }
     : { pass: true };
 }
 
