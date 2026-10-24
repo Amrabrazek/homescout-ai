@@ -81,7 +81,8 @@ export class ConversationService {
     currentId?: string
   ): Promise<LastChat | null> {
     const [row] = await this.dataSource.query(
-      `SELECT id, messages, summary, updated_at FROM conversations
+      `SELECT id, messages, summary, updated_at, updated_at::text AS version
+       FROM conversations
        WHERE buyer_id = $1 AND ($2::text IS NULL OR id <> $2)
        ORDER BY updated_at DESC LIMIT 1`,
       [buyerId, currentId ?? null]
@@ -91,7 +92,7 @@ export class ConversationService {
     if (row.summary) return { summary: row.summary, updatedAt };
 
     const summary = await Promise.race([
-      this.summarize(row.id, row.messages, row.updated_at),
+      this.summarize(row.id, row.messages, row.version),
       new Promise<null>((resolve) =>
         setTimeout(resolve, SUMMARY_WAIT_MS, null).unref()
       ),
@@ -102,7 +103,7 @@ export class ConversationService {
   private summarize(
     id: string,
     messages: Record<string, unknown>[],
-    updatedAt: Date
+    version: string
   ): Promise<string | null> {
     const text = transcript(messages);
     if (!this.summarizer || !text) return Promise.resolve(null);
@@ -114,9 +115,10 @@ export class ConversationService {
       .then(async (summary) => {
         if (!summary) return null;
         // Only if the chat wasn't continued meanwhile; a newer save cleared it on purpose.
+        // Compared as text: a JS Date drops the microseconds Postgres keeps.
         await this.dataSource.query(
-          `UPDATE conversations SET summary = $3 WHERE id = $1 AND updated_at = $2`,
-          [id, updatedAt, summary]
+          `UPDATE conversations SET summary = $3 WHERE id = $1 AND updated_at::text = $2`,
+          [id, version, summary]
         );
         return summary;
       })

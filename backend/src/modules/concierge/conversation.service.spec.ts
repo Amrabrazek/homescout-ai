@@ -4,6 +4,7 @@ import { ConversationService } from './conversation.service';
 
 const BUYER = '11111111-2222-4333-8444-555555555555';
 const UPDATED = new Date('2026-10-20T10:00:00Z');
+const VERSION = '2026-10-20 10:00:00.123456+00';
 const MESSAGES = [{ role: 'user', parts: [{ type: 'text', text: 'Villas?' }] }];
 
 function setup(row: Record<string, unknown> | undefined) {
@@ -25,6 +26,7 @@ describe('ConversationService.lastChat', () => {
       messages: MESSAGES,
       summary: 'Stored.',
       updated_at: UPDATED,
+      version: VERSION,
     });
     await expect(service().lastChat(BUYER, 'new')).resolves.toEqual({
       summary: 'Stored.',
@@ -39,6 +41,7 @@ describe('ConversationService.lastChat', () => {
       messages: MESSAGES,
       summary: null,
       updated_at: UPDATED,
+      version: VERSION,
     });
     const conversations = service();
     const [a, b] = await Promise.all([
@@ -51,7 +54,7 @@ describe('ConversationService.lastChat', () => {
     expect(summarize.mock.calls[0][0]).toBe('Buyer: Villas?');
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE conversations SET summary'),
-      ['old', UPDATED, 'The buyer wanted villas.']
+      ['old', VERSION, 'The buyer wanted villas.']
     );
     expect(query.mock.calls[0][1]).toEqual([BUYER, 'new']);
   });
@@ -65,6 +68,7 @@ describe('ConversationService.lastChat', () => {
       messages: MESSAGES,
       summary: null,
       updated_at: UPDATED,
+      version: VERSION,
     };
     await expect(setup(row).service(null).lastChat(BUYER)).resolves.toBe(null);
     const failing = setup(row);
