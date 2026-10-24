@@ -113,13 +113,17 @@ export class ConversationService {
     const job = this.summarizer
       .summarize(text, AbortSignal.timeout(SUMMARY_TIMEOUT_MS))
       .then(async (summary) => {
-        if (!summary) return null;
+        if (!summary) {
+          this.logger.warn(`Chat summary for ${id} came back empty`);
+          return null;
+        }
         // Only if the chat wasn't continued meanwhile; a newer save cleared it on purpose.
         // Compared as text: a JS Date drops the microseconds Postgres keeps.
-        await this.dataSource.query(
+        const [, updated] = await this.dataSource.query(
           `UPDATE conversations SET summary = $3 WHERE id = $1 AND updated_at::text = $2`,
           [id, version, summary]
         );
+        if (!updated) this.logger.log(`Chat ${id} changed; summary not stored`);
         return summary;
       })
       .catch((error) => {

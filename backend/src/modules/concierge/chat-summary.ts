@@ -26,7 +26,9 @@ export function createChatSummarizer(
         model: await llm.load(),
         system: SYSTEM,
         prompt: `<chat>\n${transcript}\n</chat>`,
-        maxOutputTokens: 300,
+        // Thinking counts toward the limit and can use all of it, leaving no text.
+        providerOptions: { anthropic: { thinking: { type: 'disabled' } } },
+        maxOutputTokens: 500,
         maxRetries: 0,
         abortSignal: signal,
       });
