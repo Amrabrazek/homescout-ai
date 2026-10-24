@@ -21,7 +21,8 @@ export type CaseKind =
   | 'two-turn'
   | 'follow-up'
   | 'returning'
-  | 'remembered';
+  | 'remembered'
+  | 'last-chat';
 
 /** What a returning buyer already has before the chat starts. */
 export interface BuyerSetup {
@@ -50,6 +51,8 @@ export interface AgentCase {
   earlierChat?: string[];
   /** The earlier chat must call remember_fact, and must not add an amenity before the buyer agrees to it. */
   remembers?: boolean;
+  /** The new chat must name the projects the earlier chat compared, without searching: only the last-chat summary holds them. */
+  recallsCompared?: boolean;
   /** The last turn's search must apply these. */
   search?: ExpectedSearch;
   /** The first turn must ask a question and not search. */
@@ -417,5 +420,18 @@ export const AGENT_CASES: AgentCase[] = [
       maxPrice: 8_000_000,
       noAmenities: true,
     },
+  },
+  {
+    id: 'last-chat-compared',
+    kind: 'last-chat',
+    note: 'only the last-chat summary knows which units were compared',
+    earlierChat: [
+      'Show me 3-bedroom apartments in New Cairo under 12 million.',
+      'Compare the first and the third one for me.',
+    ],
+    recallsCompared: true,
+    turns: [
+      'Last time you compared two apartments for me. Which ones were they?',
+    ],
   },
 ];
