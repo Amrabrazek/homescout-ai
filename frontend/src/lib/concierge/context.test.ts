@@ -29,6 +29,21 @@ const unit = {
 };
 
 describe('aboutBuyer', () => {
+  it('adds the last chat summary with its date', () => {
+    const text = aboutBuyer({
+      ...empty,
+      lastChat: {
+        summary: 'The buyer compared two Mivida apartments.',
+        updatedAt: '2026-10-20T10:00:00.000Z',
+      },
+    });
+    assert.match(
+      text,
+      /Last chat \(2026-10-20, summarized;.*\):\nThe buyer compared two Mivida apartments\.$/
+    );
+    assert.doesNotMatch(aboutBuyer(empty), /Last chat/);
+  });
+
   it('says a new buyer has nothing saved', () => {
     const text = aboutBuyer(empty);
     assert.match(text, /^## About this buyer\n/);

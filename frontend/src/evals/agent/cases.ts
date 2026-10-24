@@ -19,6 +19,7 @@ export type CaseKind =
   | 'grounding'
   | 'off-topic'
   | 'two-turn'
+  | 'follow-up'
   | 'returning'
   | 'remembered';
 
@@ -311,6 +312,23 @@ export const AGENT_CASES: AgentCase[] = [
       places: ['Ain Sokhna'],
       propertyTypes: ['chalet'],
       maxPrice: 7_000_000,
+    },
+  },
+
+  {
+    id: 'follow-up-yes-please',
+    kind: 'follow-up',
+    note: 'turn 1 saves preferences (changing the buyer block), turn 2 only says yes',
+    turns: [
+      'Please save my preferences: apartments in New Cairo with at least 2 bedrooms, up to 8 million. No need to search yet.',
+      'Yes please, show me what you have.',
+    ],
+    mustSearch: true,
+    search: {
+      places: ['New Cairo'],
+      propertyTypes: ['apartment'],
+      minRooms: 2,
+      maxPrice: 8_000_000,
     },
   },
 

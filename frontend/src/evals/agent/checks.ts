@@ -75,7 +75,9 @@ export function runChecks(
     testCase.kind !== 'returning' &&
     testCase.kind !== 'remembered'
   ) {
-    results.savesPreferences = calls(last, 'update_preferences').length
+    // A follow-up saves in turn 1 and only searches on "yes" in turn 2.
+    const saving = testCase.kind === 'follow-up' ? first : last;
+    results.savesPreferences = calls(saving, 'update_preferences').length
       ? { pass: true }
       : { pass: false, detail: 'never called update_preferences' };
   }

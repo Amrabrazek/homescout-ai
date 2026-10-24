@@ -1,8 +1,14 @@
-import { convertToModelMessages, safeValidateUIMessages, streamText } from 'ai';
+import {
+  convertToModelMessages,
+  createIdGenerator,
+  safeValidateUIMessages,
+  streamText,
+} from 'ai';
 import { NextRequest, NextResponse } from 'next/server';
 import { getBuyerId } from '@/lib/graphql/buyer/server';
 import { conciergeAgent } from '@/lib/concierge/agent';
 import { internalApi } from '@/lib/concierge/api';
+import { CHAT_ID, latestChat, loadChat, saveChat } from '@/lib/concierge/chats';
 import { loadAboutBuyer } from '@/lib/concierge/context';
 import { withoutEarlierReasoning } from '@/lib/concierge/history';
 import { llmConfig } from '@/lib/concierge/model';
@@ -13,21 +19,51 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const MAX_MESSAGES = 60;
+const messageId = createIdGenerator({ prefix: 'msg', size: 16 });
 
-/** One concierge turn: the model calls tools against the API, streamed to useChat. */
+/** The buyer's latest saved chat, so the panel can resume it after a reload. */
+export async function GET() {
+  const buyerId = getBuyerId();
+  if (!buyerId) {
+    return NextResponse.json({ error: 'No buyer cookie' }, { status: 401 });
+  }
+  return NextResponse.json(await latestChat(internalApi(buyerId)));
+}
+
+/**
+ * One concierge turn: the model calls tools against the API, streamed to
+ * useChat. The browser sends only the new message; the history is the saved
+ * chat, so it can't be edited client-side.
+ */
 export async function POST(request: NextRequest) {
   const buyerId = getBuyerId();
   if (!buyerId) {
     return NextResponse.json({ error: 'No buyer cookie' }, { status: 401 });
   }
+  const body = await request.json().catch(() => null);
+  const chatId: unknown = body?.id;
+  const message = body?.message;
+  if (
+    typeof chatId !== 'string' ||
+    !CHAT_ID.test(chatId) ||
+    message?.role !== 'user'
+  ) {
+    return NextResponse.json({ error: 'Invalid message' }, { status: 400 });
+  }
 
   const config = llmConfig();
   const api = internalApi(buyerId);
-  const agent = conciergeAgent(config, api, await loadAboutBuyer(api));
+  const [stored, aboutBuyer] = await Promise.all([
+    loadChat(api, chatId),
+    loadAboutBuyer(api, chatId),
+  ]);
+  const agent = conciergeAgent(config, api, aboutBuyer);
   const { tools } = agent;
-  const body = await request.json().catch(() => null);
   const parsed = await safeValidateUIMessages<ConciergeMessage>({
-    messages: body?.messages,
+    messages: [
+      ...stored.filter((m) => (m as { id?: unknown }).id !== message.id),
+      message,
+    ],
     tools: tools as any,
   });
   if (!parsed.success) {
@@ -44,7 +80,7 @@ export async function POST(request: NextRequest) {
   const trace = langfuse()?.trace({
     name: 'concierge-turn',
     userId: buyerId,
-    sessionId: typeof body?.id === 'string' ? body.id : undefined,
+    sessionId: chatId,
     input: lastUserText(messages),
     metadata: config,
   });
@@ -100,8 +136,16 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  // Finish (and save) the turn even if the buyer closes the tab mid-stream.
+  result.consumeStream();
+
   return result.toUIMessageStreamResponse({
     originalMessages: messages,
+    generateMessageId: messageId,
+    onEnd: ({ messages: chat }) =>
+      saveChat(api, chatId, chat).catch((error) =>
+        console.error('Saving the chat failed', error)
+      ),
     onError: (error) =>
       error instanceof Error && /api key|apikey/i.test(error.message)
         ? 'The concierge is not configured: set an LLM API key.'

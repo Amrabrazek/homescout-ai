@@ -11,21 +11,30 @@ export class InternalApiError extends Error {
   }
 }
 
+const IDEMPOTENT = new Set(['GET', 'PUT', 'DELETE']);
+
 /** Calls the NestJS /internal endpoints as one buyer. */
 export function internalApi(buyerId: string) {
   return async function call<T>(
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     body?: unknown
   ): Promise<T> {
-    const response = await fetch(`${API_URL}/internal${path}`, {
-      method,
-      headers: {
-        [BUYER_ID_HEADER]: buyerId,
-        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      cache: 'no-store',
+    const send = () =>
+      fetch(`${API_URL}/internal${path}`, {
+        method,
+        headers: {
+          [BUYER_ID_HEADER]: buyerId,
+          ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        cache: 'no-store',
+      });
+    // A pooled connection the API already closed fails before any response;
+    // repeating is only safe for idempotent calls.
+    const response = await send().catch((error) => {
+      if (error instanceof TypeError && IDEMPOTENT.has(method)) return send();
+      throw error;
     });
     if (!response.ok) {
       const detail = await response.json().catch(() => null);

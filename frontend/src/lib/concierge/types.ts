@@ -94,6 +94,13 @@ export interface BuyerContext {
   viewed: ContextUnit[];
   skipped: ContextUnit[];
   facts: BuyerFact[];
+  /** A summary of the buyer's previous chat, made when this one started. */
+  lastChat?: LastChat | null;
+}
+
+export interface LastChat {
+  summary: string;
+  updatedAt: string;
 }
 
 /** Something the buyer said that no preference field holds. */

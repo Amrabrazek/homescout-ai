@@ -11,6 +11,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { BuyerFact } from '../../common/entities/buyer-fact.entity';
@@ -27,7 +28,14 @@ import { RememberFactDto } from './dto/remember-fact.dto';
 import { CompareUnitsDto } from './dto/compare-units.dto';
 import { SearchUnitsDto } from './dto/search-units.dto';
 import { UpdateBuyerPreferencesDto } from './dto/update-preferences.dto';
+import { ParseChatIdPipe } from './dto/parse-chat-id.pipe';
+import { SaveConversationDto } from './dto/save-conversation.dto';
 import { UnitDetail } from './unit-card';
+import {
+  Conversation,
+  ConversationService,
+  LastChat,
+} from './conversation.service';
 
 /**
  * REST endpoints behind the concierge agent's tools, called by the web app's
@@ -37,7 +45,8 @@ import { UnitDetail } from './unit-card';
 export class ConciergeController {
   constructor(
     private readonly concierge: ConciergeService,
-    private readonly buyers: BuyerService
+    private readonly buyers: BuyerService,
+    private readonly conversations: ConversationService
   ) {}
 
   @Post('units/search')
@@ -79,9 +88,17 @@ export class ConciergeController {
     return this.concierge.getPreferences(buyerId);
   }
 
+  /** `conversation` is the chat asking; "last chat" is the one before it. */
   @Get('context')
-  getContext(@BuyerId() buyerId: string): Promise<BuyerContext> {
-    return this.concierge.buyerContext(buyerId);
+  async getContext(
+    @BuyerId() buyerId: string,
+    @Query('conversation') conversationId?: string
+  ): Promise<BuyerContext & { lastChat: LastChat | null }> {
+    const [context, lastChat] = await Promise.all([
+      this.concierge.buyerContext(buyerId),
+      this.conversations.lastChat(buyerId, conversationId),
+    ]);
+    return { ...context, lastChat };
   }
 
   @Patch('preferences')
@@ -109,6 +126,35 @@ export class ConciergeController {
   ): Promise<void> {
     if (!(await this.buyers.forgetFact(buyerId, id))) {
       throw new NotFoundException(`No fact with ID ${id}`);
+    }
+  }
+
+  @Get('conversations/latest')
+  async latestConversation(
+    @BuyerId() buyerId: string
+  ): Promise<Conversation | Record<string, never>> {
+    return (await this.conversations.latest(buyerId)) ?? {};
+  }
+
+  @Get('conversations/:id')
+  async getConversation(
+    @BuyerId() buyerId: string,
+    @Param('id', new ParseChatIdPipe()) id: string
+  ): Promise<Conversation> {
+    const conversation = await this.conversations.get(buyerId, id);
+    if (!conversation) throw new NotFoundException(`No chat with ID ${id}`);
+    return conversation;
+  }
+
+  @Put('conversations/:id')
+  @HttpCode(204)
+  async saveConversation(
+    @BuyerId() buyerId: string,
+    @Param('id', new ParseChatIdPipe()) id: string,
+    @Body() input: SaveConversationDto
+  ): Promise<void> {
+    if (!(await this.conversations.save(buyerId, id, input.messages))) {
+      throw new NotFoundException(`No chat with ID ${id}`);
     }
   }
 }

@@ -2,9 +2,11 @@ import { randomUUID } from 'crypto';
 import { generateText, type LanguageModelUsage, type ModelMessage } from 'ai';
 import { conciergeAgent } from '@/lib/concierge/agent';
 import { internalApi, type InternalApi } from '@/lib/concierge/api';
+import { saveChat } from '@/lib/concierge/chats';
 import { loadAboutBuyer } from '@/lib/concierge/context';
 import { withoutEarlierReasoning } from '@/lib/concierge/history';
 import type { LlmConfig } from '@/lib/concierge/model';
+import type { ConciergeMessage } from '@/lib/concierge/tools';
 import type { UnitSearchResult } from '@/lib/concierge/types';
 import type { AgentCase, BuyerSetup } from './cases';
 import type { ToolCall, TurnTranscript } from './checks';
@@ -47,10 +49,21 @@ export async function runConversation(
       ? [testCase.earlierChat, testCase.turns]
       : [testCase.turns];
     for (let chat = 0; chat < chats.length; chat++) {
-      // A new chat starts with no messages: only the buyer's account carries over.
+      // A new chat starts with no messages: only the buyer's account and the
+      // previous chat's summary carry over.
       messages.length = 0;
-      for (let i = 0; i < chats[chat].length; i++)
-        turns.push(await playTurn(chats[chat][i], chat > 0 && i === 0));
+      const chatId = randomUUID();
+      const saved: TurnRun[] = [];
+      for (let i = 0; i < chats[chat].length; i++) {
+        const turn = await playTurn(
+          chats[chat][i],
+          chatId,
+          chat > 0 && i === 0
+        );
+        turns.push(turn);
+        saved.push(turn);
+        await saveChat(api, chatId, asSavedChat(saved));
+      }
     }
     return { caseId: testCase.id, model, run, turns, context };
   } catch (error) {
@@ -64,9 +77,13 @@ export async function runConversation(
     };
   }
 
-  async function playTurn(user: string, newChat: boolean): Promise<TurnRun> {
+  async function playTurn(
+    user: string,
+    chatId: string,
+    newChat: boolean
+  ): Promise<TurnRun> {
     messages.push({ role: 'user', content: user });
-    const aboutBuyer = await loadAboutBuyer(api);
+    const aboutBuyer = await loadAboutBuyer(api, chatId);
     if (aboutBuyer) context.push(aboutBuyer);
     const agent = conciergeAgent(config, api, aboutBuyer);
     const started = performance.now();
@@ -85,6 +102,31 @@ export async function runConversation(
       ...(newChat ? { newChat } : {}),
     };
   }
+}
+
+/** The turns as the chat route would store them, text and tool names only, for the next chat's summary. */
+function asSavedChat(turns: TurnRun[]): ConciergeMessage[] {
+  return turns.flatMap((turn, i) => [
+    {
+      id: `u${i}`,
+      role: 'user' as const,
+      parts: [{ type: 'text' as const, text: turn.user }],
+    },
+    {
+      id: `a${i}`,
+      role: 'assistant' as const,
+      parts: [
+        ...turn.toolCalls.map(
+          (call) =>
+            ({
+              type: `tool-${call.name}`,
+              state: 'output-available',
+            }) as any
+        ),
+        { type: 'text' as const, text: turn.reply },
+      ],
+    },
+  ]);
 }
 
 /** Gives the fresh buyer saved preferences and saved units, as a returning buyer would have. */

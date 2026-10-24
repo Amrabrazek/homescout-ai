@@ -184,6 +184,31 @@ describe('runChecks', () => {
     asksFirst: true,
   };
 
+  it('checks a follow-up saved preferences in its first turn', () => {
+    const followUp: AgentCase = {
+      id: 'f',
+      kind: 'follow-up',
+      note: '',
+      turns: ['save my prefs', 'yes please'],
+      search: { propertyTypes: ['apartment'] },
+    };
+    const save = {
+      user: 'save my prefs',
+      reply: 'Saved. Want me to search?',
+      toolCalls: [{ name: 'update_preferences', input: {} }],
+    };
+    const search = searchTurn({ propertyTypes: ['apartment'] }, [unit()]);
+    assert.equal(
+      runChecks(followUp, [save, search], []).savesPreferences?.pass,
+      true
+    );
+    assert.equal(
+      runChecks(followUp, [{ ...save, toolCalls: [] }, search], [])
+        .savesPreferences?.pass,
+      false
+    );
+  });
+
   it('passes a clarifying question with no search', () => {
     const turns = [
       {
